@@ -1,32 +1,45 @@
 import discord
 from discord.ext import commands
-import yaml
+from discord import app_commands
 import logging
 
-# Configuration des logs
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-YAML_FILE = "data/roles.yaml"
-
 
 class RoleReact(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        # Structure en mémoire : {guild_id: {message_id: {emoji: role_id}}}
         self.bot.role_reactions = {}
         logger.info("Initialisation de RoleReact Cog")
 
+    async def load_role_reactions(self):
+        logger.info("[DB] Chargement des réactions de rôles depuis la base de données...")
+        query = "SELECT guild_id, message_id, emoji, role_id FROM role_reactions"
+        rows = await self.bot.db.execute(query)
+        self.bot.role_reactions = {}
+        if rows:
+            for guild_id, message_id, emoji, role_id in rows:
+                if guild_id not in self.bot.role_reactions:
+                    self.bot.role_reactions[guild_id] = {}
+                if message_id not in self.bot.role_reactions[guild_id]:
+                    self.bot.role_reactions[guild_id][message_id] = {}
+                self.bot.role_reactions[guild_id][message_id][emoji] = role_id
+        logger.info(f"[DB] {len(rows) if rows else 0} configurations chargées.")
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.load_role_reactions()
+
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
-        logger.info(f"Réaction ajoutée détectée: {payload.emoji.name}")
+        logger.info(f"Réaction ajoutée détectée: {payload.emoji}")
 
         if payload.user_id == self.bot.user.id:
-            logger.info("Réaction du bot ignorée")
             return
 
-        role_map = self.bot.role_reactions.get(payload.message_id)
-        if role_map and str(payload.emoji.name) in role_map:
+        role_map = self.bot.role_reactions.get(payload.guild_id, {}).get(payload.message_id)
+        if role_map and str(payload.emoji) in role_map:
             guild = self.bot.get_guild(payload.guild_id)
             if not guild:
                 logger.error("Guild introuvable")
@@ -37,7 +50,7 @@ class RoleReact(commands.Cog):
                 logger.error("Membre introuvable")
                 return
 
-            role_id = role_map[str(payload.emoji.name)]
+            role_id = role_map[str(payload.emoji)]
             role = guild.get_role(role_id)
             if not role:
                 logger.error(f"Rôle ID {role_id} introuvable dans la guilde")
@@ -58,14 +71,13 @@ class RoleReact(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
-        logger.info(f"Réaction supprimée détectée: {payload.emoji.name}")
+        logger.info(f"Réaction supprimée détectée: {payload.emoji}")
 
         if payload.user_id == self.bot.user.id:
-            logger.info("Réaction du bot ignorée")
             return
 
-        role_map = self.bot.role_reactions.get(payload.message_id)
-        if role_map and str(payload.emoji.name) in role_map:
+        role_map = self.bot.role_reactions.get(payload.guild_id, {}).get(payload.message_id)
+        if role_map and str(payload.emoji) in role_map:
             guild = self.bot.get_guild(payload.guild_id)
             if not guild:
                 logger.error("Guild introuvable")
@@ -76,7 +88,7 @@ class RoleReact(commands.Cog):
                 logger.error("Membre introuvable")
                 return
 
-            role_id = role_map[str(payload.emoji.name)]
+            role_id = role_map[str(payload.emoji)]
             role = guild.get_role(role_id)
             if not role:
                 logger.error(f"Rôle ID {role_id} introuvable dans la guilde")
@@ -84,8 +96,7 @@ class RoleReact(commands.Cog):
 
             try:
                 await member.remove_roles(role)
-                logger.info(
-                    f"Rôle {role.name} retiré de {member.display_name}")
+                logger.info(f"Rôle {role.name} retiré de {member.display_name}")
 
                 channel = self.bot.get_channel(payload.channel_id)
                 if channel:
@@ -210,20 +221,19 @@ class RoleReact(commands.Cog):
         for item in config_list:
             await message.add_reaction(item['emoji'])
 
-        self.bot.role_reactions[message.id] = {}
-        for item in config_list:
-            self.bot.role_reactions[message.id][
-                item['emoji']] = item['role'].id
+        self.bot.role_reactions.setdefault(interaction.guild.id, {})[message.id] = {}
 
-        with open(YAML_FILE, "w") as f:
-            yaml.dump(
-                {
-                    str(message.id): {
-                        emoji: str(role.id)
-                        for emoji, role in self.bot.role_reactions[
-                            message.id].items()
-                    }
-                }, f)
+        # Nettoyer la config existante en DB pour ce message et cette guild
+        await self.bot.db.execute(
+            "DELETE FROM role_reactions WHERE guild_id = %s AND message_id = %s",
+            (interaction.guild.id, message.id)
+        )
+        for item in config_list:
+            self.bot.role_reactions[interaction.guild.id][message.id][item['emoji']] = item['role'].id
+            await self.bot.db.execute(
+                "INSERT INTO role_reactions (guild_id, message_id, emoji, role_id) VALUES (%s, %s, %s, %s)",
+                (interaction.guild.id, message.id, item['emoji'], item['role'].id)
+            )
 
         confirmation_message = await interaction.channel.send(
             "✅ Configuration terminée. Les utilisateurs peuvent maintenant réagir pour obtenir un rôle."

@@ -1,259 +1,331 @@
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
-from discord import app_commands, Embed
-import yaml
 import random
 import asyncio
-import datetime
-import os
 
-CONFIG_FILE = "config/config_xp.yaml"
-XP_FILE = "data/xp_data.yaml"
-XP_RANGE = (3, 6)
-XP_COOLDOWN = 10
-VOICE_XP_AMOUNT = 5
-VOICE_XP_INTERVAL = 180  # 3 minutes en secondes
+class SetXPChannelModal(discord.ui.Modal, title="Attribuer salon annonces XP"):
+    channel_id = discord.ui.TextInput(
+        label="ID du salon",
+        placeholder="Entrez l'ID du salon où envoyer les annonces XP",
+        style=discord.TextStyle.short
+    )
 
+    def __init__(self, bot, guild_id):
+        super().__init__()
+        self.bot = bot
+        self.guild_id = guild_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            channel_id_int = int(self.channel_id.value)
+            channel = interaction.guild.get_channel(channel_id_int)
+            if not channel:
+                await interaction.response.send_message("Salon introuvable dans cette guild.", ephemeral=True)
+                return
+            
+            await self.bot.db.query(
+                """
+                INSERT INTO xp_config (guild_id, xp_channel) VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE xp_channel = %s
+                """,
+                (self.guild_id, channel_id_int, channel_id_int)
+            )
+            await interaction.response.send_message(f"Salon {channel.mention} attribué pour les annonces XP !", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("L'ID du salon doit être un nombre entier.", ephemeral=True)
+
+class SetRoleLevelModal(discord.ui.Modal, title="Attribuer rôle à un niveau"):
+    level = discord.ui.TextInput(
+        label="Niveau",
+        placeholder="Entrez le niveau (nombre entier)",
+        style=discord.TextStyle.short
+    )
+    role_id = discord.ui.TextInput(
+        label="ID du rôle",
+        placeholder="Entrez l'ID du rôle à attribuer",
+        style=discord.TextStyle.short
+    )
+
+    def __init__(self, bot, guild_id):
+        super().__init__()
+        self.bot = bot
+        self.guild_id = guild_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            level_int = int(self.level.value)
+            role_id_int = int(self.role_id.value)
+
+            role = interaction.guild.get_role(role_id_int)
+            if not role:
+                await interaction.response.send_message("Rôle introuvable dans cette guild.", ephemeral=True)
+                return
+            
+            await self.bot.db.query(
+                """
+                INSERT INTO level_roles (guild_id, level, role_id) VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE role_id = %s
+                """,
+                (self.guild_id, level_int, role_id_int, role_id_int)
+            )
+            await interaction.response.send_message(f"Rôle {role.mention} attribué au niveau {level_int} !", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("Le niveau et l'ID du rôle doivent être des nombres entiers.", ephemeral=True)
+
+class ConfigLevelView(discord.ui.View):
+    def __init__(self, bot, guild_id):
+        super().__init__(timeout=120)
+        self.bot = bot
+        self.guild_id = guild_id
+
+    @discord.ui.button(label="Attribuer salon annonces XP", style=discord.ButtonStyle.green)
+    async def set_xp_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = SetXPChannelModal(self.bot, self.guild_id)
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="Attribuer rôle à un niveau", style=discord.ButtonStyle.blurple)
+    async def set_role_level(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = SetRoleLevelModal(self.bot, self.guild_id)
+        await interaction.response.send_modal(modal)
 
 class XPSystem(commands.Cog):
-
     def __init__(self, bot):
         self.bot = bot
-        self.user_last_xp = {}
-        self.guild_xp_channels = self.load_config()
-        self.voice_xp_task = None  # On lancera la tâche dans on_ready
-
-    def load_config(self):
-        if not os.path.exists(CONFIG_FILE):
-            return {}
-        with open(CONFIG_FILE, "r") as f:
-            return yaml.safe_load(f) or {}
-
-    def save_config(self):
-        with open(CONFIG_FILE, "w") as f:
-            yaml.dump(self.guild_xp_channels, f)
-
-    def load_xp(self):
-        if not os.path.exists(XP_FILE):
-            return {}
-        with open(XP_FILE, "r") as f:
-            return yaml.safe_load(f) or {}
-
-    def save_xp(self, data):
-        with open(XP_FILE, "w") as f:
-            yaml.dump(data, f)
-
-    def add_xp(self, user_id, guild_id, amount, source="text"):
-        data = self.load_xp()
-        data.setdefault(str(guild_id), {})
-        data[str(guild_id)].setdefault(str(user_id), {
-            "xp": 0,
-            "level": 1,
-            "text_xp": 0,
-            "voice_xp": 0
-        })
-        profile = data[str(guild_id)][str(user_id)]
-
-        profile["xp"] += amount
-        if source == "text":
-            profile["text_xp"] += amount
-        elif source == "voice":
-            profile["voice_xp"] += amount
-
-        level = int((profile["xp"] / 100)**0.5) + 1
-        leveled_up = False
-        if level > profile["level"]:
-            profile["level"] = level
-            leveled_up = True
-
-        self.save_xp(data)
-        return leveled_up, profile["level"]
-
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot:
-            return
-
-        now = datetime.datetime.utcnow()
-        last_time = self.user_last_xp.get(message.author.id)
-
-        if last_time and (now - last_time).total_seconds() < XP_COOLDOWN:
-            return
-
-        self.user_last_xp[message.author.id] = now
-        xp_gain = random.randint(*XP_RANGE)
-        leveled_up, new_level = self.add_xp(message.author.id,
-                                            message.guild.id,
-                                            xp_gain,
-                                            source="text")
-
-        guild_conf = self.guild_xp_channels.get(str(message.guild.id), {})
-        if leveled_up:
-            xp_channel_id = guild_conf.get("xp_channel")
-            level_roles = guild_conf.get("level_roles", {})
-            role_id = level_roles.get(str(new_level))
-            if role_id:
-                role = message.guild.get_role(role_id)
-                if role:
-                    await message.author.add_roles(role)
-
-            if xp_channel_id:
-                channel = self.bot.get_channel(xp_channel_id)
-                if channel:
-                    await channel.send(
-                        f"🎉 {message.author.mention} est monté niveau **{new_level}** !"
-                        + (f" et a reçu le rôle {role.mention} !"
-                           if role_id else ""))
-
-    async def give_voice_xp_loop(self):
-        await self.bot.wait_until_ready()
-        print("[XP VOICE] Tâche XP vocal démarrée.")
-        while not self.bot.is_closed():
-            print("[XP VOICE] Nouvelle boucle XP vocal.")
-            for guild in self.bot.guilds:
-                print(f"[XP VOICE] Guild: {guild.name}")
-                for vc in guild.voice_channels:
-                    print(f"[XP VOICE] Salon vocal : {vc.name}")
-                    for member in vc.members:
-                        if member.bot:
-                            print(f"[XP VOICE] Ignoré (bot) : {member.name}")
-                            continue
-                        print(f"[XP VOICE] XP vocal donné à : {member.name}")
-                        self.add_xp(member.id,
-                                    guild.id,
-                                    VOICE_XP_AMOUNT,
-                                    source="voice")
-            await asyncio.sleep(VOICE_XP_INTERVAL)
+        self.cooldown = {}
+        print("✅ XPSystem cog chargé")
 
     @commands.Cog.listener()
     async def on_ready(self):
-        if not self.voice_xp_task:
-            print("[XP VOICE] Initialisation de la tâche XP vocal.")
-            self.voice_xp_task = asyncio.create_task(self.give_voice_xp_loop())
-        else:
-            print("[XP VOICE] Tâche XP vocal déjà en cours.")
+        if not self.voice_xp_loop.is_running():
+            print("▶️ Démarrage de la boucle XP vocale depuis on_ready.")
+            self.voice_xp_loop.start()
 
-    @app_commands.command(name="level",
-                          description="Affiche ton niveau actuel")
-    async def level(self, interaction: discord.Interaction):
-        data = self.load_xp()
-        guild_id = str(interaction.guild.id)
-        user_id = str(interaction.user.id)
-        user_data = data.get(guild_id, {}).get(user_id, {
-            "xp": 0,
-            "level": 1,
-            "text_xp": 0,
-            "voice_xp": 0
-        })
+        
+    def cog_unload(self):
+        self.voice_xp_loop.cancel()
 
-        xp = user_data["xp"]
-        level = user_data["level"]
-        text_xp = user_data.get("text_xp", 0)
-        voice_xp = user_data.get("voice_xp", 0)
+    @tasks.loop(minutes=10)
+    async def voice_xp_loop(self):
+        print("🔁 Boucle XP vocale démarrée.")
 
-        xp_for_this_level = 100 * ((level - 1)**2)
-        xp_for_next_level = 100 * (level**2)
-        current_xp = xp - xp_for_this_level
-        xp_needed = xp_for_next_level - xp_for_this_level
-        progress = min(max(current_xp / xp_needed, 0), 1)
+        for guild in self.bot.guilds:
+            print(f"📂 Serveur : {guild.name} ({guild.id})")
 
-        bar_length = 20
-        filled_length = int(bar_length * progress)
-        bar = "█" * filled_length + "░" * (bar_length - filled_length)
+            for vc in guild.voice_channels:
+                print(f"🔊 Salon vocal : {vc.name} | Membres : {len(vc.members)}")
 
-        embed = Embed(title=f"Niveau de {interaction.user.display_name}",
-                      color=0x7289DA)
-        embed.add_field(name="Niveau", value=str(level), inline=True)
-        embed.add_field(name="XP total",
-                        value=f"{xp} / {xp_for_next_level}",
-                        inline=True)
-        embed.add_field(name="Progression", value=bar, inline=False)
-        embed.add_field(name="XP écrit", value=str(text_xp), inline=True)
-        embed.add_field(name="XP vocal", value=str(voice_xp), inline=True)
-        embed.set_thumbnail(url=interaction.user.display_avatar.url)
-        embed.set_footer(text="XP System")
+                if len(vc.members) <= 1:
+                    print("⛔ Ignoré : seulement 1 personne ou moins dans le vocal.")
+                    continue
 
-        await interaction.response.send_message(embed=embed)
+                for member in vc.members:
+                    print(f"👤 Membre : {member.display_name} ({member.id})")
 
-    @app_commands.command(name="topxp", description="Classement XP")
-    async def topxp(self, interaction: discord.Interaction):
-        data = self.load_xp()
-        guild_id = str(interaction.guild.id)
-        guild_data = data.get(guild_id, {})
+                    if member.bot:
+                        print("🤖 Ignoré : c'est un bot.")
+                        continue
 
-        if not guild_data:
-            await interaction.response.send_message("Aucune donnée XP.",
-                                                    ephemeral=True)
+                    if member.voice.self_mute or member.voice.self_deaf:
+                        print("🔇 Ignoré : utilisateur s'est mis en mute/sourdine.")
+                        continue
+
+                    if member.voice.mute or member.voice.deaf:
+                        print("🔕 Ignoré : mute/sourdine forcée par le serveur.")
+                        continue
+
+                    print("✅ Ajout de 15 XP vocal à", member.display_name)
+                    leveled_up, level = await self.add_xp(member.id, guild.id, 15, source="voice")
+
+                    if leveled_up:
+                        print(f"🆙 {member.display_name} est monté niveau {level} !")
+                        await self.handle_level_up(guild, member, level)
+
+        print("✅ Boucle XP vocale terminée.\n")
+
+    async def add_xp(self, user_id, guild_id, amount, source="text"):
+        sql = "SELECT * FROM xp_data WHERE user_id = %s AND guild_id = %s"
+        data = await self.bot.db.query(sql, (user_id, guild_id), fetchone=True)
+
+        if not data:
+            await self.bot.db.query(
+                "INSERT INTO xp_data (user_id, guild_id, xp, level, text_xp, voice_xp) VALUES (%s, %s, 0, 1, 0, 0)",
+                (user_id, guild_id)
+            )
+            data = {"xp": 0, "level": 1, "text_xp": 0, "voice_xp": 0}
+
+        new_xp = data["xp"] + amount
+        text_xp = data["text_xp"] + amount if source == "text" else data["text_xp"]
+        voice_xp = data["voice_xp"] + amount if source == "voice" else data["voice_xp"]
+        new_level = int((new_xp / 100)**0.5) + 1
+        leveled_up = new_level > data["level"]
+
+        await self.bot.db.query(
+            "UPDATE xp_data SET xp=%s, text_xp=%s, voice_xp=%s, level=%s WHERE user_id=%s AND guild_id=%s",
+            (new_xp, text_xp, voice_xp, new_level, user_id, guild_id)
+        )
+
+        return leveled_up, new_level
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot or not message.guild:
             return
 
-        top_users = sorted(guild_data.items(),
-                           key=lambda x: x[1].get("xp", 0),
-                           reverse=True)[:10]
-        embed = Embed(title=f"Classement XP - {interaction.guild.name}",
-                      color=0xFFD700)
-        description = ""
+        user_id = message.author.id
+        guild_id = message.guild.id
+        key = (user_id, guild_id)
 
-        for i, (user_id, user_info) in enumerate(top_users, start=1):
-            member = interaction.guild.get_member(int(user_id))
-            name = member.display_name if member else f"ID {user_id}"
-            description += f"**{i}. {name}** - Niveau {user_info['level']} - {user_info['xp']} XP\n"
-
-        embed.description = description
-        await interaction.response.send_message(embed=embed)
-
-    @app_commands.command(
-        name="configlevel",
-        description="Configurer le salon d'XP et les rôles par niveau")
-    @app_commands.describe(xp_channel="Salon d'annonce de niveau",
-                           level="Niveau",
-                           role="Rôle à attribuer")
-    async def configlevel(self,
-                          interaction: discord.Interaction,
-                          xp_channel: discord.TextChannel = None,
-                          level: int = None,
-                          role: discord.Role = None):
-        guild_id = str(interaction.guild.id)
-        self.guild_xp_channels.setdefault(guild_id, {})
-
-        if xp_channel:
-            self.guild_xp_channels[guild_id]["xp_channel"] = xp_channel.id
-
-        if level is not None and role is not None:
-            self.guild_xp_channels[guild_id].setdefault("level_roles", {})
-            self.guild_xp_channels[guild_id]["level_roles"][str(
-                level)] = role.id
-
-        self.save_config()
-        await interaction.response.send_message("✅ Configuration mise à jour.",
-                                                ephemeral=True)
-
-    @app_commands.command(
-        name="levelroles",
-        description="Voir les rôles attribués selon les niveaux")
-    async def levelroles(self, interaction: discord.Interaction):
-        guild_id = str(interaction.guild.id)
-        guild_conf = self.guild_xp_channels.get(guild_id, {})
-        roles_config = guild_conf.get("level_roles", {})
-
-        if not roles_config:
-            await interaction.response.send_message(
-                "Aucun rôle configuré pour les niveaux.", ephemeral=True)
+        if key in self.cooldown:
             return
 
-        description = ""
-        for lvl, role_id in sorted(roles_config.items(),
-                                   key=lambda x: int(x[0])):
-            role = interaction.guild.get_role(role_id)
+        xp = random.randint(3, 6)
+        leveled_up, level = await self.add_xp(user_id, guild_id, xp, source="text")
+
+        if leveled_up:
+            await self.handle_level_up(message.guild, message.author, level)
+
+        self.cooldown[key] = True
+        await asyncio.sleep(10)
+        del self.cooldown[key]
+
+    async def handle_level_up(self, guild, member, level):
+        config = await self.bot.db.query("SELECT xp_channel FROM xp_config WHERE guild_id = %s", (guild.id,), fetchone=True)
+        gained_roles = []
+
+        # Attribution des rôles
+        roles = await self.bot.db.query(
+            "SELECT role_id FROM level_roles WHERE guild_id = %s AND level = %s",
+            (guild.id, level),
+            fetchall=True
+        )
+        for row in roles:
+            role = guild.get_role(row["role_id"])
             if role:
-                description += f"Niveau {lvl} → {role.mention}\n"
-            else:
-                description += f"Niveau {lvl} → (rôle introuvable)\n"
+                await member.add_roles(role)
+                gained_roles.append(role.mention)
 
-        embed = Embed(title="Rôles par niveau",
-                      description=description,
-                      color=0x00FFAA)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        # Annonce dans le salon XP s'il est configuré
+        if config:
+            channel = guild.get_channel(config["xp_channel"])
+            if channel:
+                embed = discord.Embed(
+                    title="🎉 Niveau atteint !",
+                    description=f"{member.mention} est maintenant **niveau {level}** !",
+                    color=discord.Color.gold()
+                )
+                embed.set_thumbnail(url=member.display_avatar.url)
+                if gained_roles:
+                    embed.add_field(name="🎁 Rôle(s) obtenu(s)", value=", ".join(gained_roles), inline=False)
 
+                await channel.send(content=f"{member.mention}", embed=embed)
+
+
+    @commands.hybrid_command(name="configlevel", description="Configurer le système de niveaux et annonces XP")
+    async def configlevel(self, ctx: commands.Context):
+        embed = discord.Embed(
+            title="Configuration du système XP",
+            description="Utilise les boutons ci-dessous pour configurer le salon d'annonces XP ou attribuer un rôle à un niveau.",
+            color=discord.Color.blue()
+        )
+        view = ConfigLevelView(self.bot, ctx.guild.id)
+        await ctx.send(embed=embed, view=view)
+
+    @app_commands.command(name="topxp", description="Afficher le classement des XP (texte, vocal, total)")            
+    async def topxp(self, interaction: discord.Interaction):
+        guild_id = interaction.guild.id
+
+        # Récupérer top 10 par text_xp, voice_xp et total xp
+        query = """
+            SELECT user_id, text_xp, voice_xp, xp
+            FROM xp_data
+            WHERE guild_id = %s
+            ORDER BY xp DESC
+            LIMIT 10
+        """
+        rows = await self.bot.db.query(query, (guild_id,), fetchall=True)
+
+        if not rows:
+            await interaction.response.send_message("Aucune donnée XP trouvée dans ce serveur.", ephemeral=True)
+            return
+
+        embed = discord.Embed(title="🏆 Top 10 XP", color=discord.Color.gold())
+        embed.set_footer(text="Classement basé sur l'XP totale")
+
+        text_lines = []
+        voice_lines = []
+        total_lines = []
+
+        for i, row in enumerate(rows, start=1):
+            member = interaction.guild.get_member(row["user_id"])
+            name = member.display_name if member else f"Utilisateur ID {row['user_id']}"
+
+            text_lines.append(f"{i}. {name} — {row['text_xp']} XP texte")
+            voice_lines.append(f"{i}. {name} — {row['voice_xp']} XP vocal")
+            total_lines.append(f"{i}. {name} — {row['xp']} XP total")
+
+        embed.add_field(name="XP Texte", value="\n".join(text_lines), inline=True)
+        embed.add_field(name="XP Vocal", value="\n".join(voice_lines), inline=True)
+        embed.add_field(name="XP Total", value="\n".join(total_lines), inline=True)
+
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="levelroles", description="Afficher la liste des rôles attribués par niveau")       
+    async def levelroles(self, interaction: discord.Interaction):
+        guild_id = interaction.guild.id
+
+        rows = await self.bot.db.query(
+            "SELECT level, role_id FROM level_roles WHERE guild_id = %s ORDER BY level ASC",
+            (guild_id,),
+            fetchall=True
+        )
+
+        if not rows:
+            await interaction.response.send_message("Aucun rôle configuré pour les niveaux dans ce serveur.", ephemeral=True)
+            return
+
+        lines = []
+        for row in rows:
+            role = interaction.guild.get_role(row["role_id"])
+            role_name = role.mention if role else f"Rôle ID {row['role_id']} (introuvable)"
+            lines.append(f"Niveau {row['level']} → {role_name}")
+
+        embed = discord.Embed(
+            title="🎖️ Rôles attribués par niveau",
+            description="\n".join(lines),
+            color=discord.Color.blue()
+        )
+        await interaction.response.send_message(embed=embed)
+
+        
+    @app_commands.command(name="level", description="Voir votre niveau et XP")
+    async def level(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+
+        data = await self.bot.db.query("SELECT * FROM xp_data WHERE user_id=%s AND guild_id=%s", (user_id, guild_id), fetchone=True)
+        if not data:
+            await interaction.response.send_message("Tu n'as pas encore d'XP. Parle un peu !", ephemeral=True)
+            return
+
+        xp = data["xp"]
+        level = data["level"]
+        xp_next = ((level)**2) * 100
+        xp_prev = ((level - 1)**2) * 100
+        progress = xp - xp_prev
+        total_needed = xp_next - xp_prev
+        bar_length = 20
+        filled = int(bar_length * progress / total_needed)
+        bar = "█" * filled + "-" * (bar_length - filled)
+
+        embed = discord.Embed(title=f"Niveau de {interaction.user.display_name}", color=0x00ff00)
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        embed.add_field(name="Niveau", value=str(level), inline=True)
+        embed.add_field(name="XP total", value=f"{xp}/{xp_next}", inline=True)
+        embed.add_field(name="Progression", value=f"[{bar}] ({progress}/{total_needed})", inline=False)
+        embed.add_field(name="XP texte", value=str(data["text_xp"]), inline=True)
+        embed.add_field(name="XP vocal", value=str(data["voice_xp"]), inline=True)
+        await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(XPSystem(bot))
