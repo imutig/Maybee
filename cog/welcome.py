@@ -86,19 +86,20 @@ class Welcome(commands.Cog):
                 embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
                 await channel.send(embed=embed)
 
-    @app_commands.command(name="configwelcome", description="Configurer le message de bienvenue")
-    @app_commands.describe(channel="Salon de bienvenue", message="Message avec {memberMention}, {memberName}, {serverName}")
-    async def configwelcome(self, interaction: discord.Interaction, channel: discord.TextChannel, message: str):
-        guild_id = interaction.guild.id
-        await self.save_welcome_config(guild_id, welcome_channel=channel.id, welcome_message=message)
-        await interaction.response.send_message("✅ Message de bienvenue configuré.", ephemeral=True)
+    # Configuration commands removed - use unified /config command instead
+    # @app_commands.command(name="configwelcome", description="Configurer le message de bienvenue")
+    # @app_commands.describe(channel="Salon de bienvenue", message="Message avec {memberMention}, {memberName}, {serverName}")
+    # async def configwelcome(self, interaction: discord.Interaction, channel: discord.TextChannel, message: str):
+    #     guild_id = interaction.guild.id
+    #     await self.save_welcome_config(guild_id, welcome_channel=channel.id, welcome_message=message)
+    #     await interaction.response.send_message("✅ Message de bienvenue configuré.", ephemeral=True)
 
-    @app_commands.command(name="configgoodbye", description="Configurer le message d'au revoir")
-    @app_commands.describe(channel="Salon d'au revoir", message="Message avec {memberName}, {serverName}")
-    async def configgoodbye(self, interaction: discord.Interaction, channel: discord.TextChannel, message: str):
-        guild_id = interaction.guild.id
-        await self.save_welcome_config(guild_id, goodbye_channel=channel.id, goodbye_message=message)
-        await interaction.response.send_message("✅ Message d'au revoir configuré.", ephemeral=True)
+    # @app_commands.command(name="configgoodbye", description="Configurer le message d'au revoir")
+    # @app_commands.describe(channel="Salon d'au revoir", message="Message avec {memberName}, {serverName}")
+    # async def configgoodbye(self, interaction: discord.Interaction, channel: discord.TextChannel, message: str):
+    #     guild_id = interaction.guild.id
+    #     await self.save_welcome_config(guild_id, goodbye_channel=channel.id, goodbye_message=message)
+    #     await interaction.response.send_message("✅ Message d'au revoir configuré.", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Welcome(bot))

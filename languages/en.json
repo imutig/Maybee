@@ -1,0 +1,551 @@
+{
+  "_meta": {
+    "name": "English",
+    "code": "en",
+    "flag": "🇺🇸",
+    "contributors": ["iMutig"]
+  },
+  "common": {
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Info",
+    "yes": "Yes",
+    "no": "No",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "none": "None",
+    "unknown": "Unknown",
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "user": "User",
+    "server": "Server",
+    "channel": "Channel",
+    "role": "Role",
+    "member": "Member",
+    "members": "Members",
+    "message": "Message",
+    "messages": "Messages",
+    "command": "Command",
+    "commands": "Commands",
+    "permission": "Permission",
+    "permissions": "Permissions"
+  },
+  "errors": {
+    "no_permission": "❌ You don't have permission to use this command.",
+    "admin_only": "❌ This command is for administrators only.",
+    "missing_permissions": "❌ I don't have the required permissions to perform this action.",
+    "user_not_found": "❌ User not found.",
+    "channel_not_found": "❌ Channel not found.",
+    "role_not_found": "❌ Role not found.",
+    "invalid_input": "❌ Invalid input provided.",
+    "database_error": "❌ Database error occurred.",
+    "unknown_error": "❌ An unknown error occurred.",
+    "command_cooldown": "❌ This command is on cooldown. Try again later.",
+    "bot_missing_permissions": "❌ I don't have the required permissions in this server."
+  },
+  "commands": {
+    "ping": {
+      "description": "Display bot latency",
+      "response": "Pong 🏓 {latency} ms"
+    },
+    "avatar": {
+      "description": "Display a user's avatar",
+      "user_param": "The user whose avatar you want to see",
+      "embed_title": "Avatar of {user}"
+    },
+    "level": {
+      "description": "View your level and XP",
+      "embed_title": "Level of {user}",
+      "level_field": "Level",
+      "total_xp_field": "Total XP",
+      "progress_field": "Progress",
+      "text_xp_field": "Text XP",
+      "voice_xp_field": "Voice XP",
+      "no_xp": "You don't have any XP yet. Chat a bit!"
+    },
+    "topxp": {
+      "description": "Display XP leaderboard (text, voice, total)",
+      "embed_title": "🏆 Top 10 XP",
+      "embed_footer": "Ranking based on total XP",
+      "text_xp_field": "Text XP",
+      "voice_xp_field": "Voice XP",
+      "total_xp_field": "Total XP",
+      "no_data": "No XP data found in this server."
+    },
+    "roll": {
+      "description": "Roll a dice between 1 and 100",
+      "result": "🎲 {user} rolled a dice and got: **{result}**"
+    },
+    "clear": {
+      "description": "Delete messages from the channel",
+      "number_param": "Number of messages to delete (max 100)",
+      "no_permission": "❌ You don't have permission to manage messages.",
+      "invalid_number": "❌ Number must be between 1 and 100.",
+      "success": "🧹 {count} messages deleted."
+    },
+    "scan": {
+      "description": "Scan a member and display their basic info",
+      "member_param": "The member to scan",
+      "embed_title": "🔍 Scan of {member}",
+      "id_field": "ID",
+      "username_field": "Username",
+      "joined_field": "Joined server",
+      "created_field": "Account created",
+      "roles_field": "Roles",
+      "no_roles": "None"
+    },
+    "rename": {
+      "description": "Rename a member (requires permission)",
+      "user_param": "The member to rename",
+      "nickname_param": "The new nickname",
+      "no_permission": "❌ You don't have permission to change nicknames.",
+      "success": "✅ {user} is now called **{nickname}**.",
+      "bot_no_permission": "❌ I don't have permission to modify this nickname.",
+      "error": "⚠️ Error: {error}"
+    },
+    "embed": {
+      "description": "Create an embed via a form",
+      "channel_param": "Channel where to send the embed",
+      "modal_title": "Create an embed",
+      "title_field": "Title",
+      "description_field": "Description",
+      "color_field": "Color (e.g., blue or #ff6600)",
+      "fields_field": "Fields (optional, e.g., Name1:Value1|Name2:Value2...)",
+      "fields_placeholder": "e.g., field:val|field2:val2",
+      "image_field": "Image URL (optional)",
+      "success": "✅ Embed sent successfully!",
+      "error": "❌ Error: {error}",
+      "fields_error": "❌ Error in fields format (expected: Field:Value|...)",
+      "created_footer": "Created by {user}"
+    },
+    "career": {
+      "description": "Add a career decision for a member",
+      "member_param": "The member concerned",
+      "decision_param": "Type of decision made",
+      "reason_param": "The reason for this decision",
+      "decided_by_param": "Mention the roles that made the decision",
+      "embed_title": "📋 Career Decision",
+      "member_field": "👤 Member",
+      "decision_field": "📌 Decision",
+      "reason_field": "📝 Reason",
+      "decided_by_field": "🧑‍⚖️ Decided by",
+      "footer": "Decision recorded by {user}",
+      "decisions": {
+        "warning": "Warning",
+        "blame": "Blame",
+        "demotion": "Demotion",
+        "promotion": "Promotion",
+        "exclusion": "Exclusion"
+      }
+    },
+    "meeting": {
+      "description": "Create a meeting reminder",
+      "meeting_param": "Who is concerned by the meeting?",
+      "par_param": "Who organizes the meeting?",
+      "lieu_param": "Voice channel where the meeting will take place",
+      "note_param": "Optional note for the meeting",
+      "no_note": "No note specified.",
+      "embed_title": "📢 New meeting scheduled!",
+      "participants_field": "👥 Participants",
+      "organized_by_field": "🧑‍💼 Organized by",
+      "location_field": "📍 Location",
+      "note_field": "📝 Note",
+      "footer": "Requested by {user}"
+    },
+    "sync": {
+      "description": "Synchronize slash commands for this server (Admin only)",
+      "success": "✅ {count} commands synchronized for this server!",
+      "error": "❌ Error during synchronization: {error}"
+    }
+  },
+  "xp_system": {
+    "level_up": {
+      "title": "🎉 Level Up!",
+      "description": "{user} is now **level {level}**!",
+      "roles_gained": "🎁 Role(s) gained"
+    },
+    "config": {
+      "title": "XP System Configuration",
+      "description": "Use the buttons below to configure the XP announcement channel or assign a role to a level.",
+      "set_channel_button": "Set XP announcement channel",
+      "set_role_button": "Assign role to level",
+      "channel_modal_title": "Set XP announcement channel",
+      "channel_field": "Channel ID",
+      "channel_placeholder": "Enter the channel ID where to send XP announcements",
+      "role_modal_title": "Assign role to level",
+      "level_field": "Level",
+      "level_placeholder": "Enter the level (integer number)",
+      "role_id_field": "Role ID",
+      "role_id_placeholder": "Enter the role ID to assign",
+      "channel_not_found": "Channel not found in this guild.",
+      "role_not_found": "Role not found in this guild.",
+      "invalid_number": "The level and role ID must be integer numbers.",
+      "channel_success": "Channel {channel} assigned for XP announcements!",
+      "role_success": "Role {role} assigned to level {level}!",
+      "enabled_success": "✅ XP system enabled successfully!",
+      "disabled_success": "✅ XP system disabled successfully!",
+      "rate_not_supported": "⚠️ XP rate configuration is not supported in the current database structure."
+    },
+    "level_roles": {
+      "title": "🎖️ Roles assigned by level",
+      "no_roles": "No roles configured for levels in this server."
+    }
+  },
+  "welcome_system": {
+    "new_member": {
+      "title": "👋 New member!",
+      "default_message": "Welcome {memberMention} to {serverName}! 🎉"
+    },
+    "member_left": {
+      "title": "👋 Departure",
+      "default_message": "{memberName} left {serverName}... 😢"
+    },
+    "config": {
+      "welcome_description": "Configure welcome message",
+      "welcome_channel_param": "Welcome channel",
+      "welcome_message_param": "Message with {memberMention}, {memberName}, {serverName}",
+      "welcome_success": "✅ Welcome message configured.",
+      "goodbye_description": "Configure goodbye message",
+      "goodbye_channel_param": "Goodbye channel",
+      "goodbye_message_param": "Message with {memberName}, {serverName}",
+      "goodbye_success": "✅ Goodbye message configured."
+    }
+  },
+  "confession_system": {
+    "command": {
+      "description": "Send an anonymous confession to the designated channel",
+      "message_param": "The content of your confession (anonymous)"
+    },
+    "embed": {
+      "title": "💬 New anonymous confession",
+      "footer": "Confession sent anonymously"
+    },
+    "config": {
+      "description": "Configure confessions channel",
+      "channel_param": "The channel where to send confessions",
+      "no_permission": "❌ You don't have permission to manage channels.",
+      "success": "✅ Confessions channel configured to {channel}!"
+    },
+    "stats": {
+      "description": "Display confession statistics",
+      "no_permission": "❌ You don't have permission to view statistics.",
+      "title": "📊 Confession statistics",
+      "total_field": "Total confessions",
+      "week_field": "This week"
+    },
+    "errors": {
+      "no_channel": "❌ No confession channel has been configured for this server. Ask an administrator to use `/configconfession`.",
+      "channel_not_found": "❌ The configured confession channel no longer exists. Ask an administrator to reconfigure with `/configconfession`.",
+      "no_permission": "❌ I don't have permission to send messages in the confession channel.",
+      "send_error": "❌ Error sending confession: {error}"
+    },
+    "success": "✅ Confession sent anonymously!"
+  },
+  "role_system": {
+    "request": {
+      "add_description": "Request to add a role",
+      "remove_description": "Request to remove a role",
+      "role_param": "The role to add or remove",
+      "embed_title": "Role Request",
+      "embed_description_add": "{user} is requesting to **add** the role {role}",
+      "embed_description_remove": "{user} is requesting to **remove** the role {role}",
+      "footer": "User ID: {user_id} | Role ID: {role_id}",
+      "success_add": "Your request to **add** the role has been sent to {channel}!",
+      "success_remove": "Your request to **remove** the role has been sent to {channel}!",
+      "too_high": "I cannot modify this role (too high in hierarchy).",
+      "channel_not_found": "Request channel not found.",
+      "already_have": "You already have the {role} role!",
+      "dont_have": "You don't have the {role} role!",
+      "not_allowed": "The {role} role is not available for requests!",
+      "not_configured": "Role requests are not configured for this server!"
+    },
+    "approval": {
+      "accept_button": "Accept",
+      "deny_button": "Deny",
+      "no_permission": "You don't have permission.",
+      "member_not_found": "Error: member or role not found.",
+      "status_field": "Status",
+      "action_field": "Action performed",
+      "accepted": "Accepted by {user}",
+      "denied": "Denied by {user}",
+      "role_added": "Role **{role}** added to {member}",
+      "role_removed": "Role **{role}** removed from {member}",
+      "error": "Error: {error}"
+    },
+    "config": {
+      "channel_description": "Configure the channel for role requests",
+      "channel_param": "The channel where to send role requests",
+      "no_permission": "❌ You don't have permission to manage channels.",
+      "success": "Role requests channel configured to {channel}!"
+    },
+    "stats": {
+      "description": "Display role request statistics",
+      "no_permission": "❌ You don't have permission to manage roles.",
+      "title": "📊 Role request statistics",
+      "pending": "Pending",
+      "approved": "Approved",
+      "denied": "Denied",
+      "no_requests": "No role requests found."
+    }
+  },
+  "role_reactions": {
+    "config": {
+      "description": "Configure role reactions",
+      "no_permission": "❌ You must be an administrator to use this command.",
+      "setup_message": "Role reaction configuration 🛠️\nType 'stop' at any time to finish.",
+      "message_prompt": "📌 Enter the message for this role (or 'stop' to finish):",
+      "emoji_prompt": "😊 Reaction emoji for this role:",
+      "role_prompt": "🎭 Mention the role to assign:",
+      "timeout": "⏱️ Time expired.",
+      "finished": "Configuration finished.",
+      "role_not_found": "⚠️ Role **{role}** doesn't exist. Please create the role first.",
+      "no_config": "⚠️ No configuration added.",
+      "embed_title": "Click on a reaction to get a role ✨",
+      "success": "✅ Configuration completed. Users can now react to get roles."
+    },
+    "messages": {
+      "role_added": "{user} 🎉 You received the role **{role}**!",
+      "role_removed": "{user} ❌ The role **{role}** was removed from you."
+    }
+  },
+  "ticket_system": {
+    "setup": {
+      "description": "Configure the ticket system",
+      "success": "Ticket system configured in {category}!"
+    },
+    "panel": {
+      "description": "Create ticket panel",
+      "title": "Support Tickets",
+      "panel_description": "Click the button below to create a ticket.",
+      "create_button": "Create a ticket"
+    },
+    "create": {
+      "category_not_found": "❌ The ticket category hasn't been created yet. Please use /setup_ticket to create it.",
+      "already_exists": "You already have an open ticket in the Tickets category!",
+      "success": "Your ticket has been created: {channel}",
+      "embed_title": "Support Ticket",
+      "embed_description": "Hi {user}! A staff member will respond to you quickly.\nClick the button to close the ticket.",
+      "close_button": "Close ticket"
+    },
+    "close": {
+      "closing": "Closing in 5 seconds..."
+    },
+    "config": {
+      "title": "🎫 Ticket System Configuration",
+      "description": "Configure support ticket system",
+      "not_implemented": "⚠️ Ticket system configuration is not implemented in the current database structure.",
+      "category_not_found": "❌ Category not found!",
+      "role_not_found": "❌ Role not found!",
+      "category_set": "✅ Ticket category set to {category}!",
+      "support_role_set": "✅ Support role set to {role}!",
+      "disabled": "✅ Ticket system disabled!"
+    }
+  },
+  "meeting_system": {
+    "command": {
+      "description": "Create a meeting reminder",
+      "meeting_param": "Who is concerned by the meeting? (mention as many people as necessary)",
+      "by_param": "Who is organizing the meeting? (mention as many people as necessary)",
+      "place_param": "Voice channel where the meeting will take place",
+      "note_param": "Optional note for the meeting",
+      "default_note": "No specific note.",
+      "embed_title": "📢 New meeting planned!",
+      "participants_field": "👥 Participants",
+      "organizer_field": "🧑‍💼 Organized by",
+      "place_field": "📍 Place",
+      "note_field": "📝 Note",
+      "footer": "Requested by {user}"
+    }
+  },
+  "career_system": {
+    "command": {
+      "description": "Add a career decision for a member",
+      "member_param": "The concerned member",
+      "decision_param": "Type of decision made",
+      "reason_param": "The reason for this decision",
+      "decided_by_param": "Mention the roles that made the decision (separated by commas or spaces)",
+      "choices": {
+        "warning": "Warning",
+        "blame": "Blame",
+        "demotion": "Demotion",
+        "promotion": "Promotion",
+        "exclusion": "Exclusion"
+      },
+      "embed_title": "📋 Career Decision",
+      "member_field": "👤 Member",
+      "decision_field": "📌 Decision",
+      "reason_field": "📝 Reason",
+      "decided_by_field": "🧑‍⚖️ Decided by",
+      "footer": "Decision recorded by {user}"
+    }
+  },
+  "language_system": {
+    "command": {
+      "description": "Change your language preference",
+      "language_param": "The language you want to use",
+      "user_success": "✅ Your language has been set to {language}.",
+      "guild_success": "✅ Server language has been set to {language}.",
+      "invalid_language": "❌ Invalid language. Available languages: {languages}",
+      "no_permission": "❌ You need administrator permission to change the server language."
+    },
+    "available": {
+      "description": "Show available languages",
+      "title": "🌍 Available Languages",
+      "current_user": "Your current language: {language}",
+      "current_guild": "Server language: {language}",
+      "change_hint": "Use `/language` to change your preference"
+    }
+  },
+  "sync_command": {
+    "description": "Synchronize slash commands for this server (Admin only)",
+    "no_permission": "❌ You must be an administrator to use this command.",
+    "success": "✅ {count} commands synchronized for this server!",
+    "error": "❌ Error during synchronization: {error}"
+  },
+  "config_system": {
+    "description": "Unified configuration for all bot systems",
+    "no_permission": "❌ You must be an administrator to use this command.",
+    "title": "⚙️ Bot Configuration",
+    "description_text": "Select the system you want to configure from the dropdown menu below.",
+    "systems_available": "🎯 Available Systems",
+    "systems_list": "👋 **Welcome System** - Welcome and goodbye messages\n💬 **Confession System** - Channel for anonymous confessions\n🎭 **Role Requests** - Channel for role requests\n⚡ **Role Reactions** - Automatic role assignment\n📊 **XP System** - Experience and level system\n🎫 **Ticket System** - Support and tickets\n🌍 **Language** - Server language",
+    "select_placeholder": "Choose a configuration to modify...",
+    "welcome": {
+      "title": "🎉 Welcome System Configuration",
+      "description": "Configure welcome and goodbye messages.",
+      "welcome_channel": "Welcome Channel",
+      "welcome_message": "Welcome Message",
+      "goodbye_channel": "Goodbye Channel",
+      "goodbye_message": "Goodbye Message",
+      "not_configured": "Not configured",
+      "configure_welcome_button": "Configure Welcome",
+      "configure_goodbye_button": "Configure Goodbye",
+      "welcome_modal_title": "Welcome Configuration",
+      "goodbye_modal_title": "Goodbye Configuration",
+      "channel_id_label": "Channel ID",
+      "channel_id_placeholder": "Enter the channel ID to send messages",
+      "message_label": "Message",
+      "message_placeholder_welcome": "{memberMention}, {memberName}, {serverName}",
+      "message_placeholder_goodbye": "{memberName}, {serverName}",
+      "channel_not_found": "❌ Channel not found in this server.",
+      "channel_id_invalid": "❌ Channel ID must be a number.",
+      "success_welcome": "✅ Welcome configuration updated!",
+      "success_goodbye": "✅ Goodbye configuration updated!",
+      "error": "❌ Error during configuration.",
+      "current_channel": "Current Channel",
+      "current_message": "Current Message",
+      "channel_set": "✅ Welcome channel set to {channel}!",
+      "message_set": "✅ Welcome message updated!",
+      "disabled": "✅ Welcome system disabled!"
+    },
+    "confession": {
+      "title": "💬 Confession System Configuration",
+      "description": "Configure the channel where confessions will be sent.",
+      "confession_channel": "Confession Channel",
+      "not_configured": "Not configured",
+      "channel_not_found": "Channel not found",
+      "configure_button": "Configure Channel",
+      "modal_title": "Confession Configuration",
+      "channel_id_label": "Channel ID",
+      "channel_id_placeholder": "Enter the channel ID for confessions",
+      "success": "✅ Confession channel configured to {channel}!",
+      "error": "❌ Error during configuration.",
+      "current_channel": "Current Channel",
+      "channel_set": "✅ Confession channel set to {channel}!",
+      "disabled": "✅ Confession system disabled!"
+    },
+    "role_requests": {
+      "title": "🎭 Role Requests Configuration",
+      "description": "Configure the channel where role requests will be sent.",
+      "role_request_channel": "Role Request Channel",
+      "not_configured": "Not configured",
+      "channel_not_found": "Channel not found",
+      "configure_button": "Configure Channel",
+      "modal_title": "Role Request Configuration",
+      "channel_id_label": "Channel ID",
+      "channel_id_placeholder": "Enter the channel ID for role requests",
+      "success": "✅ Role request channel configured to {channel}!",
+      "error": "❌ Error during configuration.",
+      "current_channel": "Current Channel",
+      "channel_set": "✅ Role request channel set to {channel}!",
+      "disabled": "✅ Role request system disabled!"
+    },
+    "role_reactions": {
+      "title": "⚡ Role Reactions Configuration",
+      "description": "Configure roles that can be obtained by reaction.",
+      "active_configs": "Active Configurations",
+      "configs_count": "{count} role reactions configured",
+      "no_configs": "No role reactions configured",
+      "configure_button": "Configure Role Reactions",
+      "interactive_warning": "⚠️ Role reaction configuration requires interactive setup. Use the `/rolereact` command to configure role reactions.",
+      "error": "❌ Unable to retrieve configuration.",
+      "current_reactions": "Current Reactions",
+      "reactions_configured": "reactions configured",
+      "added": "✅ Role reaction added: {emoji} → {role}!",
+      "removed_all": "✅ All role reactions removed!",
+      "role_not_found": "❌ Role not found in this server."
+    },
+    "xp_system": {
+      "title": "📊 XP System Configuration",
+      "description": "Configure the XP system and level roles.",
+      "xp_channel": "XP Announcement Channel",
+      "level_roles": "Level Roles",
+      "not_configured": "Not configured",
+      "channel_not_found": "Channel not found",
+      "roles_count": "{count} roles configured",
+      "no_roles": "No roles configured",
+      "configure_channel_button": "Configure XP Channel",
+      "configure_role_button": "Configure Level Role",
+      "channel_modal_title": "XP Channel Configuration",
+      "role_modal_title": "Level Role Configuration",
+      "channel_id_label": "Channel ID",
+      "channel_id_placeholder": "Enter the channel ID for XP announcements",
+      "level_label": "Level",
+      "level_placeholder": "Enter the required level (integer)",
+      "role_id_label": "Role ID",
+      "role_id_placeholder": "Enter the role ID to assign",
+      "channel_success": "✅ XP announcement channel configured to {channel}!",
+      "role_success": "✅ Role {role} configured for level {level}!",
+      "role_not_found": "❌ Role not found in this server.",
+      "invalid_numbers": "❌ Level and role ID must be numbers.",
+      "error": "❌ Error during configuration.",
+      "current_status": "Current Status",
+      "current_rate": "Current Rate",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "enabled_success": "✅ XP system enabled!",
+      "disabled_success": "✅ XP system disabled!",
+      "rate_not_supported": "⚠️ XP rate configuration is not supported in the current database structure."
+    },
+    "ticket_system": {
+      "title": "🎫 Ticket System Configuration",
+      "description": "Configure support ticket system",
+      "not_implemented": "⚠️ Ticket system configuration is not implemented in the current database structure.",
+      "category_not_found": "❌ Category not found!",
+      "role_not_found": "❌ Role not found!",
+      "category_set": "✅ Ticket category set to {category}!",
+      "support_role_set": "✅ Support role set to {role}!",
+      "disabled": "✅ Ticket system disabled!",
+      "current_category": "Current Category",
+      "current_support_role": "Current Support Role"
+    },
+    "language": {
+      "title": "🌍 Language Configuration",
+      "description": "Configure the server's default language.",
+      "current_language": "Current Language",
+      "select_placeholder": "Choose the server language...",
+      "success": "✅ Server language set to {language}!",
+      "error": "❌ Error during configuration.",
+      "english": "English",
+      "french": "Français",
+      "changed_to_english": "✅ Server language changed to English!",
+      "changed_to_french": "✅ Server language changed to Français!"
+    }
+  }
+}

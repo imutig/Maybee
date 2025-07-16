@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import random
+from i18n import _
 
 
 class Roll(commands.Cog):
@@ -10,12 +11,15 @@ class Roll(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="roll",
-                          description="Lance un dé entre 1 et 100")
+                          description="Roll a dice between 1 and 100")
     async def roll(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
         result = random.randint(1, 100)
-        await interaction.response.send_message(
-            f"🎲 {interaction.user.mention} a lancé un dé et obtenu : **{result}**"
-        )
+        message = _("commands.roll.result", user_id, guild_id, 
+                   user=interaction.user.mention, result=result)
+        await interaction.response.send_message(message)
 
 
 async def setup(bot):

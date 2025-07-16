@@ -163,18 +163,19 @@ class RoleRequest(commands.Cog):
             f"Ta demande pour **{verb}** le role a ete envoyee dans {channel.mention} !",
             ephemeral=True)
 
-    @app_commands.command(name="configrolechannel", description="Configure le canal pour les demandes de rôles")
-    @app_commands.describe(channel="Le canal où envoyer les demandes de rôles")
-    async def configrolechannel(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        if not interaction.user.guild_permissions.manage_channels:
-            await interaction.response.send_message(
-                "Vous n'avez pas la permission de gérer les canaux.", ephemeral=True)
-            return
+    # Configuration command removed - use unified /config command instead
+    # @app_commands.command(name="configrolechannel", description="Configure le canal pour les demandes de rôles")
+    # @app_commands.describe(channel="Le canal où envoyer les demandes de rôles")
+    # async def configrolechannel(self, interaction: discord.Interaction, channel: discord.TextChannel):
+    #     if not interaction.user.guild_permissions.manage_channels:
+    #         await interaction.response.send_message(
+    #             "Vous n'avez pas la permission de gérer les canaux.", ephemeral=True)
+    #         return
 
-        guild_id = interaction.guild.id
-        await self.set_role_request_channel(guild_id, channel.id)
-        await interaction.response.send_message(
-            f"Canal des demandes de rôles configuré sur {channel.mention}!", ephemeral=True)
+    #     guild_id = interaction.guild.id
+    #     await self.set_role_request_channel(guild_id, channel.id)
+    #     await interaction.response.send_message(
+    #         f"Canal des demandes de rôles configuré sur {channel.mention}!", ephemeral=True)
 
     @app_commands.command(name="rolestats", description="Afficher les statistiques des demandes de rôles")
     async def rolestats(self, interaction: discord.Interaction):

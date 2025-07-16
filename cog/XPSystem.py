@@ -221,15 +221,16 @@ class XPSystem(commands.Cog):
                 await channel.send(content=f"{member.mention}", embed=embed)
 
 
-    @commands.hybrid_command(name="configlevel", description="Configurer le système de niveaux et annonces XP")
-    async def configlevel(self, ctx: commands.Context):
-        embed = discord.Embed(
-            title="Configuration du système XP",
-            description="Utilise les boutons ci-dessous pour configurer le salon d'annonces XP ou attribuer un rôle à un niveau.",
-            color=discord.Color.blue()
-        )
-        view = ConfigLevelView(self.bot, ctx.guild.id)
-        await ctx.send(embed=embed, view=view)
+    # Configuration command removed - use unified /config command instead
+    # @commands.hybrid_command(name="configlevel", description="Configurer le système de niveaux et annonces XP")
+    # async def configlevel(self, ctx: commands.Context):
+    #     embed = discord.Embed(
+    #         title="Configuration du système XP",
+    #         description="Utilise les boutons ci-dessous pour configurer le salon d'annonces XP ou attribuer un rôle à un niveau.",
+    #         color=discord.Color.blue()
+    #     )
+    #     view = ConfigLevelView(self.bot, ctx.guild.id)
+    #     await ctx.send(embed=embed, view=view)
 
     @app_commands.command(name="topxp", description="Afficher le classement des XP (texte, vocal, total)")            
     async def topxp(self, interaction: discord.Interaction):

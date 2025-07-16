@@ -79,22 +79,23 @@ class Confession(commands.Cog):
                 ephemeral=True
             )
 
-    @app_commands.command(name="configconfession", description="Configurer le canal de confessions")
-    @app_commands.describe(channel="Le canal où envoyer les confessions")
-    async def configconfession(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        if not interaction.user.guild_permissions.manage_channels:
-            await interaction.response.send_message(
-                "❌ Vous n'avez pas la permission de gérer les canaux.", 
-                ephemeral=True
-            )
-            return
+    # Configuration command removed - use unified /config command instead
+    # @app_commands.command(name="configconfession", description="Configurer le canal de confessions")
+    # @app_commands.describe(channel="Le canal où envoyer les confessions")
+    # async def configconfession(self, interaction: discord.Interaction, channel: discord.TextChannel):
+    #     if not interaction.user.guild_permissions.manage_channels:
+    #         await interaction.response.send_message(
+    #             "❌ Vous n'avez pas la permission de gérer les canaux.", 
+    #             ephemeral=True
+    #         )
+    #         return
 
-        guild_id = interaction.guild.id
-        await self.set_confession_channel(guild_id, channel.id)
-        await interaction.response.send_message(
-            f"✅ Canal de confessions configuré sur {channel.mention}!", 
-            ephemeral=True
-        )
+    #     guild_id = interaction.guild.id
+    #     await self.set_confession_channel(guild_id, channel.id)
+    #     await interaction.response.send_message(
+    #         f"✅ Canal de confessions configuré sur {channel.mention}!", 
+    #         ephemeral=True
+    #     )
 
     @app_commands.command(name="confessionstats", description="Afficher les statistiques des confessions")
     async def confessionstats(self, interaction: discord.Interaction):

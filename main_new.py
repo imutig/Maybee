@@ -5,7 +5,7 @@ import asyncio
 from db import Database
 from cog.ticket import TicketPanelView, TicketCloseView
 from dotenv import load_dotenv
-from i18n import i18n, _
+from i18n import i18n
 
 
 # ========== Configuration du bot ==========
@@ -58,6 +58,27 @@ class MyBot(commands.Bot):
         except Exception as e:
             print(f"❌ Erreur lors de la connexion à la base de données: {e}")
             print("⚠️  Le bot continuera sans base de données. Certaines fonctionnalités peuvent ne pas fonctionner.")
+        
+        try:
+            # Sync commands for each guild for instant availability
+            if self.guilds:
+                print("🔄 Synchronisation des commandes slash pour chaque serveur...")
+                for guild in self.guilds:
+                    await self.tree.sync(guild=guild)
+                    print(f"✅ Commandes synchronisées pour {guild.name} (ID: {guild.id})")
+                print(f"✅ Synchronisation terminée pour {len(self.guilds)} serveur(s).")
+            else:
+                print("⚠️  Aucun serveur trouvé, synchronisation globale...")
+                await self.tree.sync()
+                print("✅ Commandes slash synchronisées globalement.")
+        except Exception as e:
+            print(f"❌ Erreur lors de la synchronisation des commandes slash: {e}")
+            print("⚠️  Tentative de synchronisation globale...")
+            try:
+                await self.tree.sync()
+                print("✅ Synchronisation globale réussie.")
+            except Exception as global_e:
+                print(f"❌ Erreur de synchronisation globale: {global_e}")
 
 bot = MyBot()
 
@@ -66,7 +87,7 @@ async def load_extensions():
         "cog.meeting", "cog.rename", "cog.career", "cog.scan", "cog.ping",
         "cog.avatar", "cog.roll", "cog.confession", "cog.embed", "cog.XPSystem",
         "cog.role", "cog.welcome", "cog.rolereact", "cog.ticket", "cog.clear",
-        "cog.language", "cog.config"
+        "cog.language"
     ]
     
     for extension in extensions:
@@ -81,33 +102,6 @@ async def load_extensions():
 @bot.event
 async def on_ready():
     print(f"✅ Le bot est connecté en tant que {bot.user}")
-    print(f"📊 Connecté à {len(bot.guilds)} serveur(s):")
-    for guild in bot.guilds:
-        print(f"  - {guild.name} (ID: {guild.id})")
-    
-    # Debug: Check command tree state before sync
-    print(f"🔍 Commandes dans l'arbre avant synchronisation: {len(bot.tree.get_commands())}")
-    for cmd in bot.tree.get_commands():
-        print(f"  - {cmd.name}: {cmd.description}")
-    
-    # Use only global sync to make commands available in all servers
-    try:
-        print("🌐 Synchronisation globale en cours...")
-        synced_global = await bot.tree.sync()
-        print(f"✅ {len(synced_global)} commandes synchronisées globalement")
-        print("ℹ️  Les commandes seront disponibles dans tous les serveurs dans quelques minutes.")
-        
-        # Note: Guild-specific sync can override global sync and cause issues
-        # Global sync makes commands available in all servers the bot is in
-    except Exception as e:
-        print(f"❌ Erreur lors de la synchronisation des commandes slash: {e}")
-        print("⚠️  Tentative de synchronisation globale...")
-        try:
-            synced = await bot.tree.sync()
-            print(f"✅ {len(synced)} commandes en synchronisation globale réussie.")
-        except Exception as global_e:
-            print(f"❌ Erreur de synchronisation globale: {global_e}")
-    
     print("successfully finished startup")
     await bot.change_presence(activity=discord.Game(name="by iMutig 🤓"))
     bot.add_view(TicketPanelView())
@@ -115,44 +109,16 @@ async def on_ready():
 
 @bot.tree.command(name="sync", description="Synchronise les commandes slash pour ce serveur (Admin uniquement)")
 async def sync_commands(interaction: discord.Interaction):
-    user_id = interaction.user.id
-    guild_id = interaction.guild.id if interaction.guild else None
-    
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message(
-            _("errors.admin_only", user_id, guild_id), 
-            ephemeral=True
-        )
+        await interaction.response.send_message("❌ Vous devez être administrateur pour utiliser cette commande.", ephemeral=True)
         return
     
     try:
-        # Respond immediately to avoid timeout
-        await interaction.response.send_message(
-            "🔄 Synchronisation en cours...", 
-            ephemeral=True
-        )
-        
-        # Try global sync
-        synced_global = await bot.tree.sync()
-        
-        # Edit the response with results
-        await interaction.edit_original_response(
-            content=f"✅ {len(synced_global)} commandes synchronisées globalement\n"
-                   f"🔍 Commandes disponibles: {', '.join([cmd.name for cmd in synced_global])}\n"
-                   f"ℹ️  Les commandes peuvent prendre quelques minutes pour apparaître dans Discord."
-        )
-        
+        await interaction.response.defer(ephemeral=True)
+        synced = await bot.tree.sync(guild=interaction.guild)
+        await interaction.followup.send(f"✅ {len(synced)} commandes synchronisées pour ce serveur!", ephemeral=True)
     except Exception as e:
-        try:
-            await interaction.edit_original_response(
-                content=f"❌ Erreur lors de la synchronisation: {str(e)}"
-            )
-        except:
-            # If we can't edit, try to send a followup
-            await interaction.followup.send(
-                f"❌ Erreur lors de la synchronisation: {str(e)}", 
-                ephemeral=True
-            )
+        await interaction.followup.send(f"❌ Erreur lors de la synchronisation: {e}", ephemeral=True)
 
 # ========== Lancement du bot ==========
 async def main():

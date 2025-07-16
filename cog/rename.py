@@ -1,6 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+from i18n import _
 
 
 class Rename(commands.Cog):
@@ -10,28 +11,33 @@ class Rename(commands.Cog):
 
     @app_commands.command(
         name="rename",
-        description="Renomme un membre (tu dois avoir la permission)")
-    @app_commands.describe(user="Le membre à renommer",
-                           new_nickname="Le nouveau pseudo")
+        description="Rename a member (you need permission)")
+    @app_commands.describe(user="The member to rename",
+                           new_nickname="The new nickname")
     async def rename(self, interaction: discord.Interaction,
                      user: discord.Member, new_nickname: str):
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
         if not interaction.user.guild_permissions.manage_nicknames:
             await interaction.response.send_message(
-                "❌ Tu n'as pas la permission de changer des pseudos.",
+                _("commands.rename.no_permission", user_id, guild_id),
                 ephemeral=True)
             return
 
         try:
             await user.edit(nick=new_nickname)
             await interaction.response.send_message(
-                f"✅ {user.mention} s'appelle maintenant **{new_nickname}**.")
+                _("commands.rename.success", user_id, guild_id, user=user.mention, nickname=new_nickname)
+            )
         except discord.Forbidden:
             await interaction.response.send_message(
-                "❌ Je n'ai pas la permission de modifier ce pseudo.",
+                _("commands.rename.bot_no_permission", user_id, guild_id),
                 ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"⚠️ Erreur : {e}",
-                                                    ephemeral=True)
+            await interaction.response.send_message(
+                _("commands.rename.error", user_id, guild_id, error=str(e)),
+                ephemeral=True)
 
 
 async def setup(bot):

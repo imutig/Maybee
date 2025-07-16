@@ -186,6 +186,26 @@ class Database:
                 INDEX idx_guild_id (guild_id),
                 INDEX idx_message_id (message_id)
             )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS user_languages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL UNIQUE,
+                language_code VARCHAR(10) NOT NULL DEFAULT 'en',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS guild_languages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id BIGINT NOT NULL UNIQUE,
+                language_code VARCHAR(10) NOT NULL DEFAULT 'en',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_guild_id (guild_id)
+            )
             """
         ]
         

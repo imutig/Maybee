@@ -1,23 +1,26 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from i18n import _
 
-class EmbedModal(discord.ui.Modal, title="Créer un embed"):
+class EmbedModal(discord.ui.Modal, title="Create an embed"):
 
-    titre = discord.ui.TextInput(label="Titre", required=True)
+    titre = discord.ui.TextInput(label="Title", required=True)
     description = discord.ui.TextInput(label="Description", style=discord.TextStyle.paragraph, required=True)
-    couleur = discord.ui.TextInput(label="Couleur (ex: blue ou #ff6600)", required=False, default="blue")
-    champs = discord.ui.TextInput(label="Champs (optionnel, ex: Nom1:Valeur1|Nom2:Valeur2...)",
-                                   required=False, placeholder="ex: champ:val|champ2:val2")
-    image = discord.ui.TextInput(label="URL image (optionnel)", required=False)
+    couleur = discord.ui.TextInput(label="Color (ex: blue or #ff6600)", required=False, default="blue")
+    champs = discord.ui.TextInput(label="Fields (optional, ex: Name1:Value1|Name2:Value2...)",
+                                   required=False, placeholder="ex: field:val|field2:val2")
+    image = discord.ui.TextInput(label="Image URL (optional)", required=False)
 
     def __init__(self, interaction, salon: discord.TextChannel):
         super().__init__()
         self.interaction = interaction
         self.salon = salon
+        self.user_id = interaction.user.id
+        self.guild_id = interaction.guild.id if interaction.guild else None
 
     async def on_submit(self, interaction: discord.Interaction):
-        # Couleur
+        # Color
         try:
             color = discord.Color(int(self.couleur.value[1:], 16)) if self.couleur.value.startswith("#") else getattr(discord.Color, self.couleur.value.lower())()
         except:
@@ -28,9 +31,9 @@ class EmbedModal(discord.ui.Modal, title="Créer un embed"):
             description=self.description.value,
             color=color
         )
-        embed.set_footer(text=f"Créé par {interaction.user.display_name}")
+        embed.set_footer(text=_("commands.embed.created_footer", self.user_id, self.guild_id, user=interaction.user.display_name))
 
-        # Champs
+        # Fields
         if self.champs.value:
             try:
                 for part in self.champs.value.split("|"):
@@ -38,7 +41,10 @@ class EmbedModal(discord.ui.Modal, title="Créer un embed"):
                         name, value = part.split(":", 1)
                         embed.add_field(name=name.strip(), value=value.strip(), inline=False)
             except Exception:
-                await interaction.response.send_message("❌ Erreur dans le format des champs (attendu: Champ:Valeur|...)", ephemeral=True)
+                await interaction.response.send_message(
+                    _("commands.embed.fields_error", self.user_id, self.guild_id), 
+                    ephemeral=True
+                )
                 return
 
         if self.image.value:
@@ -46,16 +52,22 @@ class EmbedModal(discord.ui.Modal, title="Créer un embed"):
 
         try:
             await self.salon.send(embed=embed)
-            await interaction.response.send_message("✅ Embed envoyé avec succès !", ephemeral=True)
+            await interaction.response.send_message(
+                _("commands.embed.success", self.user_id, self.guild_id), 
+                ephemeral=True
+            )
         except Exception as e:
-            await interaction.response.send_message(f"❌ Erreur : {e}", ephemeral=True)
+            await interaction.response.send_message(
+                _("commands.embed.error", self.user_id, self.guild_id, error=str(e)), 
+                ephemeral=True
+            )
 
 class EmbedCreator(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="embed", description="Créer un embed via un formulaire")
-    @app_commands.describe(salon="Salon où envoyer l'embed")
+    @app_commands.command(name="embed", description="Create an embed via a form")
+    @app_commands.describe(salon="Channel where to send the embed")
     async def embed(self, interaction: discord.Interaction, salon: discord.TextChannel = None):
         salon = salon or interaction.channel
         await interaction.response.send_modal(EmbedModal(interaction, salon))
