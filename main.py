@@ -49,13 +49,6 @@ class MyBot(commands.Bot):
 
     async def setup_hook(self):
         try:
-            # Sync globally instead of to a specific guild for better compatibility
-            await self.tree.sync()
-            print("✅ Commandes slash synchronisées globalement.")
-        except Exception as e:
-            print(f"❌ Erreur lors de la synchronisation des commandes slash: {e}")
-        
-        try:
             await self.db.connect()
             print("✅ Base de données connectée.")
             await self.db.init_tables()
@@ -63,6 +56,27 @@ class MyBot(commands.Bot):
         except Exception as e:
             print(f"❌ Erreur lors de la connexion à la base de données: {e}")
             print("⚠️  Le bot continuera sans base de données. Certaines fonctionnalités peuvent ne pas fonctionner.")
+        
+        try:
+            # Sync commands for each guild for instant availability
+            if self.guilds:
+                print("🔄 Synchronisation des commandes slash pour chaque serveur...")
+                for guild in self.guilds:
+                    await self.tree.sync(guild=guild)
+                    print(f"✅ Commandes synchronisées pour {guild.name} (ID: {guild.id})")
+                print(f"✅ Synchronisation terminée pour {len(self.guilds)} serveur(s).")
+            else:
+                print("⚠️  Aucun serveur trouvé, synchronisation globale...")
+                await self.tree.sync()
+                print("✅ Commandes slash synchronisées globalement.")
+        except Exception as e:
+            print(f"❌ Erreur lors de la synchronisation des commandes slash: {e}")
+            print("⚠️  Tentative de synchronisation globale...")
+            try:
+                await self.tree.sync()
+                print("✅ Synchronisation globale réussie.")
+            except Exception as global_e:
+                print(f"❌ Erreur de synchronisation globale: {global_e}")
 
 bot = MyBot()
 
@@ -89,6 +103,19 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name="by iMutig 🤓"))
     bot.add_view(TicketPanelView())
     bot.add_view(TicketCloseView())
+
+@bot.tree.command(name="sync", description="Synchronise les commandes slash pour ce serveur (Admin uniquement)")
+async def sync_commands(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ Vous devez être administrateur pour utiliser cette commande.", ephemeral=True)
+        return
+    
+    try:
+        await interaction.response.defer(ephemeral=True)
+        synced = await bot.tree.sync(guild=interaction.guild)
+        await interaction.followup.send(f"✅ {len(synced)} commandes synchronisées pour ce serveur!", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Erreur lors de la synchronisation: {e}", ephemeral=True)
 
 # ========== Lancement du bot ==========
 async def main():
