@@ -1,31 +1,19 @@
 import discord
 from discord.ext import commands
-import yaml
 import os
-import random
-from collections import Counter
-import secrets
-import string
-from discord.ui import Button, View
-from discord import app_commands
 import asyncio
 from db import Database
 from cog.ticket import TicketPanelView, TicketCloseView
 from dotenv import load_dotenv
-import os
 
 
 # ========== Configuration du bot ==========
 
 load_dotenv()
-TOKEN = token = os.getenv("DISCORD_TOKEN")
+TOKEN = os.getenv("DISCORD_TOKEN")
 print(f"Token chargé ? {'Oui' if TOKEN else 'Non'}")
 PREFIX = "?"
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.reactions = True
-intents.members = True
 intents = discord.Intents.all()
 CATEGORY = "Tickets 🔖"
 
@@ -85,5 +73,9 @@ async def on_ready():
     bot.add_view(TicketCloseView())
 
 # ========== Lancement du bot ==========
-asyncio.run(load_extensions())
-bot.run(TOKEN)
+async def main():
+    await load_extensions()
+    await bot.start(TOKEN)
+
+if __name__ == "__main__":
+    asyncio.run(main())

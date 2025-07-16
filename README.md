@@ -24,12 +24,28 @@
 
 ## 🔐 Configuration & Sécurité
 
-Certaines informations sensibles (token, identifiants SQL, etc.) doivent être placées dans un fichier `.env`. Exemple :
+Certaines informations sensibles (token, identifiants SQL, etc.) doivent être placées dans un fichier `.env`. 
+
+1. Copiez le fichier `.env.example` vers `.env`
+2. Complétez les informations :
 
 ```env
-DISCORD_TOKEN=your_token_here
-MYSQL_HOST=localhost
-MYSQL_USER=your_user
-MYSQL_PASSWORD=your_password
-MYSQL_DATABASE=your_database
+DISCORD_TOKEN=your_discord_bot_token_here
+DB_HOST=localhost
+DB_USER=your_db_username
+DB_PASS=your_db_password
+DB_NAME=your_db_name
 ```
+
+## 🚀 Installation
+
+1. Clonez le repository
+2. Installez les dépendances :
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Configurez le fichier `.env` (voir section Configuration)
+4. Lancez le bot :
+   ```bash
+   python main.py
+   ```
