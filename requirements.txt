@@ -1,5 +1,5 @@
 discord.py>=2.3.0
 python-dotenv>=1.0.0
 PyYAML>=6.0.1
-asyncio-pool>=0.6.0
 aiomysql>=0.2.0
+asyncio

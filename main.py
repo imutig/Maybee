@@ -10,11 +10,19 @@ from dotenv import load_dotenv
 # ========== Configuration du bot ==========
 
 load_dotenv()
+
+# Validate required environment variables
+required_env_vars = ["DISCORD_TOKEN", "DB_HOST", "DB_USER", "DB_PASS", "DB_NAME"]
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+
+if missing_vars:
+    print(f"❌ Variables d'environnement manquantes: {', '.join(missing_vars)}")
+    print("Veuillez créer un fichier .env")
+    exit(1)
+
 TOKEN = os.getenv("DISCORD_TOKEN")
 print(f"Token chargé ? {'Oui' if TOKEN else 'Non'}")
 PREFIX = "?"
-
-intents = discord.Intents.all()
 CATEGORY = "Tickets 🔖"
 
 # =========== Fonctions YAML ==========
@@ -40,29 +48,39 @@ class MyBot(commands.Bot):
         await super().close()
 
     async def setup_hook(self):
-        await self.tree.sync(guild=discord.Object(id=1392463988679508030))
-        print("✅ Commandes slash synchronisées globalement.")
-        await self.db.connect()
+        try:
+            # Sync globally instead of to a specific guild for better compatibility
+            await self.tree.sync()
+            print("✅ Commandes slash synchronisées globalement.")
+        except Exception as e:
+            print(f"❌ Erreur lors de la synchronisation des commandes slash: {e}")
+        
+        try:
+            await self.db.connect()
+            print("✅ Base de données connectée.")
+            await self.db.init_tables()
+            print("✅ Tables de la base de données initialisées.")
+        except Exception as e:
+            print(f"❌ Erreur lors de la connexion à la base de données: {e}")
+            print("⚠️  Le bot continuera sans base de données. Certaines fonctionnalités peuvent ne pas fonctionner.")
 
 bot = MyBot()
 
 async def load_extensions():
-    await bot.load_extension("cog.meeting")
-    await bot.load_extension("cog.rename")
-    await bot.load_extension("cog.career")
-    await bot.load_extension("cog.scan")
-    await bot.load_extension("cog.ping")
-    await bot.load_extension("cog.avatar")
-    await bot.load_extension("cog.roll")
-    await bot.load_extension("cog.confession")
-    await bot.load_extension("cog.embed")
-    await bot.load_extension("cog.XPSystem")
-    await bot.load_extension("cog.role")
-    await bot.load_extension("cog.welcome")
-    await bot.load_extension("cog.rolereact")
-    await bot.load_extension("cog.ticket")
-    await bot.load_extension("cog.clear")
-    print("✅ Extensions chargées.")
+    extensions = [
+        "cog.meeting", "cog.rename", "cog.career", "cog.scan", "cog.ping",
+        "cog.avatar", "cog.roll", "cog.confession", "cog.embed", "cog.XPSystem",
+        "cog.role", "cog.welcome", "cog.rolereact", "cog.ticket", "cog.clear"
+    ]
+    
+    for extension in extensions:
+        try:
+            await bot.load_extension(extension)
+            print(f"✅ Extension {extension} chargée.")
+        except Exception as e:
+            print(f"❌ Erreur lors du chargement de {extension}: {e}")
+    
+    print("✅ Chargement des extensions terminé.")
 
 @bot.event
 async def on_ready():
