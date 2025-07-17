@@ -46,7 +46,8 @@ class MyBot(commands.Bot):
             port=3306,
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASS"),
-            db=os.getenv("DB_NAME")
+            db=os.getenv("DB_NAME"),
+            debug=True  # Enable debug mode temporarily to see SELECT queries
         )
         self.cache = BotCache(self.db)  # Initialize cache system
         self.i18n = i18n
@@ -79,7 +80,7 @@ async def load_extensions():
         "cog.meeting", "cog.rename", "cog.career", "cog.scan", "cog.ping",
         "cog.avatar", "cog.roll", "cog.confession", "cog.embed", "cog.XPSystem",
         "cog.role", "cog.welcome", "cog.rolereact", "cog.ticket", "cog.clear",
-        "cog.language", "cog.config", "cog.moderation", "cog.cache"
+        "cog.language", "cog.config", "cog.moderation", "cog.cache", "cog.server_logs"
     ]
     
     for extension in extensions:

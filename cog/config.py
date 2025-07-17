@@ -17,7 +17,17 @@ class ConfigView(discord.ui.View):
         # to use the user's language preference
         
     def create_select_options(self, user_id: int):
-        """Create select options with user's language preference"""
+        """Cr    @discord.ui.button(label="", style=discord.ButtonStyle.danger, emoji="🔇")
+    async def disable_logging(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.label = _("config_system.server_logs.button_labels.disable_logging", interaction.user.id, self.guild_id)
+        await self.bot.db.query(
+            "UPDATE server_logs_config SET log_channel_id = NULL WHERE guild_id = %s",
+            (self.guild_id,)
+        )
+        await interaction.response.send_message(
+            _("config_system.server_logs.disabled", interaction.user.id, self.guild_id),
+            ephemeral=True
+        )t options with user's language preference"""
         return [
             discord.SelectOption(
                 label=_("config_system.welcome.title", user_id, self.guild_id).replace("🎉 ", ""),
@@ -60,6 +70,12 @@ class ConfigView(discord.ui.View):
                 value="language",
                 description=_("config_system.language.description", user_id, self.guild_id),
                 emoji="🗣️"
+            ),
+            discord.SelectOption(
+                label=_("config_system.server_logs.title", user_id, self.guild_id).replace("📋 ", ""),
+                value="server_logs",
+                description=_("config_system.server_logs.description", user_id, self.guild_id),
+                emoji="📋"
             )
         ]
     
@@ -95,6 +111,8 @@ class ConfigView(discord.ui.View):
             await self.show_ticket_system_config(interaction)
         elif select_value == "language":
             await self.show_language_config(interaction)
+        elif select_value == "server_logs":
+            await self.show_server_logs_config(interaction)
 
     async def show_welcome_config(self, interaction: discord.Interaction):
         embed = discord.Embed(
@@ -291,6 +309,87 @@ class ConfigView(discord.ui.View):
         view = LanguageConfigView(self.bot, self.guild_id)
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
+    async def show_server_logs_config(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title=_("config_system.server_logs.title", interaction.user.id, self.guild_id),
+            description=_("config_system.server_logs.description", interaction.user.id, self.guild_id),
+            color=discord.Color.orange()
+        )
+        
+        # Get current server logs configuration
+        result = await self.bot.db.query(
+            "SELECT * FROM server_logs_config WHERE guild_id = %s", 
+            (self.guild_id,), 
+            fetchone=True
+        )
+        
+        if result:
+            log_channel = self.bot.get_channel(result['log_channel_id']) if result['log_channel_id'] else None
+            channel_name = log_channel.mention if log_channel else _("config_system.server_logs.not_set", interaction.user.id, self.guild_id)
+            
+            embed.add_field(
+                name=_("config_system.server_logs.current_channel", interaction.user.id, self.guild_id),
+                value=channel_name,
+                inline=False
+            )
+            
+            # Show enabled/disabled features
+            features = []
+            if result['log_member_join']:
+                features.append("✅ " + _("config_system.server_logs.member_join", interaction.user.id, self.guild_id))
+            else:
+                features.append("❌ " + _("config_system.server_logs.member_join", interaction.user.id, self.guild_id))
+                
+            if result['log_member_leave']:
+                features.append("✅ " + _("config_system.server_logs.member_leave", interaction.user.id, self.guild_id))
+            else:
+                features.append("❌ " + _("config_system.server_logs.member_leave", interaction.user.id, self.guild_id))
+                
+            if result['log_voice_join']:
+                features.append("✅ " + _("config_system.server_logs.voice_join", interaction.user.id, self.guild_id))
+            else:
+                features.append("❌ " + _("config_system.server_logs.voice_join", interaction.user.id, self.guild_id))
+                
+            if result['log_voice_leave']:
+                features.append("✅ " + _("config_system.server_logs.voice_leave", interaction.user.id, self.guild_id))
+            else:
+                features.append("❌ " + _("config_system.server_logs.voice_leave", interaction.user.id, self.guild_id))
+                
+            if result['log_message_delete']:
+                features.append("✅ " + _("config_system.server_logs.message_delete", interaction.user.id, self.guild_id))
+            else:
+                features.append("❌ " + _("config_system.server_logs.message_delete", interaction.user.id, self.guild_id))
+                
+            if result['log_message_edit']:
+                features.append("✅ " + _("config_system.server_logs.message_edit", interaction.user.id, self.guild_id))
+            else:
+                features.append("❌ " + _("config_system.server_logs.message_edit", interaction.user.id, self.guild_id))
+                
+            if result['log_role_changes']:
+                features.append("✅ " + _("config_system.server_logs.role_changes", interaction.user.id, self.guild_id))
+            else:
+                features.append("❌ " + _("config_system.server_logs.role_changes", interaction.user.id, self.guild_id))
+                
+            if result['log_nickname_changes']:
+                features.append("✅ " + _("config_system.server_logs.nickname_changes", interaction.user.id, self.guild_id))
+            else:
+                features.append("❌ " + _("config_system.server_logs.nickname_changes", interaction.user.id, self.guild_id))
+                
+            embed.add_field(
+                name=_("config_system.server_logs.features", interaction.user.id, self.guild_id),
+                value="\n".join(features),
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name=_("config_system.server_logs.current_channel", interaction.user.id, self.guild_id),
+                value=_("config_system.server_logs.not_configured", interaction.user.id, self.guild_id),
+                inline=False
+            )
+        
+        view = ServerLogsConfigView(self.bot, self.guild_id)
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+
 # Configuration views for each system
 class WelcomeConfigView(discord.ui.View):
     def __init__(self, bot, guild_id: int):
@@ -456,6 +555,152 @@ class LanguageConfigView(discord.ui.View):
     async def set_french(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.bot.i18n.set_guild_language_db(self.guild_id, 'fr', self.bot.db)
         await interaction.response.send_message(_("config_system.language.changed_to_french", interaction.user.id, self.guild_id), ephemeral=True)
+
+class ServerLogsConfigView(discord.ui.View):
+    def __init__(self, bot, guild_id: int):
+        super().__init__(timeout=300)
+        self.bot = bot
+        self.guild_id = guild_id
+    
+    @discord.ui.button(label="", style=discord.ButtonStyle.primary, emoji="📢")
+    async def set_log_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.label = _("config_system.server_logs.button_labels.set_channel", interaction.user.id, self.guild_id)
+        modal = LogChannelModal(self.bot, self.guild_id, interaction.user.id)
+        await interaction.response.send_modal(modal)
+    
+    @discord.ui.button(label="", style=discord.ButtonStyle.secondary, emoji="⚙️")
+    async def toggle_features(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.label = _("config_system.server_logs.button_labels.toggle_features", interaction.user.id, self.guild_id)
+        view = ServerLogsToggleView(self.bot, self.guild_id, interaction.user.id)
+        await interaction.response.send_message(
+            _("config_system.server_logs.toggle_features", interaction.user.id, self.guild_id),
+            view=view,
+            ephemeral=True
+        )
+    
+    @discord.ui.button(label="Disable Logging", style=discord.ButtonStyle.danger, emoji="🔇")
+    async def disable_logging(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.bot.db.query(
+            "UPDATE server_logs_config SET log_channel_id = NULL WHERE guild_id = %s",
+            (self.guild_id,)
+        )
+        await interaction.response.send_message(
+            _("config_system.server_logs.system_disabled", interaction.user.id, self.guild_id),
+            ephemeral=True
+        )
+
+class ServerLogsToggleView(discord.ui.View):
+    def __init__(self, bot, guild_id: int, user_id: int):
+        super().__init__(timeout=300)
+        self.bot = bot
+        self.guild_id = guild_id
+        self.user_id = user_id
+    
+    @discord.ui.button(label="", style=discord.ButtonStyle.secondary, emoji="🚪")
+    async def toggle_member_events(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.label = _("config_system.server_logs.button_labels.member_join_leave", interaction.user.id, self.guild_id)
+        # Get current settings
+        result = await self.bot.db.query(
+            "SELECT log_member_join, log_member_leave FROM server_logs_config WHERE guild_id = %s",
+            (self.guild_id,),
+            fetchone=True
+        )
+        
+        if result:
+            # Toggle both join and leave
+            new_value = not result['log_member_join']
+            await self.bot.db.query(
+                "UPDATE server_logs_config SET log_member_join = %s, log_member_leave = %s WHERE guild_id = %s",
+                (new_value, new_value, self.guild_id)
+            )
+            status = _("config_system.server_logs.feature_enabled", interaction.user.id, self.guild_id) if new_value else _("config_system.server_logs.feature_disabled", interaction.user.id, self.guild_id)
+            await interaction.response.send_message(
+                f"{_('config_system.server_logs.member_events', interaction.user.id, self.guild_id)} {status}",
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                _("config_system.server_logs.configure_first", interaction.user.id, self.guild_id),
+                ephemeral=True
+            )
+    
+    @discord.ui.button(label="", style=discord.ButtonStyle.secondary, emoji="🔊")
+    async def toggle_voice_events(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.label = _("config_system.server_logs.button_labels.voice_events", interaction.user.id, self.guild_id)
+        result = await self.bot.db.query(
+            "SELECT log_voice_join, log_voice_leave FROM server_logs_config WHERE guild_id = %s",
+            (self.guild_id,),
+            fetchone=True
+        )
+        
+        if result:
+            new_value = not result['log_voice_join']
+            await self.bot.db.query(
+                "UPDATE server_logs_config SET log_voice_join = %s, log_voice_leave = %s WHERE guild_id = %s",
+                (new_value, new_value, self.guild_id)
+            )
+            status = _("config_system.server_logs.feature_enabled", interaction.user.id, self.guild_id) if new_value else _("config_system.server_logs.feature_disabled", interaction.user.id, self.guild_id)
+            await interaction.response.send_message(
+                f"{_('config_system.server_logs.voice_events', interaction.user.id, self.guild_id)} {status}",
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                _("config_system.server_logs.configure_first", interaction.user.id, self.guild_id),
+                ephemeral=True
+            )
+    
+    @discord.ui.button(label="", style=discord.ButtonStyle.secondary, emoji="💬")
+    async def toggle_message_events(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.label = _("config_system.server_logs.button_labels.message_events", interaction.user.id, self.guild_id)
+        result = await self.bot.db.query(
+            "SELECT log_message_delete, log_message_edit FROM server_logs_config WHERE guild_id = %s",
+            (self.guild_id,),
+            fetchone=True
+        )
+        
+        if result:
+            new_value = not result['log_message_delete']
+            await self.bot.db.query(
+                "UPDATE server_logs_config SET log_message_delete = %s, log_message_edit = %s WHERE guild_id = %s",
+                (new_value, new_value, self.guild_id)
+            )
+            status = _("config_system.server_logs.feature_enabled", interaction.user.id, self.guild_id) if new_value else _("config_system.server_logs.feature_disabled", interaction.user.id, self.guild_id)
+            await interaction.response.send_message(
+                f"{_('config_system.server_logs.message_events', interaction.user.id, self.guild_id)} {status}",
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                _("config_system.server_logs.configure_first", interaction.user.id, self.guild_id),
+                ephemeral=True
+            )
+    
+    @discord.ui.button(label="", style=discord.ButtonStyle.secondary, emoji="🔧")
+    async def toggle_other_events(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.label = _("config_system.server_logs.button_labels.other_events", interaction.user.id, self.guild_id)
+        result = await self.bot.db.query(
+            "SELECT log_role_changes, log_nickname_changes FROM server_logs_config WHERE guild_id = %s",
+            (self.guild_id,),
+            fetchone=True
+        )
+        
+        if result:
+            new_value = not result['log_role_changes']
+            await self.bot.db.query(
+                "UPDATE server_logs_config SET log_role_changes = %s, log_nickname_changes = %s WHERE guild_id = %s",
+                (new_value, new_value, self.guild_id)
+            )
+            status = _("config_system.server_logs.feature_enabled", interaction.user.id, self.guild_id) if new_value else _("config_system.server_logs.feature_disabled", interaction.user.id, self.guild_id)
+            await interaction.response.send_message(
+                f"{_('config_system.server_logs.other_events', interaction.user.id, self.guild_id)} {status}",
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                _("config_system.server_logs.configure_first", interaction.user.id, self.guild_id),
+                ephemeral=True
+            )
 
 # Modal classes for configuration inputs
 class WelcomeChannelModal(discord.ui.Modal):
@@ -698,6 +943,63 @@ class ConfigCog(commands.Cog):
         )
         
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+class LogChannelModal(discord.ui.Modal):
+    def __init__(self, bot, guild_id: int, user_id: int):
+        super().__init__(title=_("config_system.server_logs.modal_titles.set_log_channel", user_id, guild_id))
+        self.bot = bot
+        self.guild_id = guild_id
+        self.user_id = user_id
+        
+        self.channel_input = discord.ui.TextInput(
+            label=_("config_system.server_logs.modal_labels.channel_id_or_name", user_id, guild_id),
+            placeholder=_("config_system.server_logs.modal_labels.channel_placeholder", user_id, guild_id),
+            required=True
+        )
+        self.add_item(self.channel_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        channel_input = self.channel_input.value.strip()
+        
+        # Try to find the channel
+        channel = None
+        if channel_input.startswith('<#') and channel_input.endswith('>'):
+            channel_id = int(channel_input[2:-1])
+            channel = interaction.guild.get_channel(channel_id)
+        elif channel_input.startswith('#'):
+            channel = discord.utils.get(interaction.guild.channels, name=channel_input[1:])
+        elif channel_input.isdigit():
+            channel = interaction.guild.get_channel(int(channel_input))
+        else:
+            channel = discord.utils.get(interaction.guild.channels, name=channel_input)
+        
+        if not channel:
+            await interaction.response.send_message(
+                _("config_system.server_logs.channel_not_found", interaction.user.id, self.guild_id),
+                ephemeral=True
+            )
+            return
+        
+        # Check if channel is a text channel
+        if not isinstance(channel, discord.TextChannel):
+            await interaction.response.send_message(
+                _("config_system.server_logs.invalid_channel_type", interaction.user.id, self.guild_id),
+                ephemeral=True
+            )
+            return
+        
+        # Insert or update the server logs configuration
+        await self.bot.db.query(
+            """INSERT INTO server_logs_config (guild_id, log_channel_id) 
+               VALUES (%s, %s)
+               ON DUPLICATE KEY UPDATE log_channel_id = %s""",
+            (self.guild_id, channel.id, channel.id)
+        )
+        
+        await interaction.response.send_message(
+            _("config_system.server_logs.channel_set", interaction.user.id, self.guild_id).format(channel=channel.mention),
+            ephemeral=True
+        )
 
 async def setup(bot):
     await bot.add_cog(ConfigCog(bot))

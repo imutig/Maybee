@@ -5,19 +5,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Database:
-    def __init__(self, host, port, user, password, db):
+    def __init__(self, host, port, user, password, db, debug=False):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
         self.db = db
+        self.debug = debug
         self.pool = None
         self.max_retries = 3
         self.retry_delay = 1
 
     async def connect(self):
         """Create connection pool with retry logic"""
-        print("[DB] Connexion à la base de données...")
+        print("🔌 Connecting to database...")
         
         for attempt in range(self.max_retries):
             try:
@@ -31,10 +32,10 @@ class Database:
                     maxsize=10,
                     minsize=1
                 )
-                print("[DB] Connexion réussie.")
+                print("✅ Database connection established")
                 return
             except Exception as e:
-                print(f"[DB][ERREUR] Connexion échouée (tentative {attempt + 1}): {e}")
+                print(f"❌ Connection failed (attempt {attempt + 1}): {e}")
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
                 else:
@@ -42,17 +43,29 @@ class Database:
 
     async def close(self):
         if self.pool:
-            print("[DB] Fermeture du pool de connexions...")
+            print("🔌 Closing database connection...")
             self.pool.close()
             await self.pool.wait_closed()
-            print("[DB] Pool fermé.")
+            print("✅ Database connection closed")
             
     async def query(self, query, params=None, fetchone=False, fetchall=False):
         """Execute query with improved error handling and connection management"""
         if not self.pool:
             await self.connect()
         
-        print(f"[DB] Query : {query} | params : {params}")
+        # Create a clean, readable log message
+        query_type = self._get_query_type(query)
+        clean_query = self._clean_query_for_log(query)
+        
+        # Log with clean formatting
+        if query_type in ["INSERT", "UPDATE", "DELETE"]:
+            print(f"🔄 {query_type}: {clean_query}")
+            if params:
+                print(f"   📝 Values: {self._format_params(params)}")
+        elif query_type == "SELECT" and self.debug:
+            print(f"🔍 {query_type}: {clean_query}")
+        elif query_type == "CREATE":
+            print(f"🔧 {query_type}: {clean_query}")
         
         for attempt in range(self.max_retries):
             try:
@@ -61,33 +74,127 @@ class Database:
                         await cur.execute(query, params)
                         if fetchone:
                             result = await cur.fetchone()
-                            print(f"[DB] fetchone : {result}")
+                            if query_type in ["INSERT", "UPDATE", "DELETE"] or self.debug:
+                                if result:
+                                    print(f"   ✅ Result: {self._format_result(result)}")
+                                else:
+                                    print(f"   ℹ️  No result returned")
                             return result
                         if fetchall:
                             result = await cur.fetchall()
-                            print(f"[DB] fetchall : {result}")
+                            if query_type in ["INSERT", "UPDATE", "DELETE"] or self.debug:
+                                if result:
+                                    print(f"   ✅ Found {len(result)} record(s)")
+                                    if self.debug and len(result) <= 3:
+                                        for i, record in enumerate(result, 1):
+                                            print(f"      Record {i}: {self._format_result(record)}")
+                                else:
+                                    print(f"   ℹ️  No records found")
                             return result
                         await conn.commit()
                         return None
             except aiomysql.Error as e:
-                print(f"[DB][ERREUR] Query error (tentative {attempt + 1}): {e}")
+                print(f"❌ Database error (attempt {attempt + 1}): {e}")
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(self.retry_delay)
                 else:
                     raise
             except Exception as e:
-                print(f"[DB][ERREUR] Unexpected error: {e}")
+                print(f"❌ Unexpected error: {e}")
                 raise
         
         return None
 
+    def _get_query_type(self, query):
+        """Extract the query type for cleaner logging"""
+        query_clean = query.strip().upper()
+        if query_clean.startswith("SELECT"):
+            return "SELECT"
+        elif query_clean.startswith("INSERT"):
+            return "INSERT"
+        elif query_clean.startswith("UPDATE"):
+            return "UPDATE"
+        elif query_clean.startswith("DELETE"):
+            return "DELETE"
+        elif query_clean.startswith("CREATE"):
+            return "CREATE"
+        else:
+            return "QUERY"
+    
+    def _clean_query_for_log(self, query):
+        """Clean and format query for readable logging"""
+        lines = query.strip().split('\n')
+        cleaned_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith('--'):
+                cleaned_lines.append(line)
+        
+        clean_query = ' '.join(cleaned_lines)
+        
+        # Simplify common patterns
+        if "INSERT INTO" in clean_query:
+            table_match = clean_query.split("INSERT INTO")[1].split("(")[0].strip()
+            return f"Adding record to {table_match}"
+        elif "UPDATE" in clean_query and "SET" in clean_query:
+            table_match = clean_query.split("UPDATE")[1].split("SET")[0].strip()
+            return f"Updating record in {table_match}"
+        elif "DELETE FROM" in clean_query:
+            table_match = clean_query.split("DELETE FROM")[1].split("WHERE")[0].strip()
+            return f"Deleting from {table_match}"
+        elif "SELECT" in clean_query and "FROM" in clean_query:
+            table_match = clean_query.split("FROM")[1].split("WHERE")[0].split("ORDER")[0].split("LIMIT")[0].strip()
+            return f"Querying {table_match}"
+        elif "CREATE TABLE" in clean_query:
+            table_match = clean_query.split("CREATE TABLE IF NOT EXISTS")[1].split("(")[0].strip()
+            return f"Creating table {table_match}"
+        
+        return clean_query[:80] + "..." if len(clean_query) > 80 else clean_query
+    
+    def _format_result(self, result):
+        """Format result for cleaner logging"""
+        if isinstance(result, dict):
+            if len(result) <= 3:
+                return str(result)
+            else:
+                return f"{{...{len(result)} fields...}}"
+        return str(result)[:100] + "..." if len(str(result)) > 100 else str(result)
+    
+    def _format_params(self, params):
+        """Format parameters for cleaner logging"""
+        if not params:
+            return "None"
+        
+        if isinstance(params, (list, tuple)):
+            formatted_params = []
+            for param in params:
+                if isinstance(param, str) and len(param) > 50:
+                    formatted_params.append(f'"{param[:50]}..."')
+                elif isinstance(param, str):
+                    formatted_params.append(f'"{param}"')
+                else:
+                    formatted_params.append(str(param))
+            return f"({', '.join(formatted_params)})"
+        else:
+            return str(params)[:100] + "..." if len(str(params)) > 100 else str(params)
 
     async def execute(self, query, params=None):
         """Execute query with improved error handling"""
         if not self.pool:
             await self.connect()
         
-        print(f"[DB] Exécution de la requête : {query} | params : {params}")
+        # Create a clean, readable log message
+        query_type = self._get_query_type(query)
+        clean_query = self._clean_query_for_log(query)
+        
+        # Log with clean formatting
+        if query_type in ["INSERT", "UPDATE", "DELETE"]:
+            print(f"🔄 {query_type}: {clean_query}")
+            if params:
+                print(f"   📝 Values: {self._format_params(params)}")
+        elif query_type == "SELECT" and self.debug:
+            print(f"🔍 {query_type}: {clean_query}")
         
         for attempt in range(self.max_retries):
             try:
@@ -96,20 +203,24 @@ class Database:
                         await cur.execute(query, params)
                         if query.strip().lower().startswith("select"):
                             result = await cur.fetchall()
-                            print(f"[DB] Résultat : {result}")
+                            if self.debug and result:
+                                print(f"   ✅ Found {len(result)} record(s)")
                             return result
                         else:
                             affected = cur.rowcount
-                            print(f"[DB] Lignes affectées : {affected}")
+                            if affected > 0:
+                                print(f"   ✅ {affected} row(s) affected")
+                            else:
+                                print(f"   ℹ️  No rows affected")
                             return affected
             except aiomysql.Error as e:
-                print(f"[DB][ERREUR] Execute error (tentative {attempt + 1}): {e}")
+                print(f"❌ Database error (attempt {attempt + 1}): {e}")
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(self.retry_delay)
                 else:
                     raise
             except Exception as e:
-                print(f"[DB][ERREUR] Unexpected error: {e}")
+                print(f"❌ Unexpected error: {e}")
                 raise
         
         return None
@@ -310,12 +421,33 @@ class Database:
                 INDEX idx_guild_type (guild_id, multiplier_type),
                 INDEX idx_expires (expires_at)
             )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS server_logs_config (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id BIGINT NOT NULL UNIQUE,
+                log_channel_id BIGINT DEFAULT NULL,
+                log_member_join BOOLEAN DEFAULT TRUE,
+                log_member_leave BOOLEAN DEFAULT TRUE,
+                log_voice_join BOOLEAN DEFAULT TRUE,
+                log_voice_leave BOOLEAN DEFAULT TRUE,
+                log_message_delete BOOLEAN DEFAULT TRUE,
+                log_message_edit BOOLEAN DEFAULT TRUE,
+                log_role_changes BOOLEAN DEFAULT TRUE,
+                log_nickname_changes BOOLEAN DEFAULT TRUE,
+                log_channel_create BOOLEAN DEFAULT TRUE,
+                log_channel_delete BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
             """
         ]
         
         for table_sql in tables:
             try:
                 await self.query(table_sql)
-                print(f"[DB] Table créée/vérifiée avec succès")
+                # Table creation logging is handled by query method
             except Exception as e:
-                print(f"[DB][ERREUR] Erreur lors de la création de table : {e}")
+                print(f"❌ Error creating table: {e}")
+        
+        print("🗃️  Database tables initialized successfully")

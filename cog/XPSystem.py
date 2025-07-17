@@ -43,7 +43,8 @@ class XPMultiplier:
             if datetime.utcnow() < expires_at:
                 multiplier = max(multiplier, temp_multiplier)
             else:
-                # Remove expired multiplier
+                # Remove expired multiplier and log it
+                print(f"🕐 XP Multiplier for {multiplier_type} in guild {guild_id} has expired (was {temp_multiplier}x)")
                 del self.temporary_multipliers[guild_id][multiplier_type]
                 
         return multiplier
@@ -215,17 +216,26 @@ class XPSystem(commands.Cog):
                 )
                 data = {"xp": 0, "level": 1, "text_xp": 0, "voice_xp": 0}
 
-            # Apply multipliers
-            base_xp = amount
-            text_xp = data["text_xp"] + amount if source == "text" else data["text_xp"]
-            voice_xp = data["voice_xp"] + amount if source == "voice" else data["voice_xp"]
-
             # Get guild-specific multipliers
             guild_multiplier = self.xp_multiplier.get_multiplier(guild_id, source)
-            print(f"Guild XP Multiplier ({source}): {guild_multiplier}")
-
+            
             # Calculate actual XP gained with multiplier
+            base_xp = amount
             actual_xp_gained = int(base_xp * guild_multiplier)
+            
+            # Apply XP to correct source
+            text_xp = data["text_xp"] + actual_xp_gained if source == "text" else data["text_xp"]
+            voice_xp = data["voice_xp"] + actual_xp_gained if source == "voice" else data["voice_xp"]
+            
+            # Debug: Show XP breakdown
+            print(f"🔍 XP Breakdown - User {user_id}: Total={data['xp']} -> {data['xp'] + actual_xp_gained}, Text={data['text_xp']} -> {text_xp}, Voice={data['voice_xp']} -> {voice_xp}")
+            
+            # Enhanced logging
+            if guild_multiplier != 1.0:
+                print(f"⚡ XP Gained: {base_xp} base XP × {guild_multiplier}x multiplier = {actual_xp_gained} XP ({source}) - User {user_id} in guild {guild_id}")
+            else:
+                print(f"📈 XP Gained: {actual_xp_gained} XP ({source}) - User {user_id} in guild {guild_id}")
+            
             new_xp = data["xp"] + actual_xp_gained
             new_level = int((new_xp / 100)**0.5) + 1
             leveled_up = new_level > data["level"]
@@ -348,7 +358,7 @@ class XPSystem(commands.Cog):
     @app_commands.command(name="leaderboard", description="Show XP leaderboard")
     @app_commands.describe(
         period="Choose leaderboard period",
-        type="Choose leaderboard type (for all-time only)"
+        type="Choose leaderboard type"
     )
     async def leaderboard(self, interaction: discord.Interaction, 
                          period: Literal["weekly", "monthly", "all-time"] = "all-time",
@@ -358,16 +368,16 @@ class XPSystem(commands.Cog):
         guild_id = interaction.guild.id
         
         if period == "weekly":
-            await self._show_weekly_leaderboard(interaction, user_id, guild_id)
+            await self._show_weekly_leaderboard(interaction, user_id, guild_id, type)
         elif period == "monthly":
-            await self._show_monthly_leaderboard(interaction, user_id, guild_id)
+            await self._show_monthly_leaderboard(interaction, user_id, guild_id, type)
         else:  # all-time
             await self._show_alltime_leaderboard(interaction, user_id, guild_id, type)
     
-    async def _show_weekly_leaderboard(self, interaction: discord.Interaction, user_id: int, guild_id: int):
+    async def _show_weekly_leaderboard(self, interaction: discord.Interaction, user_id: int, guild_id: int, type: str = "total"):
         """Show weekly XP leaderboard with persistent caching"""
         # Check persistent cache
-        cache_key = f"weekly_leaderboard_{guild_id}"
+        cache_key = f"weekly_leaderboard_{guild_id}_{type}"
         cached_embed = self.bot.cache.leaderboards.get(cache_key)
         
         if cached_embed:
@@ -380,16 +390,45 @@ class XPSystem(commands.Cog):
         try:
             # Get weekly XP data
             week_ago = datetime.utcnow() - timedelta(days=7)
-            weekly_data = await self.bot.db.query(
-                """SELECT user_id, SUM(xp_gained) as weekly_xp
-                   FROM xp_history 
-                   WHERE guild_id = %s AND timestamp >= %s
-                   GROUP BY user_id
-                   ORDER BY weekly_xp DESC
-                   LIMIT 10""",
-                (guild_id, week_ago),
-                fetchall=True
-            )
+            
+            # Build query based on type
+            if type == "text":
+                query = """SELECT user_id, SUM(xp_gained) as weekly_xp
+                           FROM xp_history 
+                           WHERE guild_id = %s AND timestamp >= %s AND xp_type = 'text'
+                           GROUP BY user_id
+                           ORDER BY weekly_xp DESC
+                           LIMIT 10"""
+                color = discord.Color.blue()
+                title_suffix = " (Text)"
+            elif type == "voice":
+                query = """SELECT user_id, SUM(xp_gained) as weekly_xp
+                           FROM xp_history 
+                           WHERE guild_id = %s AND timestamp >= %s AND xp_type = 'voice'
+                           GROUP BY user_id
+                           ORDER BY weekly_xp DESC
+                           LIMIT 10"""
+                color = discord.Color.green()
+                title_suffix = " (Voice)"
+            else:  # total
+                query = """SELECT user_id, SUM(xp_gained) as weekly_xp
+                           FROM xp_history 
+                           WHERE guild_id = %s AND timestamp >= %s
+                           GROUP BY user_id
+                           ORDER BY weekly_xp DESC
+                           LIMIT 10"""
+                color = discord.Color.gold()
+                title_suffix = ""
+            
+            print(f"🔍 Weekly Leaderboard Debug - Type: {type}, Guild: {guild_id}")
+            print(f"📊 Query: {query}")
+            
+            weekly_data = await self.bot.db.query(query, (guild_id, week_ago), fetchall=True)
+            
+            print(f"📋 Results: {len(weekly_data) if weekly_data else 0} rows")
+            if weekly_data:
+                for i, row in enumerate(weekly_data[:3]):  # Show first 3 results
+                    print(f"  Row {i+1}: {row}")
             
             if not weekly_data:
                 await interaction.response.send_message(
@@ -400,8 +439,8 @@ class XPSystem(commands.Cog):
                 
             # Create embed
             embed = discord.Embed(
-                title=_("xp_system.weekly_leaderboard.title", user_id, guild_id),
-                color=discord.Color.gold(),
+                title=_("xp_system.weekly_leaderboard.title", user_id, guild_id) + title_suffix,
+                color=color,
                 timestamp=datetime.utcnow()
             )
             
@@ -428,10 +467,10 @@ class XPSystem(commands.Cog):
                 ephemeral=True
             )
     
-    async def _show_monthly_leaderboard(self, interaction: discord.Interaction, user_id: int, guild_id: int):
+    async def _show_monthly_leaderboard(self, interaction: discord.Interaction, user_id: int, guild_id: int, type: str = "total"):
         """Show monthly XP leaderboard with persistent caching"""
         # Check persistent cache
-        cache_key = f"monthly_leaderboard_{guild_id}"
+        cache_key = f"monthly_leaderboard_{guild_id}_{type}"
         cached_embed = self.bot.cache.leaderboards.get(cache_key)
         
         if cached_embed:
@@ -444,16 +483,45 @@ class XPSystem(commands.Cog):
         try:
             # Get monthly XP data
             month_ago = datetime.utcnow() - timedelta(days=30)
-            monthly_data = await self.bot.db.query(
-                """SELECT user_id, SUM(xp_gained) as monthly_xp
-                   FROM xp_history 
-                   WHERE guild_id = %s AND timestamp >= %s
-                   GROUP BY user_id
-                   ORDER BY monthly_xp DESC
-                   LIMIT 10""",
-                (guild_id, month_ago),
-                fetchall=True
-            )
+            
+            # Build query based on type
+            if type == "text":
+                query = """SELECT user_id, SUM(xp_gained) as monthly_xp
+                           FROM xp_history 
+                           WHERE guild_id = %s AND timestamp >= %s AND xp_type = 'text'
+                           GROUP BY user_id
+                           ORDER BY monthly_xp DESC
+                           LIMIT 10"""
+                color = discord.Color.blue()
+                title_suffix = " (Text)"
+            elif type == "voice":
+                query = """SELECT user_id, SUM(xp_gained) as monthly_xp
+                           FROM xp_history 
+                           WHERE guild_id = %s AND timestamp >= %s AND xp_type = 'voice'
+                           GROUP BY user_id
+                           ORDER BY monthly_xp DESC
+                           LIMIT 10"""
+                color = discord.Color.green()
+                title_suffix = " (Voice)"
+            else:  # total
+                query = """SELECT user_id, SUM(xp_gained) as monthly_xp
+                           FROM xp_history 
+                           WHERE guild_id = %s AND timestamp >= %s
+                           GROUP BY user_id
+                           ORDER BY monthly_xp DESC
+                           LIMIT 10"""
+                color = discord.Color.purple()
+                title_suffix = ""
+            
+            print(f"🔍 Monthly Leaderboard Debug - Type: {type}, Guild: {guild_id}")
+            print(f"📊 Query: {query}")
+            
+            monthly_data = await self.bot.db.query(query, (guild_id, month_ago), fetchall=True)
+            
+            print(f"📋 Results: {len(monthly_data) if monthly_data else 0} rows")
+            if monthly_data:
+                for i, row in enumerate(monthly_data[:3]):  # Show first 3 results
+                    print(f"  Row {i+1}: {row}")
             
             if not monthly_data:
                 await interaction.response.send_message(
@@ -464,8 +532,8 @@ class XPSystem(commands.Cog):
                 
             # Create embed
             embed = discord.Embed(
-                title=_("xp_system.monthly_leaderboard.title", user_id, guild_id),
-                color=discord.Color.purple(),
+                title=_("xp_system.monthly_leaderboard.title", user_id, guild_id) + title_suffix,
+                color=color,
                 timestamp=datetime.utcnow()
             )
             
@@ -523,6 +591,14 @@ class XPSystem(commands.Cog):
                 xp_field = "voice_xp"
             
             rows = await self.bot.db.query(query, (guild_id,), fetchall=True)
+            
+            # Debug: Show what data was retrieved
+            print(f"🔍 Leaderboard Debug - Type: {type}, Guild: {guild_id}")
+            print(f"📊 Query: {query}")
+            print(f"📋 Results: {len(rows) if rows else 0} rows")
+            if rows:
+                for i, row in enumerate(rows[:3]):  # Show first 3 results
+                    print(f"  Row {i+1}: {row}")
             
             if not rows:
                 await interaction.response.send_message(
@@ -678,17 +754,19 @@ class XPSystem(commands.Cog):
             return
             
         # Set multiplier
+        duration_text = f" for {duration} minutes" if duration else " (permanent)"
         if event_type == "both":
             self.xp_multiplier.set_multiplier(guild_id, "text", multiplier, duration)
             self.xp_multiplier.set_multiplier(guild_id, "voice", multiplier, duration)
+            print(f"🔧 XP Multiplier set: {multiplier}x for TEXT and VOICE in guild {guild_id} by {interaction.user.display_name} (ID: {user_id}){duration_text}")
         else:
             self.xp_multiplier.set_multiplier(guild_id, event_type, multiplier, duration)
+            print(f"🔧 XP Multiplier set: {multiplier}x for {event_type.upper()} in guild {guild_id} by {interaction.user.display_name} (ID: {user_id}){duration_text}")
             
         # Create response message
-        duration_text = f" for {duration} minutes" if duration else " (permanent)"
         await interaction.response.send_message(
             _("xp_system.multiplier.success", user_id, guild_id, 
-              multiplier=multiplier, type=event_type, duration=duration_text),
+              multiplier=multiplier, event_type=event_type, duration=duration_text),
             ephemeral=True
         )
 

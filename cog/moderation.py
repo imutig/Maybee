@@ -283,7 +283,8 @@ class Moderation(commands.Cog):
                 """SELECT moderator_id, reason, timestamp FROM warnings 
                    WHERE guild_id = %s AND user_id = %s 
                    ORDER BY timestamp DESC LIMIT 10""",
-                (guild_id, member.id)
+                (guild_id, member.id),
+                fetchall=True
             )
             
             if not warnings:
@@ -302,14 +303,14 @@ class Moderation(commands.Cog):
             embed.set_thumbnail(url=member.display_avatar.url)
             
             for i, warning in enumerate(warnings, 1):
-                moderator = self.bot.get_user(warning[0])
+                moderator = self.bot.get_user(warning['moderator_id'])
                 moderator_name = moderator.display_name if moderator else "Unknown"
                 
                 embed.add_field(
                     name=_("moderation.warnings.warning_field", user_id, guild_id, number=i),
                     value=_("moderation.warnings.warning_value", user_id, guild_id,
-                           moderator=moderator_name, reason=warning[1], 
-                           timestamp=warning[2].strftime("%Y-%m-%d %H:%M")),
+                           moderator=moderator_name, reason=warning['reason'], 
+                           timestamp=warning['timestamp'].strftime("%Y-%m-%d %H:%M")),
                     inline=False
                 )
                 
