@@ -18,17 +18,17 @@ class Clear(commands.Cog):
         
         if not interaction.user.guild_permissions.manage_messages:
             await interaction.response.send_message(
-                _("clear.no_permission", user_id, guild_id),
+                _("commands.clear.no_permission", user_id, guild_id),
                 ephemeral=True)
             return
         if nombre < 1 or nombre > 100:
             await interaction.response.send_message(
-                _("clear.invalid_number", user_id, guild_id), ephemeral=True)
+                _("commands.clear.invalid_number", user_id, guild_id), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         deleted = await interaction.channel.purge(limit=nombre)
         await interaction.followup.send(
-            _("clear.success", user_id, guild_id, count=len(deleted)), ephemeral=True)
+            _("commands.clear.success", user_id, guild_id, count=len(deleted)), ephemeral=True)
 
 
 async def setup(bot):

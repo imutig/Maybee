@@ -11,54 +11,15 @@ class LanguageManager(commands.Cog):
         
     async def load_language_preferences(self):
         """Load language preferences from database"""
-        try:
-            # Load user preferences
-            user_prefs = await self.db.query(
-                "SELECT user_id, language_code FROM user_languages",
-                fetchall=True
-            )
-            if user_prefs:
-                for pref in user_prefs:
-                    self.i18n.user_languages[pref['user_id']] = pref['language_code']
-            
-            # Load guild preferences
-            guild_prefs = await self.db.query(
-                "SELECT guild_id, language_code FROM guild_languages",
-                fetchall=True
-            )
-            if guild_prefs:
-                for pref in guild_prefs:
-                    self.i18n.guild_languages[pref['guild_id']] = pref['language_code']
-                    
-            print(f"✅ Loaded {len(self.i18n.user_languages)} user and {len(self.i18n.guild_languages)} guild language preferences")
-        except Exception as e:
-            print(f"❌ Error loading language preferences: {e}")
+        await self.i18n.load_language_preferences(self.db)
     
     async def save_user_language(self, user_id: int, language_code: str):
         """Save user language preference to database"""
-        try:
-            await self.db.query(
-                "INSERT INTO user_languages (user_id, language_code) VALUES (%s, %s) ON DUPLICATE KEY UPDATE language_code = %s",
-                (user_id, language_code, language_code)
-            )
-            self.i18n.user_languages[user_id] = language_code
-            return True
-        except Exception as e:
-            print(f"❌ Error saving user language: {e}")
-            return False
+        return await self.i18n.set_user_language_db(user_id, language_code, self.db)
     
     async def save_guild_language(self, guild_id: int, language_code: str):
         """Save guild language preference to database"""
-        try:
-            await self.db.query(
-                "INSERT INTO guild_languages (guild_id, language_code) VALUES (%s, %s) ON DUPLICATE KEY UPDATE language_code = %s",
-                (guild_id, language_code, language_code)
-            )
-            self.i18n.guild_languages[guild_id] = language_code
-            return True
-        except Exception as e:
-            print(f"❌ Error saving guild language: {e}")
-            return False
+        return await self.i18n.set_guild_language_db(guild_id, language_code, self.db)
     
     @commands.Cog.listener()
     async def on_ready(self):

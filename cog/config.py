@@ -13,56 +13,65 @@ class ConfigView(discord.ui.View):
         self.bot = bot
         self.guild_id = guild_id
         
-        # Create select options with translations
-        self.select_options = [
+        # We'll create the select options dynamically when needed
+        # to use the user's language preference
+        
+    def create_select_options(self, user_id: int):
+        """Create select options with user's language preference"""
+        return [
             discord.SelectOption(
-                label=_("config_system.welcome.title", 0, guild_id).replace("🎉 ", ""),
+                label=_("config_system.welcome.title", user_id, self.guild_id).replace("🎉 ", ""),
                 value="welcome",
-                description=_("config_system.welcome.description", 0, guild_id),
+                description=_("config_system.welcome.description", user_id, self.guild_id),
                 emoji="👋"
             ),
             discord.SelectOption(
-                label=_("config_system.confession.title", 0, guild_id).replace("💬 ", ""),
+                label=_("config_system.confession.title", user_id, self.guild_id).replace("💬 ", ""),
                 value="confession",
-                description=_("config_system.confession.description", 0, guild_id),
+                description=_("config_system.confession.description", user_id, self.guild_id),
                 emoji="🔒"
             ),
             discord.SelectOption(
-                label=_("config_system.role_requests.title", 0, guild_id).replace("🎭 ", ""),
+                label=_("config_system.role_requests.title", user_id, self.guild_id).replace("🎭 ", ""),
                 value="role_requests",
-                description=_("config_system.role_requests.description", 0, guild_id),
+                description=_("config_system.role_requests.description", user_id, self.guild_id),
                 emoji="📋"
             ),
             discord.SelectOption(
-                label=_("config_system.role_reactions.title", 0, guild_id).replace("⚡ ", ""),
+                label=_("config_system.role_reactions.title", user_id, self.guild_id).replace("⚡ ", ""),
                 value="role_reactions",
-                description=_("config_system.role_reactions.description", 0, guild_id),
+                description=_("config_system.role_reactions.description", user_id, self.guild_id),
                 emoji="⚡"
             ),
             discord.SelectOption(
-                label=_("config_system.xp_system.title", 0, guild_id).replace("📊 ", ""),
+                label=_("config_system.xp_system.title", user_id, self.guild_id).replace("📊 ", ""),
                 value="xp_system",
-                description=_("config_system.xp_system.description", 0, guild_id),
+                description=_("config_system.xp_system.description", user_id, self.guild_id),
                 emoji="⬆️"
             ),
             discord.SelectOption(
-                label=_("config_system.ticket_system.title", 0, guild_id).replace("🎫 ", ""),
+                label=_("config_system.ticket_system.title", user_id, self.guild_id).replace("🎫 ", ""),
                 value="ticket_system",
-                description=_("config_system.ticket_system.description", 0, guild_id),
+                description=_("config_system.ticket_system.description", user_id, self.guild_id),
                 emoji="🔧"
             ),
             discord.SelectOption(
-                label=_("config_system.language.title", 0, guild_id).replace("🌍 ", ""),
+                label=_("config_system.language.title", user_id, self.guild_id).replace("🌍 ", ""),
                 value="language",
-                description=_("config_system.language.description", 0, guild_id),
+                description=_("config_system.language.description", user_id, self.guild_id),
                 emoji="🗣️"
             )
         ]
+    
+    def setup_select_for_user(self, user_id: int):
+        """Setup the select component for a specific user"""
+        if hasattr(self, 'config_select') and self.config_select in self.children:
+            self.remove_item(self.config_select)
         
-        # Create the select component
+        # Create the select component with user's language
         self.config_select = discord.ui.Select(
-            placeholder=_("config_system.select_placeholder", 0, guild_id),
-            options=self.select_options
+            placeholder=_("config_system.select_placeholder", user_id, self.guild_id),
+            options=self.create_select_options(user_id)
         )
         self.config_select.callback = self.config_select_callback
         self.add_item(self.config_select)
@@ -204,7 +213,7 @@ class ConfigView(discord.ui.View):
         # XP system is always enabled, check if there's a config entry
         result = await self.bot.db.query("SELECT xp_channel FROM xp_config WHERE guild_id = %s", (self.guild_id,))
         xp_enabled = len(result) > 0 if result else False
-        xp_rate = 1.0  # Default rate since there's no rate configuration in the database
+        xp_channel = result[0]["xp_channel"] if result and result[0]["xp_channel"] else None
         
         embed.add_field(
             name=_("config_system.xp_system.current_status", interaction.user.id, self.guild_id),
@@ -212,14 +221,22 @@ class ConfigView(discord.ui.View):
             inline=False
         )
         
-        if xp_enabled:
+        if xp_channel:
+            channel = self.bot.get_channel(xp_channel)
             embed.add_field(
-                name=_("config_system.xp_system.current_rate", interaction.user.id, self.guild_id),
-                value=str(xp_rate),
+                name=_("config_system.xp_system.xp_channel", interaction.user.id, self.guild_id),
+                value=channel.mention if channel else _("config_system.xp_system.channel_not_found", interaction.user.id, self.guild_id),
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name=_("config_system.xp_system.xp_channel", interaction.user.id, self.guild_id),
+                value=_("config_system.xp_system.not_configured", interaction.user.id, self.guild_id),
                 inline=False
             )
         
         view = XPSystemConfigView(self.bot, self.guild_id)
+        view.setup_buttons_for_user(interaction.user.id)
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
     async def show_ticket_system_config(self, interaction: discord.Interaction):
@@ -347,21 +364,59 @@ class XPSystemConfigView(discord.ui.View):
         super().__init__(timeout=300)
         self.bot = bot
         self.guild_id = guild_id
+        
+    def setup_buttons_for_user(self, user_id: int):
+        """Setup buttons with user's language preference"""
+        self.clear_items()
+        
+        # Create buttons with proper translations
+        self.set_channel_button = discord.ui.Button(
+            label=_("config_system.xp_system.configure_channel_button", user_id, self.guild_id),
+            style=discord.ButtonStyle.secondary,
+            emoji="📢"
+        )
+        self.set_channel_button.callback = self.set_xp_channel
+        self.add_item(self.set_channel_button)
+        
+        self.enable_button = discord.ui.Button(
+            label="Enable",
+            style=discord.ButtonStyle.success,
+            emoji="✅"
+        )
+        self.enable_button.callback = self.enable_xp_system
+        self.add_item(self.enable_button)
+        
+        self.disable_button = discord.ui.Button(
+            label="Disable",
+            style=discord.ButtonStyle.danger,
+            emoji="❌"
+        )
+        self.disable_button.callback = self.disable_xp_system
+        self.add_item(self.disable_button)
+        
+        self.set_rate_button = discord.ui.Button(
+            label="Set Rate",
+            style=discord.ButtonStyle.secondary,
+            emoji="⚙️"
+        )
+        self.set_rate_button.callback = self.set_xp_rate
+        self.add_item(self.set_rate_button)
     
-    @discord.ui.button(label="Enable", style=discord.ButtonStyle.success, emoji="✅")
-    async def enable_xp_system(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def set_xp_channel(self, interaction: discord.Interaction):
+        modal = XPChannelModal(self.bot, self.guild_id, interaction.user.id)
+        await interaction.response.send_modal(modal)
+    
+    async def enable_xp_system(self, interaction: discord.Interaction):
         # Enable XP system by ensuring there's a config entry
         await self.bot.db.query("INSERT INTO xp_config (guild_id) VALUES (%s) ON DUPLICATE KEY UPDATE guild_id = guild_id", (self.guild_id,))
         await interaction.response.send_message(_("config_system.xp_system.enabled_success", interaction.user.id, self.guild_id), ephemeral=True)
     
-    @discord.ui.button(label="Disable", style=discord.ButtonStyle.danger, emoji="❌")
-    async def disable_xp_system(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def disable_xp_system(self, interaction: discord.Interaction):
         # Disable XP system by removing config entry
         await self.bot.db.query("DELETE FROM xp_config WHERE guild_id = %s", (self.guild_id,))
         await interaction.response.send_message(_("config_system.xp_system.disabled_success", interaction.user.id, self.guild_id), ephemeral=True)
     
-    @discord.ui.button(label="Set Rate", style=discord.ButtonStyle.secondary, emoji="⚙️")
-    async def set_xp_rate(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def set_xp_rate(self, interaction: discord.Interaction):
         modal = XPRateModal(self.bot, self.guild_id)
         await interaction.response.send_modal(modal)
 
@@ -394,12 +449,12 @@ class LanguageConfigView(discord.ui.View):
     
     @discord.ui.button(label="English", style=discord.ButtonStyle.primary, emoji="🇺🇸")
     async def set_english(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.bot.db.query("INSERT INTO guild_languages (guild_id, language_code) VALUES (%s, 'en') ON DUPLICATE KEY UPDATE language_code = 'en'", (self.guild_id,))
+        await self.bot.i18n.set_guild_language_db(self.guild_id, 'en', self.bot.db)
         await interaction.response.send_message(_("config_system.language.changed_to_english", interaction.user.id, self.guild_id), ephemeral=True)
     
     @discord.ui.button(label="Français", style=discord.ButtonStyle.primary, emoji="🇫🇷")
     async def set_french(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.bot.db.query("INSERT INTO guild_languages (guild_id, language_code) VALUES (%s, 'fr') ON DUPLICATE KEY UPDATE language_code = 'fr'", (self.guild_id,))
+        await self.bot.i18n.set_guild_language_db(self.guild_id, 'fr', self.bot.db)
         await interaction.response.send_message(_("config_system.language.changed_to_french", interaction.user.id, self.guild_id), ephemeral=True)
 
 # Modal classes for configuration inputs
@@ -528,6 +583,42 @@ class RoleRequestChannelModal(discord.ui.Modal):
         await self.bot.db.query("INSERT INTO role_request_config (guild_id, channel_id) VALUES (%s, %s) ON DUPLICATE KEY UPDATE channel_id = %s", (self.guild_id, channel.id, channel.id))
         await interaction.response.send_message(_("config_system.role_requests.channel_set", interaction.user.id, self.guild_id, channel=channel.mention), ephemeral=True)
 
+class XPChannelModal(discord.ui.Modal):
+    def __init__(self, bot, guild_id: int, user_id: int):
+        super().__init__(title=_("config_system.xp_system.channel_modal_title", user_id, guild_id))
+        self.bot = bot
+        self.guild_id = guild_id
+        self.user_id = user_id
+        
+        self.channel_input = discord.ui.TextInput(
+            label=_("config_system.xp_system.channel_id_label", user_id, guild_id),
+            placeholder=_("config_system.xp_system.channel_id_placeholder", user_id, guild_id),
+            required=True
+        )
+        self.add_item(self.channel_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        channel_input = self.channel_input.value.strip()
+        
+        # Try to find the channel
+        channel = None
+        if channel_input.startswith('<#') and channel_input.endswith('>'):
+            channel_id = int(channel_input[2:-1])
+            channel = interaction.guild.get_channel(channel_id)
+        elif channel_input.startswith('#'):
+            channel = discord.utils.get(interaction.guild.channels, name=channel_input[1:])
+        elif channel_input.isdigit():
+            channel = interaction.guild.get_channel(int(channel_input))
+        else:
+            channel = discord.utils.get(interaction.guild.channels, name=channel_input)
+        
+        if not channel:
+            await interaction.response.send_message(_("config_system.xp_system.channel_not_found", interaction.user.id, self.guild_id), ephemeral=True)
+            return
+        
+        await self.bot.db.query("INSERT INTO xp_config (guild_id, xp_channel) VALUES (%s, %s) ON DUPLICATE KEY UPDATE xp_channel = %s", (self.guild_id, channel.id, channel.id))
+        await interaction.response.send_message(_("config_system.xp_system.channel_success", interaction.user.id, self.guild_id, channel=channel.mention), ephemeral=True)
+
 class XPRateModal(discord.ui.Modal):
     def __init__(self, bot, guild_id: int):
         super().__init__(title="Set XP Rate")
@@ -598,6 +689,8 @@ class ConfigCog(commands.Cog):
         
         # Create main config view
         view = ConfigView(self.bot, interaction.guild_id)
+        view.setup_select_for_user(interaction.user.id)
+        
         embed = discord.Embed(
             title=_("config_system.title", interaction.user.id, interaction.guild_id),
             description=_("config_system.description_text", interaction.user.id, interaction.guild_id),

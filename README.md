@@ -8,6 +8,8 @@
 - **Système modulaire** avec cogs pour une maintenance facile
 - **Variables d'environnement** pour la sécurité
 - **Interface utilisateur** avec boutons et modales Discord
+- **Système de traduction** avec support multilingue (EN/FR)
+- **Configuration centralisée** avec interface unifiée
 
 ## 🗄️ Structure de la Base de Données
 
@@ -21,9 +23,11 @@ Le bot utilise une architecture MySQL complète avec les tables suivantes:
 | `confessions` | Stockage des confessions anonymes |
 | `confession_config` | Configuration des canaux de confessions |
 | `xp_data` | Données XP et niveaux des utilisateurs |
-| `xp_config` | Configuration du système XP |
+| `xp_config` | Configuration du système XP et canal d'annonces |
 | `level_roles` | Rôles attribués par niveau |
-| `role_reactions` | Système de rôles par réaction | modulaire, conçu avec `discord.py` (v2) et `discord.app_commands`. Il propose plusieurs fonctions avancées avec un système de base de données MySQL pour des performances optimales. Bot développé par iMutig.
+| `role_reactions` | Système de rôles par réaction |
+| `user_languages` | Préférences linguistiques des utilisateurs |
+| `guild_languages` | Préférences linguistiques des serveurs | modulaire, conçu avec `discord.py` (v2) et `discord.app_commands`. Il propose plusieurs fonctions avancées avec un système de base de données MySQL pour des performances optimales. Bot développé par iMutig.
 
 ## ✨ Fonctionnalités principales
 
@@ -32,14 +36,14 @@ Le bot utilise une architecture MySQL complète avec les tables suivantes:
 - Gain d'XP vocal automatique toutes les 10 minutes
 - Commande `/level` pour voir son niveau et son montant d'XP
 - Classement `/topxp` par serveur (vocal, texte et total)
-- Configuration de rôles débloqués à certains niveaux avec `/configlevel`
-- Système d'annonces de niveau avec canal configurable
+- Configuration de rôles débloqués à certains niveaux via `/config`
+- **Système d'annonces de niveau avec canal configurable** via `/config`
 - Commande `/levelroles` pour voir les rôles par niveau
 
 ### 🎭 **Système de Rôles**
 - **Demandes de rôles**: `/role add` et `/role remove` pour demander des rôles
 - **Système d'approbation**: Interface avec boutons pour les administrateurs
-- **Configuration flexible**: `/configrolechannel` pour définir le canal des demandes
+- **Configuration flexible**: Configuration via `/config` pour définir le canal des demandes
 - **Statistiques**: `/rolestats` pour voir les demandes approuvées/refusées
 - **Persistance**: Les boutons fonctionnent même après redémarrage du bot
 
@@ -51,13 +55,13 @@ Le bot utilise une architecture MySQL complète avec les tables suivantes:
 
 ### 💬 **Système de Confessions**
 - Confessions anonymes avec `/confession`
-- Configuration du canal avec `/configconfession`
+- Configuration du canal avec `/config`
 - Statistiques des confessions avec `/confessionstats`
 - Historique complet en base de données
 
 ### 👋 **Système de Bienvenue**
 - Messages de bienvenue et d'au revoir personnalisables
-- Configuration avec `/configwelcome` et `/configgoodbye`
+- Configuration avec `/config` pour les messages et canaux
 - Variables dynamiques: `{memberName}`, `{memberMention}`, `{serverName}`
 - Embeds colorés avec avatars
 
@@ -195,15 +199,12 @@ rm config/welcome.yaml data/confessions.yaml data/role_requests.yaml
 
 | Commande | Permission requise | Description |
 |----------|-------------------|-------------|
-| `/configwelcome` | Manage Channels | Configure les messages de bienvenue |
-| `/configgoodbye` | Manage Channels | Configure les messages d'au revoir |
-| `/configconfession` | Manage Channels | Configure le canal de confessions |
-| `/configrolechannel` | Manage Channels | Configure le canal des demandes de rôles |
-| `/configlevel` | Manage Roles | Configure le système XP et rôles |
-| `/rolereact` | Administrator | Configure les rôles par réaction |
-| `/setup_ticket` | Administrator | Configure le système de tickets |
+| `/config` | Administrator | **Interface de configuration unifiée** |
 | `/clear <number>` | Manage Messages | Supprime des messages |
 | `/rename <user> <name>` | Manage Nicknames | Renomme un utilisateur |
+| `/setup_ticket` | Administrator | Configure le système de tickets |
+
+**Note**: La commande `/config` remplace toutes les anciennes commandes de configuration individuelles (`/configwelcome`, `/configconfession`, `/configlevel`, etc.)
 
 ### 📊 Commandes Statistiques
 
@@ -213,7 +214,62 @@ rm config/welcome.yaml data/confessions.yaml data/role_requests.yaml
 | `/rolestats` | Manage Roles | Statistiques des demandes de rôles |
 | `/levelroles` | - | Liste des rôles par niveau |
 
+### 🌍 **Système de Traduction**
+- **Support multilingue**: Anglais et Français
+- **Préférences utilisateur**: Chaque utilisateur peut choisir sa langue
+- **Préférences serveur**: Configuration de la langue par défaut du serveur
+- **Interface traduite**: Tous les menus, boutons et messages sont traduits
+- **Configuration via `/config`**: Changement de langue simple et rapide
+
+### ⚙️ **Commande de Configuration Unifiée**
+- **`/config`**: Interface unique pour toutes les configurations
+- **Menu déroulant intuitif**: Sélection facile des différents systèmes
+- **Boutons interactifs**: Configuration simple avec des boutons Discord
+- **Persistance**: Toutes les configurations sont sauvegardées en base de données
+- **Permissions**: Réservé aux administrateurs du serveur
+
+### 🔧 Configuration avec `/config`
+
+La commande `/config` fournit une interface unifiée pour configurer tous les aspects du bot:
+
+#### Systèmes configurables:
+- **🎉 Système de Bienvenue**: Messages et canaux de bienvenue/au revoir
+- **💬 Confessions**: Canal pour les confessions anonymes
+- **🎭 Demandes de Rôles**: Canal pour les demandes de rôles
+- **⚡ Rôles par Réaction**: Gestion des rôles par réaction (référence à `/rolereact`)
+- **📊 Système XP**: Configuration du système XP et **canal d'annonces de niveau**
+- **🎫 Système de Tickets**: Configuration des tickets de support
+- **🌍 Langue**: Choix de la langue du serveur (Anglais/Français)
+
+#### Fonctionnalités du système XP:
+- **Activer/Désactiver** le système XP
+- **Configurer le canal d'annonces** pour les montées de niveau
+- **Gérer les taux XP** (si supporté)
+- **Visualisation** des paramètres actuels
+
+#### Utilisation:
+1. Tapez `/config`
+2. Sélectionnez le système à configurer dans le menu déroulant
+3. Utilisez les boutons pour effectuer les modifications
+4. Toutes les modifications sont sauvegardées automatiquement
+
 ## 🔧 Améliorations & Nouvelles Fonctionnalités
+
+### 🆕 Version 2.1 - Interface Unifiée & Traduction
+
+#### Nouvelles fonctionnalités
+- **Commande `/config` unifiée** pour toutes les configurations
+- **Système de traduction multilingue** (Anglais/Français)
+- **Configuration du canal d'annonces XP** via l'interface unifiée
+- **Préférences linguistiques** par utilisateur et par serveur
+- **Interface modernisée** avec menus déroulants et boutons
+
+#### Améliorations techniques
+- **Centralisation des configurations** en une seule commande
+- **Traduction dynamique** des interfaces utilisateur
+- **Persistance des préférences** linguistiques en base de données
+- **Chargement automatique** des préférences au démarrage
+- **Gestion améliorée** des erreurs de traduction
 
 ### 🆕 Version 2.0 - Migration MySQL
 
@@ -236,6 +292,7 @@ rm config/welcome.yaml data/confessions.yaml data/role_requests.yaml
 - **Système de bienvenue**: Configuration stockée en base
 - **Confessions**: Historique complet avec statistiques
 - **Demandes de rôles**: Suivi des statuts et approbations
+- **Préférences linguistiques**: Stockage des langues par utilisateur/serveur
 - **Performances**: Accès plus rapide aux données
 - **Scalabilité**: Support illimité de serveurs
 
@@ -285,6 +342,15 @@ Le bot nécessite les permissions suivantes:
 - **GitHub Issues**: [Signaler un bug](https://github.com/imutig/MaybeBot/issues)
 - **Discord**: Contactez iMutig#0000
 - **Documentation**: Lisez les commentaires dans le code
+- **Configuration**: Utilisez `/config` pour toutes les configurations
+
+### Fonctionnalités récentes
+
+- ✅ **Interface de configuration unifiée** avec `/config`
+- ✅ **Système de traduction multilingue** (EN/FR)
+- ✅ **Configuration du canal d'annonces XP** intégrée
+- ✅ **Préférences linguistiques** persistantes
+- ✅ **Interface utilisateur traduite** dynamiquement
 
 ## 📄 Licence
 

@@ -55,6 +55,11 @@ class MyBot(commands.Bot):
             print("✅ Base de données connectée.")
             await self.db.init_tables()
             print("✅ Tables de la base de données initialisées.")
+            
+            # Load language preferences from database
+            await self.i18n.load_language_preferences(self.db)
+            print("✅ Préférences linguistiques chargées depuis la base de données.")
+            
         except Exception as e:
             print(f"❌ Erreur lors de la connexion à la base de données: {e}")
             print("⚠️  Le bot continuera sans base de données. Certaines fonctionnalités peuvent ne pas fonctionner.")

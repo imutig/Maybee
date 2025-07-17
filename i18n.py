@@ -54,12 +54,54 @@ class I18n:
             return True
         return False
     
+    async def set_user_language_db(self, user_id: int, language: str, db):
+        """Set user's preferred language and save to database"""
+        if language in self.languages:
+            self.user_languages[user_id] = language
+            await db.query(
+                "INSERT INTO user_languages (user_id, language_code) VALUES (%s, %s) ON DUPLICATE KEY UPDATE language_code = %s",
+                (user_id, language, language)
+            )
+            return True
+        return False
+    
     def set_guild_language(self, guild_id: int, language: str):
         """Set guild's default language"""
         if language in self.languages:
             self.guild_languages[guild_id] = language
             return True
         return False
+    
+    async def set_guild_language_db(self, guild_id: int, language: str, db):
+        """Set guild's default language and save to database"""
+        if language in self.languages:
+            self.guild_languages[guild_id] = language
+            await db.query(
+                "INSERT INTO guild_languages (guild_id, language_code) VALUES (%s, %s) ON DUPLICATE KEY UPDATE language_code = %s",
+                (guild_id, language, language)
+            )
+            return True
+        return False
+    
+    async def load_language_preferences(self, db):
+        """Load user and guild language preferences from database"""
+        try:
+            # Load user language preferences
+            user_results = await db.query("SELECT user_id, language_code FROM user_languages", fetchall=True)
+            if user_results:
+                for row in user_results:
+                    self.user_languages[row["user_id"]] = row["language_code"]
+                print(f"✅ Loaded {len(user_results)} user language preferences")
+            
+            # Load guild language preferences
+            guild_results = await db.query("SELECT guild_id, language_code FROM guild_languages", fetchall=True)
+            if guild_results:
+                for row in guild_results:
+                    self.guild_languages[row["guild_id"]] = row["language_code"]
+                print(f"✅ Loaded {len(guild_results)} guild language preferences")
+                
+        except Exception as e:
+            print(f"❌ Error loading language preferences from database: {e}")
     
     def get_available_languages(self) -> Dict[str, str]:
         """Get list of available languages with their names"""
