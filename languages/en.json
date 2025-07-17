@@ -195,6 +195,30 @@
     "level_roles": {
       "title": "🎖️ Roles assigned by level",
       "no_roles": "No roles configured for levels in this server."
+    },
+    "multiplier": {
+      "invalid_range": "❌ Multiplier must be between 0.1 and 10.0",
+      "success": "✅ XP multiplier set to {multiplier}x for {type}{duration}!"
+    },
+    "weekly_leaderboard": {
+      "title": "📊 Weekly XP Leaderboard",
+      "no_data": "❌ No XP data found for this week.",
+      "footer": "Weekly XP gains • Updates every 5 minutes"
+    },
+    "monthly_leaderboard": {
+      "title": "📊 Monthly XP Leaderboard",
+      "no_data": "❌ No XP data found for this month.",
+      "footer": "Monthly XP gains • Updates every 5 minutes"
+    },
+    "stats": {
+      "title": "📊 XP Statistics for {user}",
+      "no_data": "❌ No XP data found for {user}.",
+      "level_field": "Level",
+      "total_xp_field": "Total XP",
+      "xp_needed_field": "XP to Next Level",
+      "text_xp_field": "Text XP",
+      "voice_xp_field": "Voice XP",
+      "recent_activity_field": "Recent Activity (7 days)"
     }
   },
   "welcome_system": {
@@ -215,7 +239,11 @@
       "goodbye_channel_param": "Goodbye channel",
       "goodbye_message_param": "Message with {memberName}, {serverName}",
       "goodbye_success": "✅ Goodbye message configured."
-    }
+    },
+    "new_member_title": "👋 New member!",
+    "member_left_title": "👋 Departure",
+    "default_welcome_message": "Welcome {memberMention} to {serverName}! 🎉",
+    "default_goodbye_message": "{memberName} left {serverName}... 😢"
   },
   "confession_system": {
     "command": {
@@ -453,6 +481,44 @@
     "success": "✅ {count} commands synchronized for this server!",
     "error": "❌ Error during synchronization: {error}"
   },
+  "moderation": {
+    "warn": {
+      "embed_title": "⚠️ Warning Issued",
+      "embed_description": "{user} has been warned for: {reason}",
+      "moderator_field": "Moderator",
+      "member_field": "Member",
+      "dm_title": "⚠️ Warning Received",
+      "dm_description": "You have been warned in **{server}** for: {reason}",
+      "cannot_warn_bot": "❌ You cannot warn bots.",
+      "cannot_warn_higher_role": "❌ You cannot warn members with a higher or equal role."
+    },
+    "timeout": {
+      "embed_title": "🔇 Member Timed Out",
+      "embed_description": "{user} has been timed out for {duration} minutes. Reason: {reason}",
+      "moderator_field": "Moderator",
+      "duration_field": "Duration",
+      "duration_value": "{duration} minutes",
+      "dm_title": "🔇 You Have Been Timed Out",
+      "dm_description": "You have been timed out in **{server}** for {duration} minutes. Reason: {reason}",
+      "invalid_duration": "❌ Duration must be between 1 and 2880 minutes (48 hours).",
+      "cannot_timeout_bot": "❌ You cannot timeout bots.",
+      "cannot_timeout_higher_role": "❌ You cannot timeout members with a higher or equal role."
+    },
+    "untimeout": {
+      "embed_title": "🔊 Timeout Removed",
+      "embed_description": "Timeout removed from {user}. Reason: {reason}",
+      "moderator_field": "Moderator"
+    },
+    "warnings": {
+      "embed_title": "⚠️ Warnings for {user}",
+      "no_warnings": "❌ {user} has no warnings.",
+      "warning_field": "Warning #{number}",
+      "warning_value": "**Moderator:** {moderator}\n**Reason:** {reason}\n**Date:** {timestamp}"
+    },
+    "clearwarnings": {
+      "success": "✅ All warnings cleared for {user}."
+    }
+  },
   "config_system": {
     "description": "Unified configuration for all bot systems",
     "no_permission": "❌ You must be an administrator to use this command.",
@@ -519,7 +585,27 @@
       "error": "❌ Error during configuration.",
       "current_channel": "Current Channel",
       "channel_set": "✅ Role request channel set to {channel}!",
-      "disabled": "✅ Role request system disabled!"
+      "disabled": "✅ Role request system disabled!",
+      "member_role_not_found": "❌ Error: member or role not found.",
+      "action_added": "added",
+      "action_removed": "removed",
+      "status_field": "Status",
+      "accepted_by": "Accepted by {user}",
+      "denied_by": "Denied by {user}",
+      "action_performed": "Action performed",
+      "role_action_result": "Role **{role}** {action} to {member}",
+      "role_too_high": "❌ I cannot modify this role (too high).",
+      "action_add": "add",
+      "action_remove": "remove",
+      "embed_title": "Role Request",
+      "embed_description": "{user} requests to **{action}** the role {role}",
+      "embed_footer": "User ID: {user_id} | Role ID: {role_id}",
+      "request_sent": "✅ Your request to **{action}** the role has been sent to {channel}!",
+      "stats_title": "📊 Role Request Statistics",
+      "status_pending": "Pending",
+      "status_approved": "Approved",
+      "status_denied": "Denied",
+      "no_requests": "No role requests found."
     },
     "role_reactions": {
       "title": "⚡ Role Reactions Configuration",
@@ -530,7 +616,19 @@
       "interactive_warning": "💡 **Use the `/rolereact` command for full management**\n\nThe improved `/rolereact` command provides:\n• Modern interface with buttons and menus\n• Create new role reaction messages\n• Edit existing messages and reactions\n• Remove individual reactions or entire messages\n• View all configurations\n\nSimply use `/rolereact` to access all role reaction features!",
       "current_reactions": "Current Reactions",
       "reactions_configured": "reactions configured",
-      "use_command_button": "Open /rolereact"
+      "use_command_button": "Open /rolereact",
+      "role_gained": "🎉 {user} You received the role **{role}**!",
+      "role_removed": "❌ {user} The role **{role}** was removed from you.",
+      "config_start": "⚡ Role reaction configuration 🛠️\nType 'stop' at any time to finish.",
+      "enter_message": "📌 Enter the message for this role (or 'stop' to finish):",
+      "enter_emoji": "😊 Enter the emoji reaction for this role:",
+      "mention_role": "🎭 Mention the role to assign:",
+      "timeout": "⏱️ Timeout.",
+      "config_finished": "✅ Configuration finished.",
+      "role_not_found": "⚠️ The role **{role}** does not exist. Please create the role first.",
+      "no_config": "⚠️ No configuration added.",
+      "embed_title": "Click on a reaction to get a role ✨",
+      "config_complete": "✅ Configuration complete. Users can now react to get roles."
     },
     "xp_system": {
       "title": "📊 XP System Configuration",
@@ -574,7 +672,19 @@
       "support_role_set": "✅ Support role set to {role}!",
       "disabled": "✅ Ticket system disabled!",
       "current_category": "Current Category",
-      "current_support_role": "Current Support Role"
+      "current_support_role": "Current Support Role",
+      "category_name": "Tickets 🔖",
+      "general_channel": "general-tickets",
+      "setup_success": "✅ Ticket system configured in {category}!",
+      "panel_title": "Support Tickets",
+      "panel_description": "Click the button below to create a ticket.",
+      "ticket_exists": "❌ You already have an open ticket in the Tickets category!",
+      "creation_reason": "Creating a ticket",
+      "ticket_title": "Ticket Support",
+      "ticket_description": "Hi {user}! A staff member will respond to you quickly.\nClick the button to close the ticket.",
+      "ticket_created": "✅ Your ticket has been created: {channel}",
+      "closing_message": "⏱️ Closing in 5 seconds...",
+      "close_reason": "Ticket closed by {user}"
     },
     "language": {
       "title": "🌍 Language Configuration",
@@ -587,6 +697,20 @@
       "french": "Français",
       "changed_to_english": "✅ Server language changed to English!",
       "changed_to_french": "✅ Server language changed to Français!"
+    }
+  },
+  "cache": {
+    "stats": {
+      "title": "📊 Cache Statistics",
+      "user_preferences": "👤 User Preferences",
+      "configuration": "⚙️ Configuration",
+      "leaderboards": "🏆 Leaderboards (Persistent)",
+      "general": "📦 General",
+      "cache_info": "**Size:** {size} entries\n**Hits:** {hits} | **Misses:** {misses}\n**Hit Rate:** {hit_rate}%",
+      "cache_info_persistent": "**Size:** {size} entries (📁 Saved to disk)\n**Hits:** {hits} | **Misses:** {misses}\n**Hit Rate:** {hit_rate}%"
+    },
+    "clear": {
+      "success": "✅ All caches cleared successfully!"
     }
   }
 }

@@ -87,6 +87,19 @@ CREATE TABLE IF NOT EXISTS xp_config (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- XP history table for tracking XP gains over time
+CREATE TABLE IF NOT EXISTS xp_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    guild_id BIGINT NOT NULL,
+    xp_gained INT NOT NULL,
+    xp_type ENUM('text', 'voice') NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_guild (user_id, guild_id),
+    INDEX idx_timestamp (timestamp),
+    INDEX idx_guild_time (guild_id, timestamp)
+);
+
 -- Level roles table - roles awarded at specific levels
 CREATE TABLE IF NOT EXISTS level_roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -111,4 +124,44 @@ CREATE TABLE IF NOT EXISTS role_reactions (
     UNIQUE KEY unique_message_emoji (guild_id, message_id, emoji),
     INDEX idx_guild_id (guild_id),
     INDEX idx_message_id (message_id)
+);
+
+-- Warnings table for moderation
+CREATE TABLE IF NOT EXISTS warnings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    guild_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    moderator_id BIGINT NOT NULL,
+    reason TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_guild_user (guild_id, user_id),
+    INDEX idx_moderator (moderator_id),
+    INDEX idx_timestamp (timestamp)
+);
+
+-- Timeouts table for moderation
+CREATE TABLE IF NOT EXISTS timeouts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    guild_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    moderator_id BIGINT NOT NULL,
+    duration INT NOT NULL,
+    reason TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_guild_user (guild_id, user_id),
+    INDEX idx_moderator (moderator_id),
+    INDEX idx_timestamp (timestamp)
+);
+
+-- XP History table for tracking XP gains
+CREATE TABLE IF NOT EXISTS xp_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    guild_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    xp_gained INT NOT NULL,
+    source VARCHAR(50) NOT NULL DEFAULT 'message',
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_guild_user (guild_id, user_id),
+    INDEX idx_timestamp (timestamp),
+    INDEX idx_source (source)
 );

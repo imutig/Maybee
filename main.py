@@ -1,11 +1,18 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import os
 import asyncio
+import logging
 from db import Database
+from cache import BotCache
 from cog.ticket import TicketPanelView, TicketCloseView
 from dotenv import load_dotenv
 from i18n import i18n, _
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # ========== Configuration du bot ==========
@@ -41,6 +48,7 @@ class MyBot(commands.Bot):
             password=os.getenv("DB_PASS"),
             db=os.getenv("DB_NAME")
         )
+        self.cache = BotCache(self.db)  # Initialize cache system
         self.i18n = i18n
 
     async def close(self):
@@ -71,7 +79,7 @@ async def load_extensions():
         "cog.meeting", "cog.rename", "cog.career", "cog.scan", "cog.ping",
         "cog.avatar", "cog.roll", "cog.confession", "cog.embed", "cog.XPSystem",
         "cog.role", "cog.welcome", "cog.rolereact", "cog.ticket", "cog.clear",
-        "cog.language", "cog.config"
+        "cog.language", "cog.config", "cog.moderation", "cog.cache"
     ]
     
     for extension in extensions:
@@ -89,6 +97,10 @@ async def on_ready():
     print(f"📊 Connecté à {len(bot.guilds)} serveur(s):")
     for guild in bot.guilds:
         print(f"  - {guild.name} (ID: {guild.id})")
+    
+    # Start cache cleanup task
+    await bot.cache.start_cleanup_task()
+    print("✅ Cache system initialized")
     
     # Debug: Check command tree state before sync
     print(f"🔍 Commandes dans l'arbre avant synchronisation: {len(bot.tree.get_commands())}")
@@ -110,6 +122,8 @@ async def on_ready():
         try:
             synced = await bot.tree.sync()
             print(f"✅ {len(synced)} commandes en synchronisation globale réussie.")
+        except Exception as e2:
+            print(f"❌ Échec de la synchronisation globale: {e2}")
         except Exception as global_e:
             print(f"❌ Erreur de synchronisation globale: {global_e}")
     
@@ -117,6 +131,51 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name="by iMutig 🤓"))
     bot.add_view(TicketPanelView())
     bot.add_view(TicketCloseView())
+
+@bot.event
+async def on_command_error(ctx, error):
+    """Global error handler for commands"""
+    if isinstance(error, commands.CommandNotFound):
+        return  # Ignore command not found errors
+    
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ You don't have permission to use this command.")
+        return
+    
+    if isinstance(error, commands.BotMissingPermissions):
+        await ctx.send("❌ I don't have the required permissions to perform this action.")
+        return
+    
+    if isinstance(error, commands.CommandOnCooldown):
+        await ctx.send(f"⏱️ Command is on cooldown. Try again in {error.retry_after:.1f} seconds.")
+        return
+    
+    # Log unexpected errors
+    logger.error(f"Unexpected error in command {ctx.command}: {error}")
+    await ctx.send("❌ An unexpected error occurred. Please try again later.")
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error):
+    """Global error handler for slash commands"""
+    if isinstance(error, app_commands.MissingPermissions):
+        await interaction.response.send_message("❌ You don't have permission to use this command.", ephemeral=True)
+        return
+    
+    if isinstance(error, app_commands.BotMissingPermissions):
+        await interaction.response.send_message("❌ I don't have the required permissions to perform this action.", ephemeral=True)
+        return
+    
+    if isinstance(error, app_commands.CommandOnCooldown):
+        await interaction.response.send_message(f"⏱️ Command is on cooldown. Try again in {error.retry_after:.1f} seconds.", ephemeral=True)
+        return
+    
+    # Log unexpected errors
+    logger.error(f"Unexpected error in slash command {interaction.command}: {error}")
+    
+    if not interaction.response.is_done():
+        await interaction.response.send_message("❌ An unexpected error occurred. Please try again later.", ephemeral=True)
+    else:
+        await interaction.followup.send("❌ An unexpected error occurred. Please try again later.", ephemeral=True)
 
 @bot.tree.command(name="sync", description="Synchronise les commandes slash pour ce serveur (Admin uniquement)")
 async def sync_commands(interaction: discord.Interaction):

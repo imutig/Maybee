@@ -1,5 +1,8 @@
 import asyncio
-import aiomysql  # si tu utilises aiomysql, sinon adapte
+import aiomysql
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Database:
     def __init__(self, host, port, user, password, db):
@@ -9,22 +12,33 @@ class Database:
         self.password = password
         self.db = db
         self.pool = None
+        self.max_retries = 3
+        self.retry_delay = 1
 
     async def connect(self):
+        """Create connection pool with retry logic"""
         print("[DB] Connexion à la base de données...")
-        try:
-            self.pool = await aiomysql.create_pool(
-                host=self.host,
-                port=self.port,
-                user=self.user,
-                password=self.password,
-                db=self.db,
-                autocommit=True,
-                maxsize=10
-            )
-            print("[DB] Connexion réussie.")
-        except Exception as e:
-            print(f"[DB][ERREUR] Connexion échouée : {e}")
+        
+        for attempt in range(self.max_retries):
+            try:
+                self.pool = await aiomysql.create_pool(
+                    host=self.host,
+                    port=self.port,
+                    user=self.user,
+                    password=self.password,
+                    db=self.db,
+                    autocommit=True,
+                    maxsize=10,
+                    minsize=1
+                )
+                print("[DB] Connexion réussie.")
+                return
+            except Exception as e:
+                print(f"[DB][ERREUR] Connexion échouée (tentative {attempt + 1}): {e}")
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
+                else:
+                    raise
 
     async def close(self):
         if self.pool:
@@ -34,43 +48,80 @@ class Database:
             print("[DB] Pool fermé.")
             
     async def query(self, query, params=None, fetchone=False, fetchall=False):
+        """Execute query with improved error handling and connection management"""
+        if not self.pool:
+            await self.connect()
+        
         print(f"[DB] Query : {query} | params : {params}")
-        try:
-            async with self.pool.acquire() as conn:
-                async with conn.cursor(aiomysql.DictCursor) as cur:
-                    await cur.execute(query, params)
-                    if fetchone:
-                        result = await cur.fetchone()
-                        print(f"[DB] fetchone : {result}")
-                        return result
-                    if fetchall:
-                        result = await cur.fetchall()
-                        print(f"[DB] fetchall : {result}")
-                        return result
-                    await conn.commit()
-                    return None
-        except Exception as e:
-            print(f"[DB][ERREUR] Query error : {e}")
-            return None
+        
+        for attempt in range(self.max_retries):
+            try:
+                async with self.pool.acquire() as conn:
+                    async with conn.cursor(aiomysql.DictCursor) as cur:
+                        await cur.execute(query, params)
+                        if fetchone:
+                            result = await cur.fetchone()
+                            print(f"[DB] fetchone : {result}")
+                            return result
+                        if fetchall:
+                            result = await cur.fetchall()
+                            print(f"[DB] fetchall : {result}")
+                            return result
+                        await conn.commit()
+                        return None
+            except aiomysql.Error as e:
+                print(f"[DB][ERREUR] Query error (tentative {attempt + 1}): {e}")
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay)
+                else:
+                    raise
+            except Exception as e:
+                print(f"[DB][ERREUR] Unexpected error: {e}")
+                raise
+        
+        return None
 
 
     async def execute(self, query, params=None):
+        """Execute query with improved error handling"""
+        if not self.pool:
+            await self.connect()
+        
         print(f"[DB] Exécution de la requête : {query} | params : {params}")
+        
+        for attempt in range(self.max_retries):
+            try:
+                async with self.pool.acquire() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute(query, params)
+                        if query.strip().lower().startswith("select"):
+                            result = await cur.fetchall()
+                            print(f"[DB] Résultat : {result}")
+                            return result
+                        else:
+                            affected = cur.rowcount
+                            print(f"[DB] Lignes affectées : {affected}")
+                            return affected
+            except aiomysql.Error as e:
+                print(f"[DB][ERREUR] Execute error (tentative {attempt + 1}): {e}")
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay)
+                else:
+                    raise
+            except Exception as e:
+                print(f"[DB][ERREUR] Unexpected error: {e}")
+                raise
+        
+        return None
+    
+    async def health_check(self):
+        """Check database connection health"""
         try:
-            async with self.pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(query, params)
-                    if query.strip().lower().startswith("select"):
-                        result = await cur.fetchall()
-                        print(f"[DB] Résultat : {result}")
-                        return result
-                    else:
-                        affected = cur.rowcount
-                        print(f"[DB] Lignes affectées : {affected}")
-                        return affected
+            await self.query("SELECT 1", fetchone=True)
+            return True
         except Exception as e:
-            print(f"[DB][ERREUR] Erreur lors de l'exécution : {e}")
-            return None
+            print(f"[DB][ERREUR] Health check failed: {e}")
+            return False
 
     async def init_tables(self):
         """Initialize database tables for bot functionality"""
