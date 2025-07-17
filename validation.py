@@ -49,6 +49,28 @@ class InputValidator:
             return None
     
     @staticmethod
+    def validate_user_id(user_id: Union[str, int]) -> bool:
+        """Validate user ID"""
+        try:
+            if isinstance(user_id, str):
+                # Remove any non-numeric characters
+                clean_id = re.sub(r'[^\d]', '', user_id)
+                if not clean_id:
+                    return False
+                user_id_int = int(clean_id)
+            else:
+                user_id_int = int(user_id)
+            
+            # Discord snowflake IDs should be 17-19 digits
+            if len(str(user_id_int)) < 17 or len(str(user_id_int)) > 19:
+                return False
+            
+            # Valid Discord user ID
+            return True
+        except (ValueError, TypeError):
+            return False
+    
+    @staticmethod
     def validate_level(level: str) -> Optional[int]:
         """Validate level input"""
         try:

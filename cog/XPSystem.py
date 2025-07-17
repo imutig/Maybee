@@ -387,7 +387,8 @@ class XPSystem(commands.Cog):
                    GROUP BY user_id
                    ORDER BY weekly_xp DESC
                    LIMIT 10""",
-                (guild_id, week_ago)
+                (guild_id, week_ago),
+                fetchall=True
             )
             
             if not weekly_data:
@@ -406,11 +407,11 @@ class XPSystem(commands.Cog):
             
             leaderboard_text = ""
             for i, data in enumerate(weekly_data, 1):
-                user = self.bot.get_user(data[0])
+                user = self.bot.get_user(data["user_id"])
                 username = user.display_name if user else "Unknown User"
                 
                 medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                leaderboard_text += f"{medal} **{username}**: {data[1]} XP\n"
+                leaderboard_text += f"{medal} **{username}**: {data['weekly_xp']} XP\n"
                 
             embed.description = leaderboard_text
             embed.set_footer(text=_("xp_system.weekly_leaderboard.footer", user_id, guild_id))
@@ -450,7 +451,8 @@ class XPSystem(commands.Cog):
                    GROUP BY user_id
                    ORDER BY monthly_xp DESC
                    LIMIT 10""",
-                (guild_id, month_ago)
+                (guild_id, month_ago),
+                fetchall=True
             )
             
             if not monthly_data:
@@ -469,11 +471,11 @@ class XPSystem(commands.Cog):
             
             leaderboard_text = ""
             for i, data in enumerate(monthly_data, 1):
-                user = self.bot.get_user(data[0])
+                user = self.bot.get_user(data["user_id"])
                 username = user.display_name if user else "Unknown User"
                 
                 medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                leaderboard_text += f"{medal} **{username}**: {data[1]} XP\n"
+                leaderboard_text += f"{medal} **{username}**: {data['monthly_xp']} XP\n"
                 
             embed.description = leaderboard_text
             embed.set_footer(text=_("xp_system.monthly_leaderboard.footer", user_id, guild_id))
@@ -508,14 +510,17 @@ class XPSystem(commands.Cog):
                 query = """SELECT user_id, xp FROM xp_data WHERE guild_id = %s ORDER BY xp DESC LIMIT 10"""
                 field_name = _("commands.topxp.total_xp_field", user_id, guild_id)
                 color = discord.Color.gold()
+                xp_field = "xp"
             elif type == "text":
                 query = """SELECT user_id, text_xp FROM xp_data WHERE guild_id = %s ORDER BY text_xp DESC LIMIT 10"""
                 field_name = _("commands.topxp.text_xp_field", user_id, guild_id)
                 color = discord.Color.blue()
+                xp_field = "text_xp"
             else:  # voice
                 query = """SELECT user_id, voice_xp FROM xp_data WHERE guild_id = %s ORDER BY voice_xp DESC LIMIT 10"""
                 field_name = _("commands.topxp.voice_xp_field", user_id, guild_id)
                 color = discord.Color.green()
+                xp_field = "voice_xp"
             
             rows = await self.bot.db.query(query, (guild_id,), fetchall=True)
             
@@ -535,11 +540,11 @@ class XPSystem(commands.Cog):
             
             leaderboard_text = ""
             for i, row in enumerate(rows, 1):
-                member = interaction.guild.get_member(row[0])
+                member = interaction.guild.get_member(row["user_id"])
                 name = member.display_name if member else f"Unknown User"
                 
                 medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                leaderboard_text += f"{medal} **{name}**: {row[1]} XP\n"
+                leaderboard_text += f"{medal} **{name}**: {row[xp_field]} XP\n"
             
             embed.description = leaderboard_text
             embed.set_footer(text=_("commands.topxp.embed_footer", user_id, guild_id))
@@ -697,8 +702,9 @@ class XPSystem(commands.Cog):
         try:
             # Get comprehensive XP data
             xp_data = await self.bot.db.query(
-                "SELECT * FROM xp WHERE guild_id = %s AND user_id = %s",
-                (guild_id, target_user.id)
+                "SELECT * FROM xp_data WHERE guild_id = %s AND user_id = %s",
+                (guild_id, target_user.id),
+                fetchone=True
             )
             
             if not xp_data:
@@ -708,8 +714,6 @@ class XPSystem(commands.Cog):
                 )
                 return
                 
-            data = xp_data[0]
-            
             # Get recent activity
             week_ago = datetime.utcnow() - timedelta(days=7)
             try:
@@ -720,18 +724,19 @@ class XPSystem(commands.Cog):
                        GROUP BY DATE(timestamp)
                        ORDER BY date DESC
                        LIMIT 7""",
-                    (guild_id, target_user.id, week_ago)
+                    (guild_id, target_user.id, week_ago),
+                    fetchall=True
                 )
             except Exception as e:
                 print(f"Error getting recent activity: {e}")
                 recent_activity = []
             
             # Calculate level and progress
-            level = self.calculate_level(data["total_xp"])
+            level = self.calculate_level(xp_data["xp"])
             xp_for_current_level = self.calculate_xp_for_level(level)
             xp_for_next_level = self.calculate_xp_for_level(level + 1)
-            xp_progress = data["total_xp"] - xp_for_current_level
-            xp_needed = xp_for_next_level - data["total_xp"]
+            xp_progress = xp_data["xp"] - xp_for_current_level
+            xp_needed = xp_for_next_level - xp_data["xp"]
             
             # Create detailed embed
             embed = discord.Embed(
@@ -748,7 +753,7 @@ class XPSystem(commands.Cog):
             )
             embed.add_field(
                 name=_("xp_system.stats.total_xp_field", user_id, guild_id),
-                value=f"**{data['total_xp']}** XP",
+                value=f"**{xp_data['xp']}** XP",
                 inline=True
             )
             embed.add_field(
@@ -758,12 +763,12 @@ class XPSystem(commands.Cog):
             )
             embed.add_field(
                 name=_("xp_system.stats.text_xp_field", user_id, guild_id),
-                value=f"**{data['text_xp']}** XP",
+                value=f"**{xp_data['text_xp']}** XP",
                 inline=True
             )
             embed.add_field(
                 name=_("xp_system.stats.voice_xp_field", user_id, guild_id),
-                value=f"**{data['voice_xp']}** XP",
+                value=f"**{xp_data['voice_xp']}** XP",
                 inline=True
             )
             
@@ -771,7 +776,7 @@ class XPSystem(commands.Cog):
             if recent_activity:
                 activity_text = ""
                 for day_data in recent_activity:
-                    activity_text += f"**{day_data[0]}**: {day_data[1]} XP\n"
+                    activity_text += f"**{day_data['date']}**: {day_data['daily_xp']} XP\n"
                 embed.add_field(
                     name=_("xp_system.stats.recent_activity_field", user_id, guild_id),
                     value=activity_text,

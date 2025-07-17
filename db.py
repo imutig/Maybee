@@ -257,6 +257,59 @@ class Database:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_guild_id (guild_id)
             )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS warnings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL,
+                moderator_id BIGINT NOT NULL,
+                reason TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_guild_user (guild_id, user_id),
+                INDEX idx_moderator (moderator_id),
+                INDEX idx_timestamp (timestamp)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS timeouts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL,
+                moderator_id BIGINT NOT NULL,
+                duration INT NOT NULL,
+                reason TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_guild_user (guild_id, user_id),
+                INDEX idx_moderator (moderator_id),
+                INDEX idx_timestamp (timestamp)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS xp_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                guild_id BIGINT NOT NULL,
+                xp_gained INT NOT NULL,
+                xp_type ENUM('text', 'voice') NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user_guild (user_id, guild_id),
+                INDEX idx_timestamp (timestamp),
+                INDEX idx_guild_time (guild_id, timestamp)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS xp_multipliers (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id BIGINT NOT NULL,
+                multiplier_type ENUM('text', 'voice', 'both') NOT NULL,
+                multiplier_value DECIMAL(3,2) NOT NULL DEFAULT 1.00,
+                duration_minutes INT DEFAULT NULL,
+                expires_at TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_guild_type (guild_id, multiplier_type),
+                INDEX idx_expires (expires_at)
+            )
             """
         ]
         

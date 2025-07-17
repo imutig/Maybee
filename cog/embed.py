@@ -8,7 +8,7 @@ class EmbedModal(discord.ui.Modal, title="Create an embed"):
     titre = discord.ui.TextInput(label="Title", required=True)
     description = discord.ui.TextInput(label="Description", style=discord.TextStyle.paragraph, required=True)
     couleur = discord.ui.TextInput(label="Color (ex: blue or #ff6600)", required=False, default="blue")
-    champs = discord.ui.TextInput(label="Fields (optional, ex: Name1:Value1|Name2:Value2...)",
+    champs = discord.ui.TextInput(label="Fields (optional)",
                                    required=False, placeholder="ex: field:val|field2:val2")
     image = discord.ui.TextInput(label="Image URL (optional)", required=False)
 
