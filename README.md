@@ -1,6 +1,8 @@
 # MaybeBot
 
-🎮 **MaybeBot** est un bot Discord multifon## 📦 Technologies & Architecture
+🎮 **MaybeBot** est un bot Discord modulaire et avancé, conçu avec `discord.py` (v2) et `discord.app_commands`. Il propose de nombreuses fonctionnalités avec un système de base de données MySQL pour des performances optimales et une architecture évolutive. Bot développé par iMutig.
+
+## 📦 Technologies & Architecture
 
 - **Python 3.11+** avec support asyncio
 - **discord.py 2.3+** pour l'API Discord
@@ -10,6 +12,8 @@
 - **Interface utilisateur** avec boutons et modales Discord
 - **Système de traduction** avec support multilingue (EN/FR)
 - **Configuration centralisée** avec interface unifiée
+- **Système de cache** avec persistance pour les performances
+- **Système de modération** intégré
 
 ## 🗄️ Structure de la Base de Données
 
@@ -24,21 +28,34 @@ Le bot utilise une architecture MySQL complète avec les tables suivantes:
 | `confession_config` | Configuration des canaux de confessions |
 | `xp_data` | Données XP et niveaux des utilisateurs |
 | `xp_config` | Configuration du système XP et canal d'annonces |
+| `xp_history` | Historique des gains XP pour statistiques |
+| `xp_multipliers` | Multiplicateurs XP par serveur |
 | `level_roles` | Rôles attribués par niveau |
 | `role_reactions` | Système de rôles par réaction |
 | `user_languages` | Préférences linguistiques des utilisateurs |
-| `guild_languages` | Préférences linguistiques des serveurs | modulaire, conçu avec `discord.py` (v2) et `discord.app_commands`. Il propose plusieurs fonctions avancées avec un système de base de données MySQL pour des performances optimales. Bot développé par iMutig.
+| `guild_languages` | Préférences linguistiques des serveurs |
+| `warnings` | Système d'avertissements de modération |
+| `timeouts` | Historique des sanctions temporaires |
 
 ## ✨ Fonctionnalités principales
 
-### 📈 **Système d'XP / Niveaux**
-- Gain d'XP par message (anti-spam intégré avec cooldown de 10 secondes)
-- Gain d'XP vocal automatique toutes les 10 minutes
-- Commande `/level` pour voir son niveau et son montant d'XP
-- Classement `/topxp` par serveur (vocal, texte et total)
-- Configuration de rôles débloqués à certains niveaux via `/config`
-- **Système d'annonces de niveau avec canal configurable** via `/config`
-- Commande `/levelroles` pour voir les rôles par niveau
+### 📈 **Système d'XP / Niveaux Avancé**
+- **Gain d'XP intelligent**: Par message (anti-spam avec cooldown 10s) et vocal (automatique toutes les 10 min)
+- **Multiplicateurs XP**: Configurables par serveur pour équilibrer les gains
+- **Classements persistants**: `/topxp` (vocal, texte, total) avec cache pour performance
+- **Statistiques détaillées**: `/xpstats` avec historique de gains et activité récente
+- **Leaderboards temporels**: Classements hebdomadaires et mensuels
+- **Rôles par niveau**: Attribution automatique via `/config`
+- **Annonces de niveau**: Canal configurable pour les montées de niveau
+- **Historique complet**: Suivi des gains XP avec source (message/vocal)
+
+### 🛡️ **Système de Modération**
+- **Avertissements**: `/warn` pour avertir les utilisateurs avec raison
+- **Sanctions temporaires**: `/timeout` et `/untimeout` pour gérer les timeouts
+- **Historique complet**: `/warnings` pour voir l'historique d'un utilisateur
+- **Nettoyage**: `/clearwarnings` pour effacer les avertissements
+- **Permissions**: Contrôle des permissions pour les modérateurs
+- **Logs en base**: Traçabilité complète des actions de modération
 
 ### 🎭 **Système de Rôles**
 - **Demandes de rôles**: `/role add` et `/role remove` pour demander des rôles
@@ -70,6 +87,20 @@ Le bot utilise une architecture MySQL complète avec les tables suivantes:
 - Catégories automatiques
 - Permissions personnalisées par ticket
 - Fermeture automatique avec délai
+
+### 📊 **Système de Cache Avancé**
+- **Cache persistant**: Leaderboards sauvegardés sur disque
+- **Cache temporaire**: Données fréquemment utilisées en mémoire
+- **Statistiques**: `/cachestats` pour monitorer les performances
+- **Gestion**: `/clearcache` pour nettoyer le cache
+- **Persistance**: Survit aux redémarrages du bot
+
+### 🌍 **Système de Traduction**
+- **Support multilingue**: Anglais et Français
+- **Préférences utilisateur**: Chaque utilisateur peut choisir sa langue
+- **Préférences serveur**: Configuration de la langue par défaut du serveur
+- **Interface traduite**: Tous les menus, boutons et messages sont traduits
+- **Configuration via `/config`**: Changement de langue simple et rapide
 
 ### ⚙️ **Commandes Utilitaires**
 - `/ping` - Latence du bot
@@ -182,14 +213,15 @@ rm config/welcome.yaml data/confessions.yaml data/role_requests.yaml
 
 ## 🎯 Commandes Disponibles
 
-### � Commandes Utilisateur
+### 👤 Commandes Utilisateur
 
 | Commande | Description |
 |----------|-------------|
 | `/ping` | Affiche la latence du bot |
 | `/avatar [user]` | Affiche l'avatar d'un utilisateur |
 | `/level` | Voir son niveau et ses XP |
-| `/topxp` | Classement XP du serveur |
+| `/topxp` | Classement XP du serveur (global, vocal, texte) |
+| `/xpstats [user]` | Statistiques XP détaillées avec historique |
 | `/roll` | Lance un dé (1-100) |
 | `/confession <message>` | Envoie une confession anonyme |
 | `/role add <role>` | Demande l'ajout d'un rôle |
@@ -204,7 +236,15 @@ rm config/welcome.yaml data/confessions.yaml data/role_requests.yaml
 | `/rename <user> <name>` | Manage Nicknames | Renomme un utilisateur |
 | `/setup_ticket` | Administrator | Configure le système de tickets |
 
-**Note**: La commande `/config` remplace toutes les anciennes commandes de configuration individuelles (`/configwelcome`, `/configconfession`, `/configlevel`, etc.)
+### 🛡️ Commandes de Modération
+
+| Commande | Permission requise | Description |
+|----------|-------------------|-------------|
+| `/warn <user> <reason>` | Moderate Members | Avertit un utilisateur |
+| `/timeout <user> <duration> <reason>` | Moderate Members | Sanctionne temporairement un utilisateur |
+| `/untimeout <user>` | Moderate Members | Retire une sanction temporaire |
+| `/warnings [user]` | Moderate Members | Affiche l'historique des avertissements |
+| `/clearwarnings <user>` | Moderate Members | Efface les avertissements d'un utilisateur |
 
 ### 📊 Commandes Statistiques
 
@@ -213,20 +253,18 @@ rm config/welcome.yaml data/confessions.yaml data/role_requests.yaml
 | `/confessionstats` | Manage Messages | Statistiques des confessions |
 | `/rolestats` | Manage Roles | Statistiques des demandes de rôles |
 | `/levelroles` | - | Liste des rôles par niveau |
+| `/cachestats` | Administrator | Statistiques du cache système |
+| `/clearcache` | Administrator | Vide le cache système |
 
-### 🌍 **Système de Traduction**
-- **Support multilingue**: Anglais et Français
-- **Préférences utilisateur**: Chaque utilisateur peut choisir sa langue
-- **Préférences serveur**: Configuration de la langue par défaut du serveur
-- **Interface traduite**: Tous les menus, boutons et messages sont traduits
-- **Configuration via `/config`**: Changement de langue simple et rapide
+### 🔄 Commandes XP Avancées
 
-### ⚙️ **Commande de Configuration Unifiée**
-- **`/config`**: Interface unique pour toutes les configurations
-- **Menu déroulant intuitif**: Sélection facile des différents systèmes
-- **Boutons interactifs**: Configuration simple avec des boutons Discord
-- **Persistance**: Toutes les configurations sont sauvegardées en base de données
-- **Permissions**: Réservé aux administrateurs du serveur
+| Commande | Permission requise | Description |
+|----------|-------------------|-------------|
+| `/weeklyleaderboard` | - | Classement XP de la semaine |
+| `/monthlyleaderboard` | - | Classement XP du mois |
+| `/xpmultiplier <value>` | Administrator | Configure le multiplicateur XP |
+
+**Note**: La commande `/config` remplace toutes les anciennes commandes de configuration individuelles (`/configwelcome`, `/configconfession`, `/configlevel`, etc.)
 
 ### 🔧 Configuration avec `/config`
 
@@ -237,15 +275,15 @@ La commande `/config` fournit une interface unifiée pour configurer tous les as
 - **💬 Confessions**: Canal pour les confessions anonymes
 - **🎭 Demandes de Rôles**: Canal pour les demandes de rôles
 - **⚡ Rôles par Réaction**: Gestion des rôles par réaction (référence à `/rolereact`)
-- **📊 Système XP**: Configuration du système XP et **canal d'annonces de niveau**
+- **📊 Système XP**: Configuration du système XP, canal d'annonces et multiplicateurs
 - **🎫 Système de Tickets**: Configuration des tickets de support
 - **🌍 Langue**: Choix de la langue du serveur (Anglais/Français)
 
 #### Fonctionnalités du système XP:
 - **Activer/Désactiver** le système XP
 - **Configurer le canal d'annonces** pour les montées de niveau
-- **Gérer les taux XP** (si supporté)
-- **Visualisation** des paramètres actuels
+- **Gérer les multiplicateurs XP** pour équilibrer les gains
+- **Visualisation** des paramètres actuels avec statistiques
 
 #### Utilisation:
 1. Tapez `/config`
@@ -254,6 +292,36 @@ La commande `/config` fournit une interface unifiée pour configurer tous les as
 4. Toutes les modifications sont sauvegardées automatiquement
 
 ## 🔧 Améliorations & Nouvelles Fonctionnalités
+
+### 🆕 Version 3.0 - Système Avancé & Modération
+
+#### Nouvelles fonctionnalités majeures
+- **Système de modération complet** avec avertissements et sanctions
+- **XP System avancé** avec multiplicateurs et leaderboards temporels
+- **Cache persistant** pour les performances et la persistance des données
+- **Statistiques détaillées** pour tous les systèmes
+- **Historique complet** des actions et gains XP
+
+#### Améliorations du système XP
+- **Multiplicateurs configurables** par serveur
+- **Leaderboards hebdomadaires/mensuels** avec persistance
+- **Statistiques détaillées** avec historique des gains
+- **Cache persistant** pour les classements (survit aux redémarrages)
+- **Suivi de l'activité** avec sources (message/vocal)
+
+#### Système de modération
+- **Avertissements** avec raisons et historique
+- **Sanctions temporaires** (timeout/untimeout)
+- **Traçabilité complète** des actions de modération
+- **Permissions granulaires** pour les modérateurs
+- **Interface intuitive** avec commandes slash
+
+#### Système de cache avancé
+- **Persistance sur disque** pour les données critiques
+- **Cache temporaire** pour les performances
+- **Statistiques de performance** détaillées
+- **Gestion administrative** du cache
+- **Optimisation automatique** des requêtes
 
 ### 🆕 Version 2.1 - Interface Unifiée & Traduction
 
@@ -308,13 +376,16 @@ Le bot nécessite les permissions suivantes:
 - `Manage Nicknames` - Changement de pseudos
 - `Add Reactions` - Ajout de réactions
 - `Read Message History` - Lecture de l'historique
+- `Moderate Members` - Sanctions temporaires (timeout)
+- `View Audit Log` - Consultation des logs de modération
 
 ### Sécurité des données
 
 - **Chiffrement**: Variables d'environnement pour les données sensibles
 - **Isolation**: Chaque serveur a ses propres données
 - **Sauvegarde**: Base de données MySQL avec sauvegarde recommandée
-- **Logs**: Système de logging pour audit
+- **Logs**: Système de logging pour audit et traçabilité
+- **Cache sécurisé**: Persistance des données sensibles avec protection
 
 ## 🐛 Dépannage
 
@@ -337,6 +408,16 @@ Le bot nécessite les permissions suivantes:
    - Redémarrez le bot
    - Vérifiez les permissions du bot
 
+4. **Problèmes de cache**
+   - Utilisez `/cachestats` pour vérifier l'état du cache
+   - Utilisez `/clearcache` pour nettoyer le cache si nécessaire
+   - Vérifiez les permissions d'écriture dans le dossier `cache_data`
+
+5. **Problèmes de modération**
+   - Vérifiez que le bot a les permissions `Moderate Members`
+   - Assurez-vous que le rôle du bot est au-dessus des utilisateurs à modérer
+   - Consultez l'historique avec `/warnings` pour déboguer
+
 ### Support
 
 - **GitHub Issues**: [Signaler un bug](https://github.com/imutig/MaybeBot/issues)
@@ -346,11 +427,13 @@ Le bot nécessite les permissions suivantes:
 
 ### Fonctionnalités récentes
 
+- ✅ **Système de modération complet** avec avertissements et sanctions
+- ✅ **XP System avancé** avec multiplicateurs et leaderboards temporels
+- ✅ **Cache persistant** pour les performances optimales
 - ✅ **Interface de configuration unifiée** avec `/config`
 - ✅ **Système de traduction multilingue** (EN/FR)
-- ✅ **Configuration du canal d'annonces XP** intégrée
+- ✅ **Statistiques détaillées** pour tous les systèmes
 - ✅ **Préférences linguistiques** persistantes
-- ✅ **Interface utilisateur traduite** dynamiquement
 
 ## 📄 Licence
 
