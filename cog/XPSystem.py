@@ -4,7 +4,7 @@ from discord.ext import commands, tasks
 import random
 import asyncio
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Literal
 from i18n import _
 
 class XPMultiplier:
@@ -345,61 +345,216 @@ class XPSystem(commands.Cog):
     #     view = ConfigLevelView(self.bot, ctx.guild.id)
     #     await ctx.send(embed=embed, view=view)
 
-    @app_commands.command(name="topxp", description="Afficher le classement des XP (texte, vocal, total)")            
-    async def topxp(self, interaction: discord.Interaction):
+    @app_commands.command(name="leaderboard", description="Show XP leaderboard")
+    @app_commands.describe(
+        period="Choose leaderboard period",
+        type="Choose leaderboard type (for all-time only)"
+    )
+    async def leaderboard(self, interaction: discord.Interaction, 
+                         period: Literal["weekly", "monthly", "all-time"] = "all-time",
+                         type: Literal["total", "text", "voice"] = "total"):
+        """Unified leaderboard command with period and type options"""
         user_id = interaction.user.id
         guild_id = interaction.guild.id
-
-        # Récupérer top 10 par text_xp, voice_xp et total xp
-        query = """
-            SELECT user_id, text_xp, voice_xp, xp
-            FROM xp_data
-            WHERE guild_id = %s
-            ORDER BY xp DESC
-            LIMIT 10
-        """
-        rows = await self.bot.db.query(query, (guild_id,), fetchall=True)
-
-        if not rows:
-            await interaction.response.send_message(
-                _("commands.topxp.no_data", user_id, guild_id), ephemeral=True)
+        
+        if period == "weekly":
+            await self._show_weekly_leaderboard(interaction, user_id, guild_id)
+        elif period == "monthly":
+            await self._show_monthly_leaderboard(interaction, user_id, guild_id)
+        else:  # all-time
+            await self._show_alltime_leaderboard(interaction, user_id, guild_id, type)
+    
+    async def _show_weekly_leaderboard(self, interaction: discord.Interaction, user_id: int, guild_id: int):
+        """Show weekly XP leaderboard with persistent caching"""
+        # Check persistent cache
+        cache_key = f"weekly_leaderboard_{guild_id}"
+        cached_embed = self.bot.cache.leaderboards.get(cache_key)
+        
+        if cached_embed:
+            # Convert cached data back to embed
+            embed_dict = cached_embed
+            embed = discord.Embed.from_dict(embed_dict)
+            await interaction.response.send_message(embed=embed)
             return
-
-        embed = discord.Embed(
-            title=_("commands.topxp.embed_title", user_id, guild_id), 
-            color=discord.Color.gold()
-        )
-        embed.set_footer(text=_("commands.topxp.embed_footer", user_id, guild_id))
-
-        text_lines = []
-        voice_lines = []
-        total_lines = []
-
-        for i, row in enumerate(rows, start=1):
-            member = interaction.guild.get_member(row["user_id"])
-            name = member.display_name if member else f"Utilisateur ID {row['user_id']}"
-
-            text_lines.append(f"{i}. {name} — {row['text_xp']} XP")
-            voice_lines.append(f"{i}. {name} — {row['voice_xp']} XP")
-            total_lines.append(f"{i}. {name} — {row['xp']} XP")
-
-        embed.add_field(
-            name=_("commands.topxp.text_xp_field", user_id, guild_id), 
-            value="\n".join(text_lines), 
-            inline=True
-        )
-        embed.add_field(
-            name=_("commands.topxp.voice_xp_field", user_id, guild_id), 
-            value="\n".join(voice_lines), 
-            inline=True
-        )
-        embed.add_field(
-            name=_("commands.topxp.total_xp_field", user_id, guild_id), 
-            value="\n".join(total_lines), 
-            inline=True
-        )
-
-        await interaction.response.send_message(embed=embed)
+        
+        try:
+            # Get weekly XP data
+            week_ago = datetime.utcnow() - timedelta(days=7)
+            weekly_data = await self.bot.db.query(
+                """SELECT user_id, SUM(xp_gained) as weekly_xp
+                   FROM xp_history 
+                   WHERE guild_id = %s AND timestamp >= %s
+                   GROUP BY user_id
+                   ORDER BY weekly_xp DESC
+                   LIMIT 10""",
+                (guild_id, week_ago)
+            )
+            
+            if not weekly_data:
+                await interaction.response.send_message(
+                    _("xp_system.weekly_leaderboard.no_data", user_id, guild_id),
+                    ephemeral=True
+                )
+                return
+                
+            # Create embed
+            embed = discord.Embed(
+                title=_("xp_system.weekly_leaderboard.title", user_id, guild_id),
+                color=discord.Color.gold(),
+                timestamp=datetime.utcnow()
+            )
+            
+            leaderboard_text = ""
+            for i, data in enumerate(weekly_data, 1):
+                user = self.bot.get_user(data[0])
+                username = user.display_name if user else "Unknown User"
+                
+                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+                leaderboard_text += f"{medal} **{username}**: {data[1]} XP\n"
+                
+            embed.description = leaderboard_text
+            embed.set_footer(text=_("xp_system.weekly_leaderboard.footer", user_id, guild_id))
+            
+            # Cache the result as dict (for persistence) - 30 minutes TTL
+            self.bot.cache.leaderboards.set(cache_key, embed.to_dict(), ttl=1800)
+            
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            print(f"Error in weekly leaderboard: {e}")
+            await interaction.response.send_message(
+                _("errors.unknown_error", user_id, guild_id),
+                ephemeral=True
+            )
+    
+    async def _show_monthly_leaderboard(self, interaction: discord.Interaction, user_id: int, guild_id: int):
+        """Show monthly XP leaderboard with persistent caching"""
+        # Check persistent cache
+        cache_key = f"monthly_leaderboard_{guild_id}"
+        cached_embed = self.bot.cache.leaderboards.get(cache_key)
+        
+        if cached_embed:
+            # Convert cached data back to embed
+            embed_dict = cached_embed
+            embed = discord.Embed.from_dict(embed_dict)
+            await interaction.response.send_message(embed=embed)
+            return
+        
+        try:
+            # Get monthly XP data
+            month_ago = datetime.utcnow() - timedelta(days=30)
+            monthly_data = await self.bot.db.query(
+                """SELECT user_id, SUM(xp_gained) as monthly_xp
+                   FROM xp_history 
+                   WHERE guild_id = %s AND timestamp >= %s
+                   GROUP BY user_id
+                   ORDER BY monthly_xp DESC
+                   LIMIT 10""",
+                (guild_id, month_ago)
+            )
+            
+            if not monthly_data:
+                await interaction.response.send_message(
+                    _("xp_system.monthly_leaderboard.no_data", user_id, guild_id),
+                    ephemeral=True
+                )
+                return
+                
+            # Create embed
+            embed = discord.Embed(
+                title=_("xp_system.monthly_leaderboard.title", user_id, guild_id),
+                color=discord.Color.purple(),
+                timestamp=datetime.utcnow()
+            )
+            
+            leaderboard_text = ""
+            for i, data in enumerate(monthly_data, 1):
+                user = self.bot.get_user(data[0])
+                username = user.display_name if user else "Unknown User"
+                
+                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+                leaderboard_text += f"{medal} **{username}**: {data[1]} XP\n"
+                
+            embed.description = leaderboard_text
+            embed.set_footer(text=_("xp_system.monthly_leaderboard.footer", user_id, guild_id))
+            
+            # Cache the result as dict (for persistence) - 30 minutes TTL
+            self.bot.cache.leaderboards.set(cache_key, embed.to_dict(), ttl=1800)
+            
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            print(f"Error in monthly leaderboard: {e}")
+            await interaction.response.send_message(
+                _("errors.unknown_error", user_id, guild_id),
+                ephemeral=True
+            )
+    
+    async def _show_alltime_leaderboard(self, interaction: discord.Interaction, user_id: int, guild_id: int, type: str):
+        """Show all-time XP leaderboard with different types"""
+        # Check persistent cache
+        cache_key = f"alltime_leaderboard_{type}_{guild_id}"
+        cached_embed = self.bot.cache.leaderboards.get(cache_key)
+        
+        if cached_embed:
+            embed_dict = cached_embed
+            embed = discord.Embed.from_dict(embed_dict)
+            await interaction.response.send_message(embed=embed)
+            return
+        
+        try:
+            # Get all-time XP data based on type
+            if type == "total":
+                query = """SELECT user_id, xp FROM xp_data WHERE guild_id = %s ORDER BY xp DESC LIMIT 10"""
+                field_name = _("commands.topxp.total_xp_field", user_id, guild_id)
+                color = discord.Color.gold()
+            elif type == "text":
+                query = """SELECT user_id, text_xp FROM xp_data WHERE guild_id = %s ORDER BY text_xp DESC LIMIT 10"""
+                field_name = _("commands.topxp.text_xp_field", user_id, guild_id)
+                color = discord.Color.blue()
+            else:  # voice
+                query = """SELECT user_id, voice_xp FROM xp_data WHERE guild_id = %s ORDER BY voice_xp DESC LIMIT 10"""
+                field_name = _("commands.topxp.voice_xp_field", user_id, guild_id)
+                color = discord.Color.green()
+            
+            rows = await self.bot.db.query(query, (guild_id,), fetchall=True)
+            
+            if not rows:
+                await interaction.response.send_message(
+                    _("commands.topxp.no_data", user_id, guild_id), 
+                    ephemeral=True
+                )
+                return
+            
+            # Create embed
+            embed = discord.Embed(
+                title=_("commands.topxp.embed_title", user_id, guild_id) + f" ({type.title()})",
+                color=color,
+                timestamp=datetime.utcnow()
+            )
+            
+            leaderboard_text = ""
+            for i, row in enumerate(rows, 1):
+                member = interaction.guild.get_member(row[0])
+                name = member.display_name if member else f"Unknown User"
+                
+                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+                leaderboard_text += f"{medal} **{name}**: {row[1]} XP\n"
+            
+            embed.description = leaderboard_text
+            embed.set_footer(text=_("commands.topxp.embed_footer", user_id, guild_id))
+            
+            # Cache the result - 10 minutes TTL
+            self.bot.cache.leaderboards.set(cache_key, embed.to_dict(), ttl=600)
+            
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            print(f"Error in all-time leaderboard: {e}")
+            await interaction.response.send_message(
+                _("errors.unknown_error", user_id, guild_id),
+                ephemeral=True
+            )
 
     @app_commands.command(name="levelroles", description="Afficher la liste des rôles attribués par niveau")       
     async def levelroles(self, interaction: discord.Interaction):
@@ -531,140 +686,6 @@ class XPSystem(commands.Cog):
               multiplier=multiplier, type=event_type, duration=duration_text),
             ephemeral=True
         )
-
-    @app_commands.command(name="weeklyleaderboard", description="Show weekly XP leaderboard")
-    async def weekly_leaderboard(self, interaction: discord.Interaction):
-        """Show weekly XP leaderboard with persistent caching"""
-        user_id = interaction.user.id
-        guild_id = interaction.guild.id
-        
-        # Check persistent cache
-        cache_key = f"weekly_leaderboard_{guild_id}"
-        cached_embed = self.bot.cache.leaderboards.get(cache_key)
-        
-        if cached_embed:
-            # Convert cached data back to embed
-            embed_dict = cached_embed
-            embed = discord.Embed.from_dict(embed_dict)
-            await interaction.response.send_message(embed=embed)
-            return
-        
-        try:
-            # Get weekly XP data
-            week_ago = datetime.utcnow() - timedelta(days=7)
-            weekly_data = await self.bot.db.query(
-                """SELECT user_id, SUM(xp_gained) as weekly_xp
-                   FROM xp_history 
-                   WHERE guild_id = %s AND timestamp >= %s
-                   GROUP BY user_id
-                   ORDER BY weekly_xp DESC
-                   LIMIT 10""",
-                (guild_id, week_ago)
-            )
-            
-            if not weekly_data:
-                await interaction.response.send_message(
-                    _("xp_system.weekly_leaderboard.no_data", user_id, guild_id),
-                    ephemeral=True
-                )
-                return
-                
-            # Create embed
-            embed = discord.Embed(
-                title=_("xp_system.weekly_leaderboard.title", user_id, guild_id),
-                color=discord.Color.gold(),
-                timestamp=datetime.utcnow()
-            )
-            
-            leaderboard_text = ""
-            for i, data in enumerate(weekly_data, 1):
-                user = self.bot.get_user(data[0])
-                username = user.display_name if user else "Unknown User"
-                
-                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                leaderboard_text += f"{medal} **{username}**: {data[1]} XP\n"
-                
-            embed.description = leaderboard_text
-            embed.set_footer(text=_("xp_system.weekly_leaderboard.footer", user_id, guild_id))
-            
-            # Cache the result as dict (for persistence) - 30 minutes TTL
-            self.bot.cache.leaderboards.set(cache_key, embed.to_dict(), ttl=1800)
-            
-            await interaction.response.send_message(embed=embed)
-            
-        except Exception as e:
-            print(f"Error in weekly leaderboard: {e}")
-            await interaction.response.send_message(
-                _("errors.unknown_error", user_id, guild_id),
-                ephemeral=True
-            )
-
-    @app_commands.command(name="monthlyleaderboard", description="Show monthly XP leaderboard")
-    async def monthly_leaderboard(self, interaction: discord.Interaction):
-        """Show monthly XP leaderboard with persistent caching"""
-        user_id = interaction.user.id
-        guild_id = interaction.guild.id
-        
-        # Check persistent cache
-        cache_key = f"monthly_leaderboard_{guild_id}"
-        cached_embed = self.bot.cache.leaderboards.get(cache_key)
-        
-        if cached_embed:
-            # Convert cached data back to embed
-            embed_dict = cached_embed
-            embed = discord.Embed.from_dict(embed_dict)
-            await interaction.response.send_message(embed=embed)
-            return
-        
-        try:
-            # Get monthly XP data
-            month_ago = datetime.utcnow() - timedelta(days=30)
-            monthly_data = await self.bot.db.query(
-                """SELECT user_id, SUM(xp_gained) as monthly_xp
-                   FROM xp_history 
-                   WHERE guild_id = %s AND timestamp >= %s
-                   GROUP BY user_id
-                   ORDER BY monthly_xp DESC
-                   LIMIT 10""",
-                (guild_id, month_ago)
-            )
-            
-            if not monthly_data:
-                await interaction.response.send_message(
-                    _("xp_system.monthly_leaderboard.no_data", user_id, guild_id),
-                    ephemeral=True
-                )
-                return
-                
-            # Create embed
-            embed = discord.Embed(
-                title=_("xp_system.monthly_leaderboard.title", user_id, guild_id),
-                color=discord.Color.purple(),
-                timestamp=datetime.utcnow()
-            )
-            
-            leaderboard_text = ""
-            for i, data in enumerate(monthly_data, 1):
-                user = self.bot.get_user(data[0])
-                username = user.display_name if user else "Unknown User"
-                
-                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                leaderboard_text += f"{medal} **{username}**: {data[1]} XP\n"
-                
-            embed.description = leaderboard_text
-            embed.set_footer(text=_("xp_system.monthly_leaderboard.footer", user_id, guild_id))
-            
-            # Cache the result as dict (for persistence) - 30 minutes TTL
-            self.bot.cache.leaderboards.set(cache_key, embed.to_dict(), ttl=1800)
-            
-            await interaction.response.send_message(embed=embed)
-            
-        except Exception as e:
-            print(f"Error in monthly leaderboard: {e}")
-            await interaction.response.send_message(
-                _("errors.unknown_error", user_id, guild_id),
-                ephemeral=True
-            )
 
     @app_commands.command(name="xpstats", description="Show detailed XP statistics")
     async def xp_stats(self, interaction: discord.Interaction, member: Optional[discord.Member] = None):

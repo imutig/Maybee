@@ -42,12 +42,13 @@ Le bot utilise une architecture MySQL complète avec les tables suivantes:
 ### 📈 **Système d'XP / Niveaux Avancé**
 - **Gain d'XP intelligent**: Par message (anti-spam avec cooldown 10s) et vocal (automatique toutes les 10 min)
 - **Multiplicateurs XP**: Configurables par serveur pour équilibrer les gains
-- **Classements persistants**: `/topxp` (vocal, texte, total) avec cache pour performance
+- **Classements unifiés**: `/leaderboard` avec options temporelles (weekly/monthly/all-time)
 - **Statistiques détaillées**: `/xpstats` avec historique de gains et activité récente
-- **Leaderboards temporels**: Classements hebdomadaires et mensuels
+- **Leaderboards par type**: Classements séparés pour XP vocal, texte et total
 - **Rôles par niveau**: Attribution automatique via `/config`
 - **Annonces de niveau**: Canal configurable pour les montées de niveau
 - **Historique complet**: Suivi des gains XP avec source (message/vocal)
+- **Cache persistant**: Performances optimisées avec sauvegarde sur disque
 
 ### 🛡️ **Système de Modération**
 - **Avertissements**: `/warn` pour avertir les utilisateurs avec raison
@@ -220,7 +221,7 @@ rm config/welcome.yaml data/confessions.yaml data/role_requests.yaml
 | `/ping` | Affiche la latence du bot |
 | `/avatar [user]` | Affiche l'avatar d'un utilisateur |
 | `/level` | Voir son niveau et ses XP |
-| `/topxp` | Classement XP du serveur (global, vocal, texte) |
+| `/leaderboard [period] [type]` | Classement XP (weekly/monthly/all-time) |
 | `/xpstats [user]` | Statistiques XP détaillées avec historique |
 | `/roll` | Lance un dé (1-100) |
 | `/confession <message>` | Envoie une confession anonyme |
@@ -260,9 +261,28 @@ rm config/welcome.yaml data/confessions.yaml data/role_requests.yaml
 
 | Commande | Permission requise | Description |
 |----------|-------------------|-------------|
-| `/weeklyleaderboard` | - | Classement XP de la semaine |
-| `/monthlyleaderboard` | - | Classement XP du mois |
 | `/xpmultiplier <value>` | Administrator | Configure le multiplicateur XP |
+
+### 📊 Commande Leaderboard Unifiée
+
+La commande `/leaderboard` offre plusieurs options pour consulter les classements:
+
+#### Paramètres:
+- **period**: `weekly`, `monthly`, `all-time` (défaut: all-time)
+- **type**: `total`, `text`, `voice` (défaut: total, pour all-time seulement)
+
+#### Exemples d'utilisation:
+- `/leaderboard` - Classement total de tous les temps
+- `/leaderboard weekly` - Classement de la semaine
+- `/leaderboard monthly` - Classement du mois
+- `/leaderboard all-time text` - Classement total XP texte
+- `/leaderboard all-time voice` - Classement total XP vocal
+
+#### Fonctionnalités:
+- **Cache persistant**: Résultats sauvegardés pour de meilleures performances
+- **Médailles**: 🥇🥈🥉 pour les 3 premières places
+- **Mise à jour automatique**: Cache rafraîchi périodiquement
+- **Tri automatique**: Classement par XP décroissant
 
 **Note**: La commande `/config` remplace toutes les anciennes commandes de configuration individuelles (`/configwelcome`, `/configconfession`, `/configlevel`, etc.)
 
@@ -434,6 +454,15 @@ Le bot nécessite les permissions suivantes:
 - ✅ **Système de traduction multilingue** (EN/FR)
 - ✅ **Statistiques détaillées** pour tous les systèmes
 - ✅ **Préférences linguistiques** persistantes
+- ✅ **Commande leaderboard unifiée** remplaçant `/topxp`, `/weeklyleaderboard`, `/monthlyleaderboard`
+
+### Améliorations de la v3.1
+
+- **🏆 Leaderboards unifiés**: Une seule commande `/leaderboard` avec options flexibles
+- **📊 Types de classements**: Total, vocal, texte pour tous les temps
+- **⏰ Périodes flexibles**: Weekly, monthly, all-time en un seul endroit
+- **🎨 Interface améliorée**: Médailles et couleurs différenciées par type
+- **🚀 Performance optimisée**: Cache intelligent pour tous les leaderboards
 
 ## 📄 Licence
 
