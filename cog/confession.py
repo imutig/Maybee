@@ -33,13 +33,15 @@ class Confession(commands.Cog):
     @app_commands.command(name="confession", description="Envoyer une confession anonyme dans le canal prévu")
     @app_commands.describe(message="Le contenu de ta confession (anonyme)")
     async def confession(self, interaction: discord.Interaction, message: str):
+        from i18n import _
+        
+        user_id = interaction.user.id
         guild_id = interaction.guild.id
         channel_id = await self.get_confession_channel(guild_id)
         
         if not channel_id:
             await interaction.response.send_message(
-                "❌ Aucun canal de confession n'a été configuré pour ce serveur. "
-                "Demandez à un administrateur d'utiliser `/configconfession`.", 
+                _("confession_system.errors.no_channel", user_id, guild_id), 
                 ephemeral=True
             )
             return
@@ -47,8 +49,7 @@ class Confession(commands.Cog):
         channel = self.bot.get_channel(channel_id)
         if not channel:
             await interaction.response.send_message(
-                "❌ Le canal de confession configuré n'existe plus. "
-                "Demandez à un administrateur de reconfigurer avec `/configconfession`.", 
+                _("confession_system.errors.channel_not_found", user_id, guild_id), 
                 ephemeral=True
             )
             return
@@ -59,23 +60,23 @@ class Confession(commands.Cog):
 
         # Create embed for the confession
         embed = discord.Embed(
-            title="💬 Nouvelle confession anonyme",
+            title=_("confession_system.embed.title", user_id, guild_id),
             description=message,
             color=discord.Color.purple()
         )
-        embed.set_footer(text="Confession envoyée anonymement")
+        embed.set_footer(text=_("confession_system.embed.footer", user_id, guild_id))
 
         try:
             await channel.send(embed=embed)
-            await interaction.response.send_message("✅ Confession envoyée anonymement!", ephemeral=True)
+            await interaction.response.send_message(_("confession_system.success", user_id, guild_id), ephemeral=True)
         except discord.Forbidden:
             await interaction.response.send_message(
-                "❌ Je n'ai pas les permissions pour envoyer des messages dans le canal de confession.", 
+                _("confession_system.errors.no_permission", user_id, guild_id), 
                 ephemeral=True
             )
         except Exception as e:
             await interaction.response.send_message(
-                f"❌ Erreur lors de l'envoi de la confession: {str(e)}", 
+                _("confession_system.errors.send_error", user_id, guild_id, error=str(e)), 
                 ephemeral=True
             )
 
@@ -99,15 +100,18 @@ class Confession(commands.Cog):
 
     @app_commands.command(name="confessionstats", description="Afficher les statistiques des confessions")
     async def confessionstats(self, interaction: discord.Interaction):
+        from i18n import _
+        
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        
         if not interaction.user.guild_permissions.manage_messages:
             await interaction.response.send_message(
-                "❌ Vous n'avez pas la permission de voir les statistiques.", 
+                _("errors.no_permission", user_id, guild_id), 
                 ephemeral=True
             )
             return
 
-        guild_id = interaction.guild.id
-        
         # Get total confessions count
         total_result = await self.db.query(
             "SELECT COUNT(*) as total FROM confessions WHERE guild_id = %s",
@@ -125,11 +129,11 @@ class Confession(commands.Cog):
         recent_confessions = recent_result['recent'] if recent_result else 0
 
         embed = discord.Embed(
-            title="📊 Statistiques des confessions",
+            title=_("confession_system.stats.title", user_id, guild_id),
             color=discord.Color.blue()
         )
-        embed.add_field(name="Total des confessions", value=str(total_confessions), inline=True)
-        embed.add_field(name="Cette semaine", value=str(recent_confessions), inline=True)
+        embed.add_field(name=_("confession_system.stats.total_field", user_id, guild_id), value=str(total_confessions), inline=True)
+        embed.add_field(name=_("confession_system.stats.recent_field", user_id, guild_id), value=str(recent_confessions), inline=True)
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

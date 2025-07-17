@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import logging
 import asyncio
+from i18n import _
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +64,10 @@ class RoleReact(commands.Cog):
 
                 channel = self.bot.get_channel(payload.channel_id)
                 if channel:
+                    user_id = payload.user_id
+                    guild_id = payload.guild_id
                     msg = await channel.send(
-                        f"{member.mention} 🎉 Tu as reçu le rôle **{role.name}** !"
+                        _("role_reactions.role_gained", user_id, guild_id, user=f"<@{user_id}>", role=role.name)
                     )
                     await msg.delete(delay=5)
             except Exception as e:
@@ -101,8 +104,10 @@ class RoleReact(commands.Cog):
 
                 channel = self.bot.get_channel(payload.channel_id)
                 if channel:
+                    user_id = payload.user_id
+                    guild_id = payload.guild_id
                     msg = await channel.send(
-                        f"{member.mention} ❌ Le rôle **{role.name}** t'a été retiré."
+                        _("role_reactions.role_removed", user_id, guild_id, user=f"<@{user_id}>", role=role.name)
                     )
                     await msg.delete(delay=5)
             except Exception as e:
@@ -113,8 +118,11 @@ class RoleReact(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     async def rolereact(self, interaction: discord.Interaction):
         logger.info("Commande rolereact appelée")
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        
         await interaction.response.send_message(
-            "Configuration des rôles par réaction 🛠️\nTape stop à tout moment pour terminer.",
+            _("role_reactions.config_start", user_id, guild_id),
             ephemeral=True)
         config_list = []
 
@@ -123,7 +131,7 @@ class RoleReact(commands.Cog):
 
         while True:
             await interaction.followup.send(
-                "📌 Entre le message pour ce rôle (ou stop pour finir) :",
+                _("role_reactions.enter_message", user_id, guild_id),
                 ephemeral=True)
             try:
                 msg_input = await self.bot.wait_for('message',
@@ -131,19 +139,19 @@ class RoleReact(commands.Cog):
                                                     timeout=300.0)
             except asyncio.TimeoutError:
                 logger.warning("Temps écoulé pour l'entrée du message")
-                await interaction.followup.send("⏱️ Temps écoulé.",
+                await interaction.followup.send(_("role_reactions.timeout", user_id, guild_id),
                                                 ephemeral=True)
                 return
 
             if msg_input.content.lower() == 'stop':
                 logger.info("Configuration terminée par l'utilisateur")
-                await interaction.followup.send("Configuration terminée.",
+                await interaction.followup.send(_("role_reactions.config_finished", user_id, guild_id),
                                                 ephemeral=True)
                 break
 
             await msg_input.delete()
 
-            await interaction.followup.send("😊 Réaction emoji pour ce rôle :",
+            await interaction.followup.send(_("role_reactions.enter_emoji", user_id, guild_id),
                                             ephemeral=True)
             try:
                 emoji_input = await self.bot.wait_for('message',
@@ -151,33 +159,33 @@ class RoleReact(commands.Cog):
                                                       timeout=60.0)
             except asyncio.TimeoutError:
                 logger.warning("Temps écoulé pour l'entrée de l'emoji")
-                await interaction.followup.send("⏱️ Temps écoulé.",
+                await interaction.followup.send(_("role_reactions.timeout", user_id, guild_id),
                                                 ephemeral=True)
                 return
 
             if emoji_input.content.lower() == 'stop':
                 logger.info("Configuration terminée par l'utilisateur")
-                await interaction.followup.send("Configuration terminée.",
+                await interaction.followup.send(_("role_reactions.config_finished", user_id, guild_id),
                                                 ephemeral=True)
                 break
 
             await emoji_input.delete()
 
             await interaction.followup.send(
-                "🎭 Mentionnez le rôle à attribuer :", ephemeral=True)
+                _("role_reactions.mention_role", user_id, guild_id), ephemeral=True)
             try:
                 role_input = await self.bot.wait_for('message',
                                                      check=check,
                                                      timeout=60.0)
             except asyncio.TimeoutError:
                 logger.warning("Temps écoulé pour l'entrée du rôle")
-                await interaction.followup.send("⏱️ Temps écoulé.",
+                await interaction.followup.send(_("role_reactions.timeout", user_id, guild_id),
                                                 ephemeral=True)
                 return
 
             if role_input.content.lower() == 'stop':
                 logger.info("Configuration terminée par l'utilisateur")
-                await interaction.followup.send("Configuration terminée.",
+                await interaction.followup.send(_("role_reactions.config_finished", user_id, guild_id),
                                                 ephemeral=True)
                 break
 
@@ -194,7 +202,7 @@ class RoleReact(commands.Cog):
             if not role:
                 logger.warning(f"Le rôle {role_mention} n'existe pas")
                 await interaction.followup.send(
-                    f"⚠️ Le rôle **{role_mention}** n'existe pas. Veuillez créer le rôle d'abord.",
+                    _("role_reactions.role_not_found", user_id, guild_id, role=role_mention),
                     ephemeral=True)
                 continue
 
@@ -206,7 +214,7 @@ class RoleReact(commands.Cog):
 
         if not config_list:
             logger.warning("Aucune configuration ajoutée")
-            await interaction.followup.send("⚠️ Aucune configuration ajoutée.",
+            await interaction.followup.send(_("role_reactions.no_config", user_id, guild_id),
                                             ephemeral=True)
             return
 
@@ -215,7 +223,7 @@ class RoleReact(commands.Cog):
             embed_desc += f"{item['emoji']} → {item['role'].mention} : {item['message']}\n"
 
         embed = discord.Embed(
-            title="Clique sur une réaction pour obtenir un rôle ✨",
+            title=_("role_reactions.embed_title", user_id, guild_id),
             description=embed_desc,
             color=discord.Color.green())
         message = await interaction.channel.send(embed=embed)
@@ -237,7 +245,7 @@ class RoleReact(commands.Cog):
             )
 
         confirmation_message = await interaction.channel.send(
-            "✅ Configuration terminée. Les utilisateurs peuvent maintenant réagir pour obtenir un rôle."
+            _("role_reactions.config_complete", user_id, guild_id)
         )
         await confirmation_message.delete(delay=5)
 

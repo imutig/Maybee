@@ -14,37 +14,53 @@ class RoleRequestView(View):
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         if not interaction.user.guild_permissions.administrator:
+            from i18n import _
+            user_id = interaction.user.id
+            guild_id = interaction.guild.id if interaction.guild else None
             await interaction.response.send_message(
-                "Tu n'as pas la permission.", ephemeral=True)
+                _("errors.admin_only", user_id, guild_id), ephemeral=True)
             return False
         return True
 
     @discord.ui.button(label="Accepter", style=ButtonStyle.green, custom_id="role_accept")
     async def accept_button(self, interaction: Interaction, button: Button):
+        from i18n import _
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
         guild = interaction.guild
         member = guild.get_member(self.user_id)
         role = guild.get_role(self.role_id)
 
         if not member or not role:
             await interaction.response.send_message(
-                "Erreur : membre ou role introuvable.", ephemeral=True)
+                _("role_requests.member_role_not_found", user_id, guild_id), ephemeral=True)
             return
 
         try:
             if self.action == "add":
                 await member.add_roles(role)
-                action_done = "ajoute"
+                action_done = _("role_requests.action_added", user_id, guild_id)
             else:
                 await member.remove_roles(role)
-                action_done = "retire"
+                action_done = _("role_requests.action_removed", user_id, guild_id)
         except Exception as e:
-            await interaction.response.send_message(f"Erreur : {e}", ephemeral=True)
+            await interaction.response.send_message(
+                _("errors.unknown_error", user_id, guild_id), ephemeral=True)
             return
 
         embed = interaction.message.embeds[0]
         embed.color = discord.Color.green()
-        embed.add_field(name="Statut", value=f"Accepte par {interaction.user.mention}", inline=False)
-        embed.add_field(name="Action effectuee", value=f"Role **{role.name}** {action_done} a {member.mention}", inline=False)
+        embed.add_field(
+            name=_("role_requests.status_field", user_id, guild_id), 
+            value=_("role_requests.accepted_by", user_id, guild_id, user=interaction.user.mention), 
+            inline=False
+        )
+        embed.add_field(
+            name=_("role_requests.action_performed", user_id, guild_id), 
+            value=_("role_requests.role_action_result", user_id, guild_id, role=role.name, action=action_done, member=member.mention), 
+            inline=False
+        )
 
         await interaction.response.edit_message(content=None, embed=embed, view=None)
 
@@ -55,13 +71,21 @@ class RoleRequestView(View):
 
     @discord.ui.button(label="Refuser", style=ButtonStyle.red, custom_id="role_deny")
     async def deny_button(self, interaction: Interaction, button: Button):
+        from i18n import _
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
         guild = interaction.guild
         member = guild.get_member(self.user_id)
         role = guild.get_role(self.role_id)
 
         embed = interaction.message.embeds[0]
         embed.color = discord.Color.red()
-        embed.add_field(name="Statut", value=f"Refuse par {interaction.user.mention}", inline=False)
+        embed.add_field(
+            name=_("role_requests.status_field", user_id, guild_id), 
+            value=_("role_requests.denied_by", user_id, guild_id, user=interaction.user.mention), 
+            inline=False
+        )
 
         await interaction.response.edit_message(content=None, embed=embed, view=None)
 
@@ -131,18 +155,22 @@ class RoleRequest(commands.Cog):
         await self.handle_request(interaction, role, "remove")
 
     async def handle_request(self, interaction: Interaction, role: discord.Role, action: str):
+        from i18n import _
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
         if role >= interaction.guild.me.top_role:
             await interaction.response.send_message(
-                "Je ne peux pas modifier ce role (trop haut).", ephemeral=True)
+                _("role_requests.role_too_high", user_id, guild_id), ephemeral=True)
             return
 
-        verb = "ajouter" if action == "add" else "retirer"
+        verb = _("role_requests.action_add", user_id, guild_id) if action == "add" else _("role_requests.action_remove", user_id, guild_id)
         embed = discord.Embed(
-            title="Demande de role",
-            description=f"{interaction.user.mention} demande de **{verb}** le role {role.mention}",
+            title=_("role_requests.embed_title", user_id, guild_id),
+            description=_("role_requests.embed_description", user_id, guild_id, user=interaction.user.mention, action=verb, role=role.mention),
             color=discord.Color.blurple(),
         )
-        embed.set_footer(text=f"ID Utilisateur : {interaction.user.id} | ID Role : {role.id}")
+        embed.set_footer(text=_("role_requests.embed_footer", user_id, guild_id, user_id=interaction.user.id, role_id=role.id))
 
         view = RoleRequestView(self.bot, user_id=interaction.user.id, role_id=role.id, action=action)
 
@@ -150,7 +178,7 @@ class RoleRequest(commands.Cog):
         channel = interaction.guild.get_channel(channel_id)
         if not channel:
             await interaction.response.send_message(
-                "Salon de demandes introuvable.", ephemeral=True)
+                _("role_requests.channel_not_found", user_id, guild_id), ephemeral=True)
             return
 
         message = await channel.send(embed=embed, view=view)
@@ -160,7 +188,7 @@ class RoleRequest(commands.Cog):
         await self.save_role_request(message.id, interaction.user.id, role.id, action, interaction.guild.id)
 
         await interaction.response.send_message(
-            f"Ta demande pour **{verb}** le role a ete envoyee dans {channel.mention} !",
+            _("role_requests.request_sent", user_id, guild_id, action=verb, channel=channel.mention),
             ephemeral=True)
 
     # Configuration command removed - use unified /config command instead
@@ -179,13 +207,15 @@ class RoleRequest(commands.Cog):
 
     @app_commands.command(name="rolestats", description="Afficher les statistiques des demandes de rôles")
     async def rolestats(self, interaction: discord.Interaction):
+        from i18n import _
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
         if not interaction.user.guild_permissions.manage_roles:
             await interaction.response.send_message(
-                "Vous n'avez pas la permission de gérer les rôles.", ephemeral=True)
+                _("errors.no_permission", user_id, guild_id), ephemeral=True)
             return
 
-        guild_id = interaction.guild.id
-        
         # Get statistics
         stats = await self.db.query(
             "SELECT status, COUNT(*) as count FROM role_requests WHERE guild_id = %s GROUP BY status",
@@ -194,21 +224,26 @@ class RoleRequest(commands.Cog):
         )
 
         embed = discord.Embed(
-            title="📊 Statistiques des demandes de rôles",
+            title=_("role_requests.stats_title", user_id, guild_id),
             color=discord.Color.blue()
         )
         
         if stats:
+            status_mapping = {
+                "pending": ("⏳", _("role_requests.status_pending", user_id, guild_id)),
+                "approved": ("✅", _("role_requests.status_approved", user_id, guild_id)),
+                "denied": ("❌", _("role_requests.status_denied", user_id, guild_id))
+            }
+            
             for stat in stats:
-                status_emoji = {"pending": "⏳", "approved": "✅", "denied": "❌"}
-                status_name = {"pending": "En attente", "approved": "Approuvées", "denied": "Refusées"}
+                emoji, status_name = status_mapping.get(stat['status'], ("📋", stat['status']))
                 embed.add_field(
-                    name=f"{status_emoji.get(stat['status'], '📋')} {status_name.get(stat['status'], stat['status'])}",
+                    name=f"{emoji} {status_name}",
                     value=str(stat['count']),
                     inline=True
                 )
         else:
-            embed.description = "Aucune demande de rôle trouvée."
+            embed.description = _("role_requests.no_requests", user_id, guild_id)
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

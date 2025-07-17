@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands, Embed
+from i18n import _
 
 class Welcome(commands.Cog):
     def __init__(self, bot):
@@ -54,13 +55,16 @@ class Welcome(commands.Cog):
         config = await self.get_welcome_config(guild_id)
         
         channel_id = config.get("welcome_channel")
-        message = config.get("welcome_message", "Bienvenue {memberMention} dans {serverName} ! 🎉")
+        # Use configured message or default translation
+        message = config.get("welcome_message")
+        if not message:
+            message = _("welcome_system.default_welcome_message", member.id, guild_id)
 
         if channel_id:
             channel = self.bot.get_channel(channel_id)
             if channel:
                 embed = Embed(
-                    title="👋 Nouveau membre !",
+                    title=_("welcome_system.new_member_title", member.id, guild_id),
                     description=self.format_message(message, member),
                     color=discord.Color.green()
                 )
@@ -73,13 +77,16 @@ class Welcome(commands.Cog):
         config = await self.get_welcome_config(guild_id)
         
         channel_id = config.get("goodbye_channel")
-        message = config.get("goodbye_message", "{memberName} a quitté {serverName}... 😢")
+        # Use configured message or default translation
+        message = config.get("goodbye_message")
+        if not message:
+            message = _("welcome_system.default_goodbye_message", member.id, guild_id)
 
         if channel_id:
             channel = self.bot.get_channel(channel_id)
             if channel:
                 embed = Embed(
-                    title="👋 Départ",
+                    title=_("welcome_system.member_left_title", member.id, guild_id),
                     description=self.format_message(message, member),
                     color=discord.Color.red()
                 )

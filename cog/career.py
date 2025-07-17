@@ -14,10 +14,9 @@ class Career(commands.Cog):
         description="Add a career decision for a member")
     @app_commands.describe(
         member="The member concerned",
-        decision="Type of decision made",
+        decision="Type of decision made", 
         reason="The reason for this decision",
-        decided_by=
-        "Mention the roles that made the decision (separated by commas or spaces)"
+        decided_by="Mention the roles that made the decision (separated by commas or spaces)"
     )
     @app_commands.choices(decision=[
         app_commands.Choice(name="Warning", value="warning"),
@@ -33,7 +32,7 @@ class Career(commands.Cog):
         user_id = interaction.user.id
         guild_id = interaction.guild.id if interaction.guild else None
         
-        # Get localized decision name
+        # Get localized decision name (this works for the embed content)
         decision_name = _(f"commands.career.decisions.{decision.value}", user_id, guild_id)
         
         embed = discord.Embed(

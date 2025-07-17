@@ -3,6 +3,50 @@ from discord import app_commands
 from discord.ext import commands, tasks
 import random
 import asyncio
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List
+from i18n import _
+
+class XPMultiplier:
+    """XP multiplier system for events and boosts"""
+    
+    def __init__(self):
+        self.multipliers: Dict[int, Dict[str, float]] = {}  # guild_id -> {type: multiplier}
+        self.temporary_multipliers: Dict[int, Dict[str, tuple]] = {}  # guild_id -> {type: (multiplier, expires_at)}
+        
+    def set_multiplier(self, guild_id: int, multiplier_type: str, value: float, duration: Optional[int] = None):
+        """Set a multiplier for a guild"""
+        if guild_id not in self.multipliers:
+            self.multipliers[guild_id] = {}
+            
+        if duration:
+            # Temporary multiplier
+            expires_at = datetime.utcnow() + timedelta(minutes=duration)
+            if guild_id not in self.temporary_multipliers:
+                self.temporary_multipliers[guild_id] = {}
+            self.temporary_multipliers[guild_id][multiplier_type] = (value, expires_at)
+        else:
+            # Permanent multiplier
+            self.multipliers[guild_id][multiplier_type] = value
+            
+    def get_multiplier(self, guild_id: int, multiplier_type: str = "base") -> float:
+        """Get current multiplier for a guild"""
+        multiplier = 1.0
+        
+        # Check permanent multipliers
+        if guild_id in self.multipliers and multiplier_type in self.multipliers[guild_id]:
+            multiplier = self.multipliers[guild_id][multiplier_type]
+            
+        # Check temporary multipliers
+        if guild_id in self.temporary_multipliers and multiplier_type in self.temporary_multipliers[guild_id]:
+            temp_multiplier, expires_at = self.temporary_multipliers[guild_id][multiplier_type]
+            if datetime.utcnow() < expires_at:
+                multiplier = max(multiplier, temp_multiplier)
+            else:
+                # Remove expired multiplier
+                del self.temporary_multipliers[guild_id][multiplier_type]
+                
+        return multiplier
 
 class SetXPChannelModal(discord.ui.Modal, title="Attribuer salon annonces XP"):
     channel_id = discord.ui.TextInput(
@@ -17,11 +61,15 @@ class SetXPChannelModal(discord.ui.Modal, title="Attribuer salon annonces XP"):
         self.guild_id = guild_id
 
     async def on_submit(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
         try:
             channel_id_int = int(self.channel_id.value)
             channel = interaction.guild.get_channel(channel_id_int)
             if not channel:
-                await interaction.response.send_message("Salon introuvable dans cette guild.", ephemeral=True)
+                await interaction.response.send_message(
+                    _("xp_system.config.channel_not_found", user_id, guild_id), ephemeral=True)
                 return
             
             await self.bot.db.query(
@@ -31,9 +79,11 @@ class SetXPChannelModal(discord.ui.Modal, title="Attribuer salon annonces XP"):
                 """,
                 (self.guild_id, channel_id_int, channel_id_int)
             )
-            await interaction.response.send_message(f"Salon {channel.mention} attribué pour les annonces XP !", ephemeral=True)
+            await interaction.response.send_message(
+                _("xp_system.config.channel_success", user_id, guild_id, channel=channel.mention), ephemeral=True)
         except ValueError:
-            await interaction.response.send_message("L'ID du salon doit être un nombre entier.", ephemeral=True)
+            await interaction.response.send_message(
+                _("xp_system.config.invalid_number", user_id, guild_id), ephemeral=True)
 
 class SetRoleLevelModal(discord.ui.Modal, title="Attribuer rôle à un niveau"):
     level = discord.ui.TextInput(
@@ -53,13 +103,17 @@ class SetRoleLevelModal(discord.ui.Modal, title="Attribuer rôle à un niveau"):
         self.guild_id = guild_id
 
     async def on_submit(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
         try:
             level_int = int(self.level.value)
             role_id_int = int(self.role_id.value)
 
             role = interaction.guild.get_role(role_id_int)
             if not role:
-                await interaction.response.send_message("Rôle introuvable dans cette guild.", ephemeral=True)
+                await interaction.response.send_message(
+                    _("xp_system.config.role_not_found", user_id, guild_id), ephemeral=True)
                 return
             
             await self.bot.db.query(
@@ -69,9 +123,11 @@ class SetRoleLevelModal(discord.ui.Modal, title="Attribuer rôle à un niveau"):
                 """,
                 (self.guild_id, level_int, role_id_int, role_id_int)
             )
-            await interaction.response.send_message(f"Rôle {role.mention} attribué au niveau {level_int} !", ephemeral=True)
+            await interaction.response.send_message(
+                _("xp_system.config.role_success", user_id, guild_id, role=role.mention, level=level_int), ephemeral=True)
         except ValueError:
-            await interaction.response.send_message("Le niveau et l'ID du rôle doivent être des nombres entiers.", ephemeral=True)
+            await interaction.response.send_message(
+                _("xp_system.config.invalid_number", user_id, guild_id), ephemeral=True)
 
 class ConfigLevelView(discord.ui.View):
     def __init__(self, bot, guild_id):
@@ -93,6 +149,9 @@ class XPSystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.cooldown = {}
+        self.xp_batch = {}  # For batching XP updates
+        self.batch_size = 50  # Process batches of 50 XP updates
+        self.xp_multiplier = XPMultiplier()  # XP multiplier system
         print("✅ XPSystem cog chargé")
 
     @commands.Cog.listener()
@@ -144,31 +203,71 @@ class XPSystem(commands.Cog):
         print("✅ Boucle XP vocale terminée.\n")
 
     async def add_xp(self, user_id, guild_id, amount, source="text"):
-        sql = "SELECT * FROM xp_data WHERE user_id = %s AND guild_id = %s"
-        data = await self.bot.db.query(sql, (user_id, guild_id), fetchone=True)
+        """Add XP to a user with improved performance and history tracking"""
+        try:
+            sql = "SELECT * FROM xp_data WHERE user_id = %s AND guild_id = %s"
+            data = await self.bot.db.query(sql, (user_id, guild_id), fetchone=True)
 
-        if not data:
+            if not data:
+                await self.bot.db.query(
+                    "INSERT INTO xp_data (user_id, guild_id, xp, level, text_xp, voice_xp) VALUES (%s, %s, 0, 1, 0, 0)",
+                    (user_id, guild_id)
+                )
+                data = {"xp": 0, "level": 1, "text_xp": 0, "voice_xp": 0}
+
+            # Apply multipliers
+            base_xp = amount
+            text_xp = data["text_xp"] + amount if source == "text" else data["text_xp"]
+            voice_xp = data["voice_xp"] + amount if source == "voice" else data["voice_xp"]
+
+            # Get guild-specific multipliers
+            guild_multiplier = self.xp_multiplier.get_multiplier(guild_id, source)
+            print(f"Guild XP Multiplier ({source}): {guild_multiplier}")
+
+            # Calculate actual XP gained with multiplier
+            actual_xp_gained = int(base_xp * guild_multiplier)
+            new_xp = data["xp"] + actual_xp_gained
+            new_level = int((new_xp / 100)**0.5) + 1
+            leveled_up = new_level > data["level"]
+
+            # Update main XP table
             await self.bot.db.query(
-                "INSERT INTO xp_data (user_id, guild_id, xp, level, text_xp, voice_xp) VALUES (%s, %s, 0, 1, 0, 0)",
-                (user_id, guild_id)
+                "UPDATE xp_data SET xp=%s, text_xp=%s, voice_xp=%s, level=%s WHERE user_id=%s AND guild_id=%s",
+                (new_xp, text_xp, voice_xp, new_level, user_id, guild_id)
             )
-            data = {"xp": 0, "level": 1, "text_xp": 0, "voice_xp": 0}
+            
+            # Track XP history for leaderboards (only if we have the table)
+            try:
+                await self.bot.db.query(
+                    "INSERT INTO xp_history (user_id, guild_id, xp_gained, xp_type) VALUES (%s, %s, %s, %s)",
+                    (user_id, guild_id, actual_xp_gained, source)
+                )
+            except Exception as history_error:
+                # If table doesn't exist, continue without history tracking
+                print(f"[XP][WARNING] XP history tracking failed (table may not exist): {history_error}")
 
-        new_xp = data["xp"] + amount
-        text_xp = data["text_xp"] + amount if source == "text" else data["text_xp"]
-        voice_xp = data["voice_xp"] + amount if source == "voice" else data["voice_xp"]
-        new_level = int((new_xp / 100)**0.5) + 1
-        leveled_up = new_level > data["level"]
+            return leveled_up, new_level
+        except Exception as e:
+            print(f"[XP][ERROR] Error adding XP: {e}")
+            return False, 1
 
-        await self.bot.db.query(
-            "UPDATE xp_data SET xp=%s, text_xp=%s, voice_xp=%s, level=%s WHERE user_id=%s AND guild_id=%s",
-            (new_xp, text_xp, voice_xp, new_level, user_id, guild_id)
-        )
-
-        return leveled_up, new_level
+    def calculate_level(self, total_xp: int) -> int:
+        """Calculate level from total XP"""
+        return int((total_xp / 100)**0.5) + 1
+        
+    def calculate_xp_for_level(self, level: int) -> int:
+        """Calculate XP needed for a specific level"""
+        return (level - 1)**2 * 100
+        
+    def calculate_xp_needed_for_next_level(self, current_xp: int) -> int:
+        """Calculate XP needed for the next level"""
+        current_level = self.calculate_level(current_xp)
+        next_level_xp = self.calculate_xp_for_level(current_level + 1)
+        return next_level_xp - current_xp
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        """Handle message XP with improved performance"""
         if message.author.bot or not message.guild:
             return
 
@@ -179,17 +278,27 @@ class XPSystem(commands.Cog):
         if key in self.cooldown:
             return
 
-        xp = random.randint(3, 6)
-        leveled_up, level = await self.add_xp(user_id, guild_id, xp, source="text")
+        try:
+            xp = random.randint(3, 6)
+            leveled_up, level = await self.add_xp(user_id, guild_id, xp, source="text")
 
-        if leveled_up:
-            await self.handle_level_up(message.guild, message.author, level)
+            if leveled_up:
+                await self.handle_level_up(message.guild, message.author, level)
 
-        self.cooldown[key] = True
-        await asyncio.sleep(10)
-        del self.cooldown[key]
+            self.cooldown[key] = True
+            await asyncio.sleep(10)
+            if key in self.cooldown:  # Check if still exists before deleting
+                del self.cooldown[key]
+        except Exception as e:
+            print(f"[XP][ERROR] Error processing message XP: {e}")
+            # Remove from cooldown even on error
+            if key in self.cooldown:
+                del self.cooldown[key]
 
     async def handle_level_up(self, guild, member, level):
+        user_id = member.id
+        guild_id = guild.id
+        
         config = await self.bot.db.query("SELECT xp_channel FROM xp_config WHERE guild_id = %s", (guild.id,), fetchone=True)
         gained_roles = []
 
@@ -210,13 +319,17 @@ class XPSystem(commands.Cog):
             channel = guild.get_channel(config["xp_channel"])
             if channel:
                 embed = discord.Embed(
-                    title="🎉 Niveau atteint !",
-                    description=f"{member.mention} est maintenant **niveau {level}** !",
+                    title=_("xp_system.level_up.title", user_id, guild_id),
+                    description=_("xp_system.level_up.description", user_id, guild_id, user=member.mention, level=level),
                     color=discord.Color.gold()
                 )
                 embed.set_thumbnail(url=member.display_avatar.url)
                 if gained_roles:
-                    embed.add_field(name="🎁 Rôle(s) obtenu(s)", value=", ".join(gained_roles), inline=False)
+                    embed.add_field(
+                        name=_("xp_system.level_up.roles_gained", user_id, guild_id), 
+                        value=", ".join(gained_roles), 
+                        inline=False
+                    )
 
                 await channel.send(content=f"{member.mention}", embed=embed)
 
@@ -234,6 +347,7 @@ class XPSystem(commands.Cog):
 
     @app_commands.command(name="topxp", description="Afficher le classement des XP (texte, vocal, total)")            
     async def topxp(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
         guild_id = interaction.guild.id
 
         # Récupérer top 10 par text_xp, voice_xp et total xp
@@ -247,11 +361,15 @@ class XPSystem(commands.Cog):
         rows = await self.bot.db.query(query, (guild_id,), fetchall=True)
 
         if not rows:
-            await interaction.response.send_message("Aucune donnée XP trouvée dans ce serveur.", ephemeral=True)
+            await interaction.response.send_message(
+                _("commands.topxp.no_data", user_id, guild_id), ephemeral=True)
             return
 
-        embed = discord.Embed(title="🏆 Top 10 XP", color=discord.Color.gold())
-        embed.set_footer(text="Classement basé sur l'XP totale")
+        embed = discord.Embed(
+            title=_("commands.topxp.embed_title", user_id, guild_id), 
+            color=discord.Color.gold()
+        )
+        embed.set_footer(text=_("commands.topxp.embed_footer", user_id, guild_id))
 
         text_lines = []
         voice_lines = []
@@ -261,18 +379,31 @@ class XPSystem(commands.Cog):
             member = interaction.guild.get_member(row["user_id"])
             name = member.display_name if member else f"Utilisateur ID {row['user_id']}"
 
-            text_lines.append(f"{i}. {name} — {row['text_xp']} XP texte")
-            voice_lines.append(f"{i}. {name} — {row['voice_xp']} XP vocal")
-            total_lines.append(f"{i}. {name} — {row['xp']} XP total")
+            text_lines.append(f"{i}. {name} — {row['text_xp']} XP")
+            voice_lines.append(f"{i}. {name} — {row['voice_xp']} XP")
+            total_lines.append(f"{i}. {name} — {row['xp']} XP")
 
-        embed.add_field(name="XP Texte", value="\n".join(text_lines), inline=True)
-        embed.add_field(name="XP Vocal", value="\n".join(voice_lines), inline=True)
-        embed.add_field(name="XP Total", value="\n".join(total_lines), inline=True)
+        embed.add_field(
+            name=_("commands.topxp.text_xp_field", user_id, guild_id), 
+            value="\n".join(text_lines), 
+            inline=True
+        )
+        embed.add_field(
+            name=_("commands.topxp.voice_xp_field", user_id, guild_id), 
+            value="\n".join(voice_lines), 
+            inline=True
+        )
+        embed.add_field(
+            name=_("commands.topxp.total_xp_field", user_id, guild_id), 
+            value="\n".join(total_lines), 
+            inline=True
+        )
 
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="levelroles", description="Afficher la liste des rôles attribués par niveau")       
     async def levelroles(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
         guild_id = interaction.guild.id
 
         rows = await self.bot.db.query(
@@ -282,7 +413,8 @@ class XPSystem(commands.Cog):
         )
 
         if not rows:
-            await interaction.response.send_message("Aucun rôle configuré pour les niveaux dans ce serveur.", ephemeral=True)
+            await interaction.response.send_message(
+                _("xp_system.level_roles.no_roles", user_id, guild_id), ephemeral=True)
             return
 
         lines = []
@@ -292,7 +424,7 @@ class XPSystem(commands.Cog):
             lines.append(f"Niveau {row['level']} → {role_name}")
 
         embed = discord.Embed(
-            title="🎖️ Rôles attribués par niveau",
+            title=_("xp_system.level_roles.title", user_id, guild_id),
             description="\n".join(lines),
             color=discord.Color.blue()
         )
@@ -306,7 +438,8 @@ class XPSystem(commands.Cog):
 
         data = await self.bot.db.query("SELECT * FROM xp_data WHERE user_id=%s AND guild_id=%s", (user_id, guild_id), fetchone=True)
         if not data:
-            await interaction.response.send_message("Tu n'as pas encore d'XP. Parle un peu !", ephemeral=True)
+            await interaction.response.send_message(
+                _("commands.level.no_xp", user_id, guild_id), ephemeral=True)
             return
 
         xp = data["xp"]
@@ -319,14 +452,319 @@ class XPSystem(commands.Cog):
         filled = int(bar_length * progress / total_needed)
         bar = "█" * filled + "-" * (bar_length - filled)
 
-        embed = discord.Embed(title=f"Niveau de {interaction.user.display_name}", color=0x00ff00)
+        embed = discord.Embed(
+            title=_("commands.level.embed_title", user_id, guild_id, user=interaction.user.display_name), 
+            color=0x00ff00
+        )
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
-        embed.add_field(name="Niveau", value=str(level), inline=True)
-        embed.add_field(name="XP total", value=f"{xp}/{xp_next}", inline=True)
-        embed.add_field(name="Progression", value=f"[{bar}] ({progress}/{total_needed})", inline=False)
-        embed.add_field(name="XP texte", value=str(data["text_xp"]), inline=True)
-        embed.add_field(name="XP vocal", value=str(data["voice_xp"]), inline=True)
+        embed.add_field(
+            name=_("commands.level.level_field", user_id, guild_id), 
+            value=str(level), 
+            inline=True
+        )
+        embed.add_field(
+            name=_("commands.level.total_xp_field", user_id, guild_id), 
+            value=f"{xp}/{xp_next}", 
+            inline=True
+        )
+        embed.add_field(
+            name=_("commands.level.progress_field", user_id, guild_id), 
+            value=f"[{bar}] ({progress}/{total_needed})", 
+            inline=False
+        )
+        embed.add_field(
+            name=_("commands.level.text_xp_field", user_id, guild_id), 
+            value=str(data["text_xp"]), 
+            inline=True
+        )
+        embed.add_field(
+            name=_("commands.level.voice_xp_field", user_id, guild_id), 
+            value=str(data["voice_xp"]), 
+            inline=True
+        )
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="xpmultiplier", description="Set XP multiplier for events")
+    @app_commands.describe(
+        multiplier="The multiplier value (e.g., 2.0 for double XP)",
+        duration="Duration in minutes (optional, permanent if not specified)",
+        event_type="Type of event (text, voice, or both)"
+    )
+    @app_commands.choices(event_type=[
+        app_commands.Choice(name="Text XP", value="text"),
+        app_commands.Choice(name="Voice XP", value="voice"),
+        app_commands.Choice(name="Both", value="both")
+    ])
+    async def set_xp_multiplier(self, interaction: discord.Interaction, multiplier: float, 
+                               event_type: str, duration: Optional[int] = None):
+        """Set XP multiplier for events"""
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        
+        # Check permissions
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message(
+                _("errors.admin_only", user_id, guild_id),
+                ephemeral=True
+            )
+            return
+            
+        # Validate multiplier
+        if multiplier < 0.1 or multiplier > 10.0:
+            await interaction.response.send_message(
+                _("xp_system.multiplier.invalid_range", user_id, guild_id),
+                ephemeral=True
+            )
+            return
+            
+        # Set multiplier
+        if event_type == "both":
+            self.xp_multiplier.set_multiplier(guild_id, "text", multiplier, duration)
+            self.xp_multiplier.set_multiplier(guild_id, "voice", multiplier, duration)
+        else:
+            self.xp_multiplier.set_multiplier(guild_id, event_type, multiplier, duration)
+            
+        # Create response message
+        duration_text = f" for {duration} minutes" if duration else " (permanent)"
+        await interaction.response.send_message(
+            _("xp_system.multiplier.success", user_id, guild_id, 
+              multiplier=multiplier, type=event_type, duration=duration_text),
+            ephemeral=True
+        )
+
+    @app_commands.command(name="weeklyleaderboard", description="Show weekly XP leaderboard")
+    async def weekly_leaderboard(self, interaction: discord.Interaction):
+        """Show weekly XP leaderboard with persistent caching"""
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        
+        # Check persistent cache
+        cache_key = f"weekly_leaderboard_{guild_id}"
+        cached_embed = self.bot.cache.leaderboards.get(cache_key)
+        
+        if cached_embed:
+            # Convert cached data back to embed
+            embed_dict = cached_embed
+            embed = discord.Embed.from_dict(embed_dict)
+            await interaction.response.send_message(embed=embed)
+            return
+        
+        try:
+            # Get weekly XP data
+            week_ago = datetime.utcnow() - timedelta(days=7)
+            weekly_data = await self.bot.db.query(
+                """SELECT user_id, SUM(xp_gained) as weekly_xp
+                   FROM xp_history 
+                   WHERE guild_id = %s AND timestamp >= %s
+                   GROUP BY user_id
+                   ORDER BY weekly_xp DESC
+                   LIMIT 10""",
+                (guild_id, week_ago)
+            )
+            
+            if not weekly_data:
+                await interaction.response.send_message(
+                    _("xp_system.weekly_leaderboard.no_data", user_id, guild_id),
+                    ephemeral=True
+                )
+                return
+                
+            # Create embed
+            embed = discord.Embed(
+                title=_("xp_system.weekly_leaderboard.title", user_id, guild_id),
+                color=discord.Color.gold(),
+                timestamp=datetime.utcnow()
+            )
+            
+            leaderboard_text = ""
+            for i, data in enumerate(weekly_data, 1):
+                user = self.bot.get_user(data[0])
+                username = user.display_name if user else "Unknown User"
+                
+                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+                leaderboard_text += f"{medal} **{username}**: {data[1]} XP\n"
+                
+            embed.description = leaderboard_text
+            embed.set_footer(text=_("xp_system.weekly_leaderboard.footer", user_id, guild_id))
+            
+            # Cache the result as dict (for persistence) - 30 minutes TTL
+            self.bot.cache.leaderboards.set(cache_key, embed.to_dict(), ttl=1800)
+            
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            print(f"Error in weekly leaderboard: {e}")
+            await interaction.response.send_message(
+                _("errors.unknown_error", user_id, guild_id),
+                ephemeral=True
+            )
+
+    @app_commands.command(name="monthlyleaderboard", description="Show monthly XP leaderboard")
+    async def monthly_leaderboard(self, interaction: discord.Interaction):
+        """Show monthly XP leaderboard with persistent caching"""
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        
+        # Check persistent cache
+        cache_key = f"monthly_leaderboard_{guild_id}"
+        cached_embed = self.bot.cache.leaderboards.get(cache_key)
+        
+        if cached_embed:
+            # Convert cached data back to embed
+            embed_dict = cached_embed
+            embed = discord.Embed.from_dict(embed_dict)
+            await interaction.response.send_message(embed=embed)
+            return
+        
+        try:
+            # Get monthly XP data
+            month_ago = datetime.utcnow() - timedelta(days=30)
+            monthly_data = await self.bot.db.query(
+                """SELECT user_id, SUM(xp_gained) as monthly_xp
+                   FROM xp_history 
+                   WHERE guild_id = %s AND timestamp >= %s
+                   GROUP BY user_id
+                   ORDER BY monthly_xp DESC
+                   LIMIT 10""",
+                (guild_id, month_ago)
+            )
+            
+            if not monthly_data:
+                await interaction.response.send_message(
+                    _("xp_system.monthly_leaderboard.no_data", user_id, guild_id),
+                    ephemeral=True
+                )
+                return
+                
+            # Create embed
+            embed = discord.Embed(
+                title=_("xp_system.monthly_leaderboard.title", user_id, guild_id),
+                color=discord.Color.purple(),
+                timestamp=datetime.utcnow()
+            )
+            
+            leaderboard_text = ""
+            for i, data in enumerate(monthly_data, 1):
+                user = self.bot.get_user(data[0])
+                username = user.display_name if user else "Unknown User"
+                
+                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+                leaderboard_text += f"{medal} **{username}**: {data[1]} XP\n"
+                
+            embed.description = leaderboard_text
+            embed.set_footer(text=_("xp_system.monthly_leaderboard.footer", user_id, guild_id))
+            
+            # Cache the result as dict (for persistence) - 30 minutes TTL
+            self.bot.cache.leaderboards.set(cache_key, embed.to_dict(), ttl=1800)
+            
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            print(f"Error in monthly leaderboard: {e}")
+            await interaction.response.send_message(
+                _("errors.unknown_error", user_id, guild_id),
+                ephemeral=True
+            )
+
+    @app_commands.command(name="xpstats", description="Show detailed XP statistics")
+    async def xp_stats(self, interaction: discord.Interaction, member: Optional[discord.Member] = None):
+        """Show detailed XP statistics for a user"""
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        target_user = member or interaction.user
+        
+        try:
+            # Get comprehensive XP data
+            xp_data = await self.bot.db.query(
+                "SELECT * FROM xp WHERE guild_id = %s AND user_id = %s",
+                (guild_id, target_user.id)
+            )
+            
+            if not xp_data:
+                await interaction.response.send_message(
+                    _("xp_system.stats.no_data", user_id, guild_id, user=target_user.display_name),
+                    ephemeral=True
+                )
+                return
+                
+            data = xp_data[0]
+            
+            # Get recent activity
+            week_ago = datetime.utcnow() - timedelta(days=7)
+            try:
+                recent_activity = await self.bot.db.query(
+                    """SELECT DATE(timestamp) as date, SUM(xp_gained) as daily_xp
+                       FROM xp_history 
+                       WHERE guild_id = %s AND user_id = %s AND timestamp >= %s
+                       GROUP BY DATE(timestamp)
+                       ORDER BY date DESC
+                       LIMIT 7""",
+                    (guild_id, target_user.id, week_ago)
+                )
+            except Exception as e:
+                print(f"Error getting recent activity: {e}")
+                recent_activity = []
+            
+            # Calculate level and progress
+            level = self.calculate_level(data["total_xp"])
+            xp_for_current_level = self.calculate_xp_for_level(level)
+            xp_for_next_level = self.calculate_xp_for_level(level + 1)
+            xp_progress = data["total_xp"] - xp_for_current_level
+            xp_needed = xp_for_next_level - data["total_xp"]
+            
+            # Create detailed embed
+            embed = discord.Embed(
+                title=_("xp_system.stats.title", user_id, guild_id, user=target_user.display_name),
+                color=discord.Color.blue(),
+                timestamp=datetime.utcnow()
+            )
+            embed.set_thumbnail(url=target_user.display_avatar.url)
+            
+            embed.add_field(
+                name=_("xp_system.stats.level_field", user_id, guild_id),
+                value=f"**{level}** ({xp_progress}/{xp_for_next_level - xp_for_current_level})",
+                inline=True
+            )
+            embed.add_field(
+                name=_("xp_system.stats.total_xp_field", user_id, guild_id),
+                value=f"**{data['total_xp']}** XP",
+                inline=True
+            )
+            embed.add_field(
+                name=_("xp_system.stats.xp_needed_field", user_id, guild_id),
+                value=f"**{xp_needed}** XP",
+                inline=True
+            )
+            embed.add_field(
+                name=_("xp_system.stats.text_xp_field", user_id, guild_id),
+                value=f"**{data['text_xp']}** XP",
+                inline=True
+            )
+            embed.add_field(
+                name=_("xp_system.stats.voice_xp_field", user_id, guild_id),
+                value=f"**{data['voice_xp']}** XP",
+                inline=True
+            )
+            
+            # Add recent activity
+            if recent_activity:
+                activity_text = ""
+                for day_data in recent_activity:
+                    activity_text += f"**{day_data[0]}**: {day_data[1]} XP\n"
+                embed.add_field(
+                    name=_("xp_system.stats.recent_activity_field", user_id, guild_id),
+                    value=activity_text,
+                    inline=False
+                )
+            
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            print(f"Error in XP stats: {e}")
+            await interaction.response.send_message(
+                _("errors.unknown_error", user_id, guild_id),
+                ephemeral=True
+            )
 
 async def setup(bot):
     await bot.add_cog(XPSystem(bot))
