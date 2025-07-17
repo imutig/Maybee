@@ -177,8 +177,20 @@ class ConfigView(discord.ui.View):
                 value=f"{len(result)} " + _("config_system.role_reactions.reactions_configured", interaction.user.id, self.guild_id),
                 inline=False
             )
+        else:
+            embed.add_field(
+                name=_("config_system.role_reactions.current_reactions", interaction.user.id, self.guild_id),
+                value=_("config_system.role_reactions.no_configs", interaction.user.id, self.guild_id),
+                inline=False
+            )
         
-        view = RoleReactionsConfigView(self.bot, self.guild_id)
+        embed.add_field(
+            name="ℹ️ Information",
+            value=_("config_system.role_reactions.interactive_warning", interaction.user.id, self.guild_id),
+            inline=False
+        )
+        
+        view = RoleReactionsInfoView(self.bot, self.guild_id)
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
     async def show_xp_system_config(self, interaction: discord.Interaction):
@@ -316,21 +328,19 @@ class RoleRequestsConfigView(discord.ui.View):
         await self.bot.db.query("DELETE FROM role_request_config WHERE guild_id = %s", (self.guild_id,))
         await interaction.response.send_message(_("config_system.role_requests.disabled", interaction.user.id, self.guild_id), ephemeral=True)
 
-class RoleReactionsConfigView(discord.ui.View):
+class RoleReactionsInfoView(discord.ui.View):
     def __init__(self, bot, guild_id: int):
         super().__init__(timeout=300)
         self.bot = bot
         self.guild_id = guild_id
     
-    @discord.ui.button(label="Add Reaction", style=discord.ButtonStyle.primary, emoji="➕")
-    async def add_role_reaction(self, interaction: discord.Interaction, button: discord.ui.Button):
-        modal = RoleReactionModal(self.bot, self.guild_id)
-        await interaction.response.send_modal(modal)
-    
-    @discord.ui.button(label="Remove All", style=discord.ButtonStyle.danger, emoji="🗑️")
-    async def remove_all_reactions(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.bot.db.query("DELETE FROM role_reactions WHERE guild_id = %s", (self.guild_id,))
-        await interaction.response.send_message(_("config_system.role_reactions.removed_all", interaction.user.id, self.guild_id), ephemeral=True)
+    @discord.ui.button(label="Use /rolereact", style=discord.ButtonStyle.primary, emoji="⚡")
+    async def use_rolereact(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            _("config_system.role_reactions.use_command_button", interaction.user.id, self.guild_id) + "\n\n" +
+            "💡 **Tip:** Type `/rolereact` to access the full role reaction management interface!",
+            ephemeral=True
+        )
 
 class XPSystemConfigView(discord.ui.View):
     def __init__(self, bot, guild_id: int):
@@ -517,46 +527,6 @@ class RoleRequestChannelModal(discord.ui.Modal):
         
         await self.bot.db.query("INSERT INTO role_request_config (guild_id, channel_id) VALUES (%s, %s) ON DUPLICATE KEY UPDATE channel_id = %s", (self.guild_id, channel.id, channel.id))
         await interaction.response.send_message(_("config_system.role_requests.channel_set", interaction.user.id, self.guild_id, channel=channel.mention), ephemeral=True)
-
-class RoleReactionModal(discord.ui.Modal):
-    def __init__(self, bot, guild_id: int):
-        super().__init__(title="Add Role Reaction")
-        self.bot = bot
-        self.guild_id = guild_id
-        
-        self.emoji_input = discord.ui.TextInput(
-            label="Emoji",
-            placeholder="Enter emoji (e.g., 🎮 or :emoji_name:)",
-            required=True
-        )
-        self.role_input = discord.ui.TextInput(
-            label="Role",
-            placeholder="Enter role name or ID",
-            required=True
-        )
-        self.add_item(self.emoji_input)
-        self.add_item(self.role_input)
-    
-    async def on_submit(self, interaction: discord.Interaction):
-        emoji = self.emoji_input.value.strip()
-        role_input = self.role_input.value.strip()
-        
-        # Try to find the role
-        role = None
-        if role_input.startswith('<@&') and role_input.endswith('>'):
-            role_id = int(role_input[3:-1])
-            role = interaction.guild.get_role(role_id)
-        elif role_input.isdigit():
-            role = interaction.guild.get_role(int(role_input))
-        else:
-            role = discord.utils.get(interaction.guild.roles, name=role_input)
-        
-        if not role:
-            await interaction.response.send_message(_("config_system.role_reactions.role_not_found", interaction.user.id, self.guild_id), ephemeral=True)
-            return
-        
-        await self.bot.db.query("INSERT INTO role_reactions (guild_id, emoji, role_id) VALUES (%s, %s, %s)", (self.guild_id, emoji, role.id))
-        await interaction.response.send_message(_("config_system.role_reactions.added", interaction.user.id, self.guild_id, emoji=emoji, role=role.name), ephemeral=True)
 
 class XPRateModal(discord.ui.Modal):
     def __init__(self, bot, guild_id: int):

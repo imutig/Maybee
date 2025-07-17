@@ -295,6 +295,73 @@
     }
   },
   "role_reactions": {
+    "command": {
+      "description": "Configurer les rôles par réaction avec interface moderne"
+    },
+    "main_menu": {
+      "title": "⚡ Gestion des Rôles par Réaction",
+      "description": "Configurez l'attribution automatique de rôles via les réactions de message. Choisissez une option ci-dessous pour commencer.",
+      "current_stats": "Statistiques Actuelles",
+      "stats_value": "{count} rôles par réaction configurés"
+    },
+    "menu": {
+      "placeholder": "Choisissez une action...",
+      "create_new": "Créer Nouveau",
+      "create_new_desc": "Créer un nouveau message de rôles par réaction",
+      "edit_existing": "Modifier Existant",
+      "edit_existing_desc": "Modifier ou éditer les messages de rôles par réaction existants",
+      "view_all": "Voir Tout",
+      "view_all_desc": "Voir tous les rôles par réaction configurés"
+    },
+    "create_modal": {
+      "title": "Créer Message de Rôles par Réaction",
+      "title_label": "Titre de l'Embed",
+      "title_placeholder": "ex: Obtenez vos rôles !",
+      "description_label": "Description de l'Embed",
+      "description_placeholder": "ex: Cliquez sur les réactions ci-dessous pour obtenir vos rôles",
+      "reactions_label": "Réactions (une par ligne)",
+      "reactions_placeholder": "Format: emoji:nom_du_rôle ou emoji:id_du_rôle\nExemple:\n🎮:Gaming\n🎨:Artiste\n📚:@Étudiant",
+      "default_description": "Cliquez sur les réactions ci-dessous pour obtenir vos rôles !"
+    },
+    "add_reaction_modal": {
+      "title": "Ajouter Nouvelle Réaction",
+      "emoji_label": "Emoji",
+      "emoji_placeholder": "ex: 🎮 ou <:custom:123456789>",
+      "role_label": "Rôle",
+      "role_placeholder": "Nom du rôle, ID, ou mention (@Rôle)"
+    },
+    "existing_messages": {
+      "title": "📝 Messages de Rôles par Réaction Existants",
+      "description": "Sélectionnez un message pour éditer ses réactions :"
+    },
+    "edit_message": {
+      "title": "✏️ Modifier Message de Rôles par Réaction",
+      "description": "ID du message : {message_id}\nChoisissez ce que vous voulez faire :"
+    },
+    "all_configs": {
+      "title": "📊 Toutes les Configurations de Rôles par Réaction",
+      "description": "Voici tous vos rôles par réaction configurés :"
+    },
+    "embed": {
+      "reactions_field": "Réactions Disponibles"
+    },
+    "messages": {
+      "role_added": "{user} 🎉 Tu as reçu le rôle **{role}** !",
+      "role_removed": "{user} ❌ Le rôle **{role}** t'a été retiré."
+    },
+    "no_messages": "❌ Aucun message de rôles par réaction trouvé. Créez-en un d'abord !",
+    "no_configs": "❌ Aucun rôle par réaction configuré.",
+    "no_reactions_to_remove": "❌ Aucune réaction trouvée pour ce message.",
+    "select_reaction_to_remove": "Sélectionnez les réactions que vous voulez supprimer :",
+    "create_errors": "❌ **Erreurs trouvées :**\n{errors}",
+    "no_valid_reactions": "❌ Aucune réaction valide trouvée. Vérifiez votre format.",
+    "role_not_found": "❌ Rôle non trouvé : {role}",
+    "message_not_found": "❌ Message non trouvé. Il a peut-être été supprimé.",
+    "invalid_emoji": "❌ Emoji invalide : {emoji}",
+    "create_success": "✅ Message de rôles par réaction créé avec {count} réactions !",
+    "reaction_added": "✅ Réaction {emoji} → {role} ajoutée avec succès !",
+    "reactions_removed": "✅ Réactions supprimées : {reactions}",
+    "all_reactions_removed": "✅ Toutes les réactions supprimées du message !",
     "config": {
       "description": "Configurer les rôles par réaction",
       "no_permission": "❌ Vous devez être administrateur pour utiliser cette commande.",
@@ -308,10 +375,6 @@
       "no_config": "⚠️ Aucune configuration ajoutée.",
       "embed_title": "Clique sur une réaction pour obtenir un rôle ✨",
       "success": "✅ Configuration terminée. Les utilisateurs peuvent maintenant réagir pour obtenir un rôle."
-    },
-    "messages": {
-      "role_added": "{user} 🎉 Tu as reçu le rôle **{role}** !",
-      "role_removed": "{user} ❌ Le rôle **{role}** t'a été retiré."
     }
   },
   "ticket_system": {
@@ -474,18 +537,14 @@
     },
     "role_reactions": {
       "title": "⚡ Configuration des rôles par réaction",
-      "description": "Configurez les rôles qui peuvent être obtenus par réaction.",
+      "description": "Voir et gérer les rôles qui peuvent être obtenus par réaction.",
       "active_configs": "Configurations actives",
       "configs_count": "{count} rôles par réaction configurés",
       "no_configs": "Aucun rôle par réaction configuré",
-      "configure_button": "Configurer rôles par réaction",
-      "interactive_warning": "⚠️ La configuration des rôles par réaction nécessite une configuration interactive. Utilisez la commande `/rolereact` pour configurer les rôles par réaction.",
-      "error": "❌ Impossible de récupérer la configuration.",
+      "interactive_warning": "💡 **Utilisez la commande `/rolereact` pour une gestion complète**\n\nLa commande `/rolereact` améliorée offre :\n• Interface moderne avec boutons et menus\n• Créer de nouveaux messages de rôles par réaction\n• Modifier les messages et réactions existants\n• Supprimer des réactions individuelles ou des messages entiers\n• Voir toutes les configurations\n\nUtilisez simplement `/rolereact` pour accéder à toutes les fonctionnalités de rôles par réaction !",
       "current_reactions": "Réactions actuelles",
-      "reactions_configured": "Réactions configurées",
-      "added": "Ajouté",
-      "removed_all": "Toutes les réactions supprimées",
-      "role_not_found": "Rôle introuvable"
+      "reactions_configured": "réactions configurées",
+      "use_command_button": "Ouvrir /rolereact"
     },
     "xp_system": {
       "title": "📊 Configuration du système XP",

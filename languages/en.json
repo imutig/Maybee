@@ -295,6 +295,55 @@
     }
   },
   "role_reactions": {
+    "command": {
+      "description": "Configure role reactions with simple message interface"
+    },
+    "main_menu": {
+      "title": "⚡ Role Reactions Management",
+      "description": "Configure automatic role assignment through message reactions. Use the buttons below to manage your role reactions.",
+      "current_stats": "Current Statistics",
+      "stats_value": "{count} role reactions configured"
+    },
+    "create_new": {
+      "title": "📝 Create Role Reaction Message",
+      "step1_description": "**Step 1:** Reply to this message with the title and description for your role reaction message.\n\n**Format:**\n```\nTitle: Your Title Here\nDescription: Your description here\n```\n\n**Example:**\n```\nTitle: Get Your Roles!\nDescription: Click the reactions below to get your roles\n```",
+      "step2_description": "**Step 2:** Add reactions one by one using this format:\n```\nEmoji: 🎮\nRole: @Gaming\n```\n\nOr:\n```\nEmoji: 🎨\nRole: Artist\n```\n\n**Type 'done' when finished adding all reactions.**",
+      "format_error": "❌ Please provide a title using the format: `Title: Your Title Here`",
+      "timeout": "⏱️ Timed out waiting for response.",
+      "role_added": "✅ Added: {emoji} → {role}",
+      "role_not_found": "❌ Role '{role}' not found. Please check the role name or mention.",
+      "format_instructions": "❌ Please use the format:\n```\nEmoji: 🎮\nRole: @Gaming\n```",
+      "no_reactions": "❌ No reactions added. Cancelled.",
+      "success": "✅ Role reaction message created with {count} reactions!"
+    },
+    "edit_existing": {
+      "title": "📝 Existing Role Reaction Messages",
+      "description": "Select a message to edit its reactions:",
+      "message_title": "✏️ Edit Role Reaction Message",
+      "message_description": "Message ID: {message_id}\nChoose what you'd like to do:",
+      "add_reaction_title": "➕ Add New Reaction",
+      "add_reaction_description": "Add a new reaction to this message using this format:\n```\nEmoji: 🎮\nRole: @Gaming\n```\n\nReply with the emoji and role information.",
+      "add_success": "✅ Added: {emoji} → {role}",
+      "remove_reactions": "Select the reactions you want to remove:",
+      "remove_success": "✅ Reactions removed: {reactions}",
+      "remove_all_success": "✅ All reactions removed from the message!"
+    },
+    "view_all": {
+      "title": "📊 All Role Reaction Configurations",
+      "description": "Here are all your configured role reactions:"
+    },
+    "messages": {
+      "role_added": "{user} 🎉 You received the role **{role}**!",
+      "role_removed": "{user} ❌ The role **{role}** was removed from you."
+    },
+    "no_messages": "❌ No role reaction messages found. Create one first!",
+    "no_configs": "❌ No role reactions configured.",
+    "no_reactions_to_remove": "❌ No reactions found for this message.",
+    "message_not_found": "❌ Message not found. It may have been deleted.",
+    "invalid_emoji": "❌ Invalid emoji: {emoji}",
+    "embed": {
+      "reactions_field": "Available Reactions"
+    },
     "config": {
       "description": "Configure role reactions",
       "no_permission": "❌ You must be an administrator to use this command.",
@@ -308,10 +357,6 @@
       "no_config": "⚠️ No configuration added.",
       "embed_title": "Click on a reaction to get a role ✨",
       "success": "✅ Configuration completed. Users can now react to get roles."
-    },
-    "messages": {
-      "role_added": "{user} 🎉 You received the role **{role}**!",
-      "role_removed": "{user} ❌ The role **{role}** was removed from you."
     }
   },
   "ticket_system": {
@@ -478,18 +523,14 @@
     },
     "role_reactions": {
       "title": "⚡ Role Reactions Configuration",
-      "description": "Configure roles that can be obtained by reaction.",
+      "description": "View and manage roles that can be obtained by reaction.",
       "active_configs": "Active Configurations",
       "configs_count": "{count} role reactions configured",
       "no_configs": "No role reactions configured",
-      "configure_button": "Configure Role Reactions",
-      "interactive_warning": "⚠️ Role reaction configuration requires interactive setup. Use the `/rolereact` command to configure role reactions.",
-      "error": "❌ Unable to retrieve configuration.",
+      "interactive_warning": "💡 **Use the `/rolereact` command for full management**\n\nThe improved `/rolereact` command provides:\n• Modern interface with buttons and menus\n• Create new role reaction messages\n• Edit existing messages and reactions\n• Remove individual reactions or entire messages\n• View all configurations\n\nSimply use `/rolereact` to access all role reaction features!",
       "current_reactions": "Current Reactions",
       "reactions_configured": "reactions configured",
-      "added": "✅ Role reaction added: {emoji} → {role}!",
-      "removed_all": "✅ All role reactions removed!",
-      "role_not_found": "❌ Role not found in this server."
+      "use_command_button": "Open /rolereact"
     },
     "xp_system": {
       "title": "📊 XP System Configuration",
