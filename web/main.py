@@ -117,6 +117,18 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Load environment variables
+load_dotenv()
+
+# Try to load from different possible .env files
+if not os.getenv("DISCORD_TOKEN"):
+    # Try railway specific env file
+    if os.path.exists(".env.railway"):
+        load_dotenv(".env.railway")
+    # Try parent directory .env
+    elif os.path.exists("../.env"):
+        load_dotenv("../.env")
+
 # Security
 security = HTTPBearer()
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_urlsafe(32))
@@ -128,6 +140,14 @@ DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "http://localhost:8000/auth/discord/callback")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_TOKEN")  # Use same token as main bot
+
+# Debug: Print environment variable status (without exposing values)
+print(f"🔍 Environment variables loaded:")
+print(f"  - DISCORD_TOKEN: {'✅ Found' if DISCORD_BOT_TOKEN else '❌ Missing'}")
+print(f"  - DB_HOST: {'✅ Found' if os.getenv('DB_HOST') else '❌ Missing'}")
+print(f"  - DB_USER: {'✅ Found' if os.getenv('DB_USER') else '❌ Missing'}")
+print(f"  - DISCORD_CLIENT_ID: {'✅ Found' if DISCORD_CLIENT_ID else '❌ Missing'}")
+print(f"  - DISCORD_CLIENT_SECRET: {'✅ Found' if DISCORD_CLIENT_SECRET else '❌ Missing'}")
 
 # Database
 database = None

@@ -197,6 +197,7 @@ async def on_ready():
             bot.health_checker.log_error("command_sync_fallback", str(e2))
     
     logger.info("Bot startup completed successfully")
+    print("successfully finished startup")
     await bot.change_presence(activity=discord.Game(name="Enhanced MaybeBot | /help"))
     bot.add_view(TicketPanelView())
     bot.add_view(TicketCloseView())
