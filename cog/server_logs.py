@@ -20,6 +20,31 @@ class ServerLogsCog(commands.Cog):
             (guild_id,),
             fetchone=True
         )
+        
+        # If no server_logs_config, check guild_config table for dashboard consistency
+        if not result:
+            guild_config = await self.bot.db.query(
+                "SELECT * FROM guild_config WHERE guild_id = %s",
+                (guild_id,),
+                fetchone=True
+            )
+            if guild_config and guild_config.get('logs_enabled') and guild_config.get('logs_channel'):
+                # Convert guild_config to server_logs_config format
+                return {
+                    'guild_id': guild_id,
+                    'log_channel_id': guild_config['logs_channel'],
+                    'log_member_join': True,
+                    'log_member_leave': True,
+                    'log_voice_join': True,
+                    'log_voice_leave': True,
+                    'log_message_delete': True,
+                    'log_message_edit': True,
+                    'log_role_changes': True,
+                    'log_nickname_changes': True,
+                    'log_channel_create': True,
+                    'log_channel_delete': True
+                }
+        
         return result
     
     async def get_guild_language(self, guild_id: int):

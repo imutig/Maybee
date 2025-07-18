@@ -10,12 +10,33 @@ class Welcome(commands.Cog):
 
     async def get_welcome_config(self, guild_id):
         """Get welcome configuration for a guild"""
+        # Try welcome_config table first
         result = await self.db.query(
             "SELECT * FROM welcome_config WHERE guild_id = %s",
             (guild_id,),
             fetchone=True
         )
-        return result if result else {}
+        
+        if result:
+            return result
+            
+        # If no welcome_config, check guild_config table for dashboard consistency
+        guild_result = await self.db.query(
+            "SELECT welcome_channel, welcome_message, welcome_enabled FROM guild_config WHERE guild_id = %s",
+            (guild_id,),
+            fetchone=True
+        )
+        
+        if guild_result and guild_result.get("welcome_enabled"):
+            # Convert guild_config format to welcome_config format
+            return {
+                "welcome_channel": guild_result.get("welcome_channel"),
+                "welcome_message": guild_result.get("welcome_message"),
+                "goodbye_channel": None,
+                "goodbye_message": None
+            }
+        
+        return {}
 
     async def save_welcome_config(self, guild_id, **kwargs):
         """Save welcome configuration for a guild"""

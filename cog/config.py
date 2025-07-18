@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from typing import Optional
 import logging
+from datetime import datetime
 from i18n import _
 
 logger = logging.getLogger(__name__)
@@ -121,10 +122,17 @@ class ConfigView(discord.ui.View):
             color=discord.Color.green()
         )
         
-        # Get current welcome settings
+        # Get current welcome settings from welcome_config table first
         result = await self.bot.db.query("SELECT welcome_channel, welcome_message FROM welcome_config WHERE guild_id = %s", (self.guild_id,))
         welcome_channel = result[0]["welcome_channel"] if result else None
         welcome_message = result[0]["welcome_message"] if result else None
+        
+        # If no welcome_config, check guild_config table for dashboard consistency
+        if not welcome_channel and not welcome_message:
+            guild_result = await self.bot.db.query("SELECT welcome_channel, welcome_message FROM guild_config WHERE guild_id = %s", (self.guild_id,))
+            if guild_result:
+                welcome_channel = guild_result[0]["welcome_channel"] if guild_result[0]["welcome_channel"] else None
+                welcome_message = guild_result[0]["welcome_message"] if guild_result[0]["welcome_message"] else None
         
         if welcome_channel:
             channel = self.bot.get_channel(welcome_channel)
@@ -409,7 +417,19 @@ class WelcomeConfigView(discord.ui.View):
     
     @discord.ui.button(label="Disable", style=discord.ButtonStyle.danger, emoji="🚫")
     async def disable_welcome(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Delete from welcome_config table
         await self.bot.db.query("DELETE FROM welcome_config WHERE guild_id = %s", (self.guild_id,))
+        
+        # Also update guild_config table for dashboard consistency
+        await self.bot.db.query(
+            """INSERT INTO guild_config (guild_id, welcome_enabled, updated_at)
+               VALUES (%s, %s, %s)
+               ON DUPLICATE KEY UPDATE
+               welcome_enabled = VALUES(welcome_enabled),
+               updated_at = VALUES(updated_at)""",
+            (self.guild_id, False, datetime.utcnow())
+        )
+        
         await interaction.response.send_message(_("config_system.welcome.disabled", interaction.user.id, self.guild_id), ephemeral=True)
 
 class ConfessionConfigView(discord.ui.View):
@@ -681,6 +701,19 @@ class ServerLogsConfigView(discord.ui.View):
             "UPDATE server_logs_config SET log_channel_id = NULL WHERE guild_id = %s",
             (self.guild_id,)
         )
+        
+        # Also update guild_config table for dashboard sync
+        await self.bot.db.query(
+            """INSERT INTO guild_config 
+               (guild_id, logs_enabled, logs_channel, updated_at)
+               VALUES (%s, %s, %s, %s)
+               ON DUPLICATE KEY UPDATE
+               logs_enabled = %s,
+               logs_channel = %s,
+               updated_at = %s""",
+            (self.guild_id, False, None, datetime.utcnow(), False, None, datetime.utcnow())
+        )
+        
         await interaction.response.send_message(
             _("config_system.server_logs.system_disabled", interaction.user.id, self.guild_id),
             ephemeral=True
@@ -710,6 +743,18 @@ class ServerLogsToggleView(discord.ui.View):
                 "UPDATE server_logs_config SET log_member_join = %s, log_member_leave = %s WHERE guild_id = %s",
                 (new_value, new_value, self.guild_id)
             )
+            
+            # Also update guild_config for dashboard sync
+            await self.bot.db.query(
+                """INSERT INTO guild_config 
+                   (guild_id, logs_enabled, updated_at)
+                   VALUES (%s, %s, %s)
+                   ON DUPLICATE KEY UPDATE
+                   logs_enabled = %s,
+                   updated_at = %s""",
+                (self.guild_id, new_value, datetime.utcnow(), new_value, datetime.utcnow())
+            )
+            
             status = _("config_system.server_logs.feature_enabled", interaction.user.id, self.guild_id) if new_value else _("config_system.server_logs.feature_disabled", interaction.user.id, self.guild_id)
             await interaction.response.send_message(
                 f"{_('config_system.server_logs.member_events', interaction.user.id, self.guild_id)} {status}",
@@ -736,6 +781,18 @@ class ServerLogsToggleView(discord.ui.View):
                 "UPDATE server_logs_config SET log_voice_join = %s, log_voice_leave = %s WHERE guild_id = %s",
                 (new_value, new_value, self.guild_id)
             )
+            
+            # Also update guild_config for dashboard sync
+            await self.bot.db.query(
+                """INSERT INTO guild_config 
+                   (guild_id, logs_enabled, updated_at)
+                   VALUES (%s, %s, %s)
+                   ON DUPLICATE KEY UPDATE
+                   logs_enabled = %s,
+                   updated_at = %s""",
+                (self.guild_id, new_value, datetime.utcnow(), new_value, datetime.utcnow())
+            )
+            
             status = _("config_system.server_logs.feature_enabled", interaction.user.id, self.guild_id) if new_value else _("config_system.server_logs.feature_disabled", interaction.user.id, self.guild_id)
             await interaction.response.send_message(
                 f"{_('config_system.server_logs.voice_events', interaction.user.id, self.guild_id)} {status}",
@@ -762,6 +819,18 @@ class ServerLogsToggleView(discord.ui.View):
                 "UPDATE server_logs_config SET log_message_delete = %s, log_message_edit = %s WHERE guild_id = %s",
                 (new_value, new_value, self.guild_id)
             )
+            
+            # Also update guild_config for dashboard sync
+            await self.bot.db.query(
+                """INSERT INTO guild_config 
+                   (guild_id, logs_enabled, updated_at)
+                   VALUES (%s, %s, %s)
+                   ON DUPLICATE KEY UPDATE
+                   logs_enabled = %s,
+                   updated_at = %s""",
+                (self.guild_id, new_value, datetime.utcnow(), new_value, datetime.utcnow())
+            )
+            
             status = _("config_system.server_logs.feature_enabled", interaction.user.id, self.guild_id) if new_value else _("config_system.server_logs.feature_disabled", interaction.user.id, self.guild_id)
             await interaction.response.send_message(
                 f"{_('config_system.server_logs.message_events', interaction.user.id, self.guild_id)} {status}",
@@ -788,6 +857,18 @@ class ServerLogsToggleView(discord.ui.View):
                 "UPDATE server_logs_config SET log_role_changes = %s, log_nickname_changes = %s WHERE guild_id = %s",
                 (new_value, new_value, self.guild_id)
             )
+            
+            # Also update guild_config for dashboard sync
+            await self.bot.db.query(
+                """INSERT INTO guild_config 
+                   (guild_id, logs_enabled, updated_at)
+                   VALUES (%s, %s, %s)
+                   ON DUPLICATE KEY UPDATE
+                   logs_enabled = %s,
+                   updated_at = %s""",
+                (self.guild_id, new_value, datetime.utcnow(), new_value, datetime.utcnow())
+            )
+            
             status = _("config_system.server_logs.feature_enabled", interaction.user.id, self.guild_id) if new_value else _("config_system.server_logs.feature_disabled", interaction.user.id, self.guild_id)
             await interaction.response.send_message(
                 f"{_('config_system.server_logs.other_events', interaction.user.id, self.guild_id)} {status}",
@@ -832,7 +913,20 @@ class WelcomeChannelModal(discord.ui.Modal):
             await interaction.response.send_message(_("config_system.welcome.channel_not_found", interaction.user.id, self.guild_id), ephemeral=True)
             return
         
+        # Update welcome_config table
         await self.bot.db.query("INSERT INTO welcome_config (guild_id, welcome_channel) VALUES (%s, %s) ON DUPLICATE KEY UPDATE welcome_channel = %s", (self.guild_id, channel.id, channel.id))
+        
+        # Also update guild_config table for dashboard consistency
+        await self.bot.db.query(
+            """INSERT INTO guild_config (guild_id, welcome_enabled, welcome_channel, updated_at)
+               VALUES (%s, %s, %s, %s)
+               ON DUPLICATE KEY UPDATE
+               welcome_enabled = VALUES(welcome_enabled),
+               welcome_channel = VALUES(welcome_channel),
+               updated_at = VALUES(updated_at)""",
+            (self.guild_id, True, channel.id, datetime.utcnow())
+        )
+        
         await interaction.response.send_message(_("config_system.welcome.channel_set", interaction.user.id, self.guild_id, channel=channel.mention), ephemeral=True)
 
 class WelcomeMessageModal(discord.ui.Modal):
@@ -852,7 +946,21 @@ class WelcomeMessageModal(discord.ui.Modal):
     
     async def on_submit(self, interaction: discord.Interaction):
         message = self.message_input.value
+        
+        # Update welcome_config table
         await self.bot.db.query("INSERT INTO welcome_config (guild_id, welcome_message) VALUES (%s, %s) ON DUPLICATE KEY UPDATE welcome_message = %s", (self.guild_id, message, message))
+        
+        # Also update guild_config table for dashboard consistency
+        await self.bot.db.query(
+            """INSERT INTO guild_config (guild_id, welcome_enabled, welcome_message, updated_at)
+               VALUES (%s, %s, %s, %s)
+               ON DUPLICATE KEY UPDATE
+               welcome_enabled = VALUES(welcome_enabled),
+               welcome_message = VALUES(welcome_message),
+               updated_at = VALUES(updated_at)""",
+            (self.guild_id, True, message, datetime.utcnow())
+        )
+        
         await interaction.response.send_message(_("config_system.welcome.message_set", interaction.user.id, self.guild_id), ephemeral=True)
 
 class ConfessionChannelModal(discord.ui.Modal):
@@ -1091,6 +1199,18 @@ class LogChannelModal(discord.ui.Modal):
                VALUES (%s, %s)
                ON DUPLICATE KEY UPDATE log_channel_id = %s""",
             (self.guild_id, channel.id, channel.id)
+        )
+        
+        # Also update guild_config table for dashboard sync
+        await self.bot.db.query(
+            """INSERT INTO guild_config 
+               (guild_id, logs_enabled, logs_channel, updated_at)
+               VALUES (%s, %s, %s, %s)
+               ON DUPLICATE KEY UPDATE
+               logs_enabled = %s,
+               logs_channel = %s,
+               updated_at = %s""",
+            (self.guild_id, True, channel.id, datetime.utcnow(), True, channel.id, datetime.utcnow())
         )
         
         await interaction.response.send_message(

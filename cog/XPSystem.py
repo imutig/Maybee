@@ -10,7 +10,8 @@ from i18n import _
 class XPMultiplier:
     """XP multiplier system for events and boosts"""
     
-    def __init__(self):
+    def __init__(self, bot=None):
+        self.bot = bot
         self.multipliers: Dict[int, Dict[str, float]] = {}  # guild_id -> {type: multiplier}
         self.temporary_multipliers: Dict[int, Dict[str, tuple]] = {}  # guild_id -> {type: (multiplier, expires_at)}
         
@@ -29,19 +30,39 @@ class XPMultiplier:
             # Permanent multiplier
             self.multipliers[guild_id][multiplier_type] = value
             
-    def get_multiplier(self, guild_id: int, multiplier_type: str = "base") -> float:
+    async def get_multiplier(self, guild_id: int, multiplier_type: str = "base") -> float:
         """Get current multiplier for a guild"""
         multiplier = 1.0
         
-        # Check permanent multipliers
+        # First check database for base multiplier from web dashboard
+        if self.bot and multiplier_type in ["text", "voice", "base"]:
+            try:
+                sql = "SELECT xp_multiplier FROM guild_config WHERE guild_id = %s"
+                print(f"🔍 DEBUG: Executing SQL: {sql} with guild_id={guild_id}")
+                result = await self.bot.db.query(sql, (str(guild_id),), fetchone=True)
+                print(f"🔍 DEBUG: Database result: {result}")
+                if result and result.get('xp_multiplier'):
+                    multiplier = float(result['xp_multiplier'])
+                    print(f"🔢 Using database multiplier {multiplier}x for guild {guild_id}")
+                else:
+                    print(f"🔍 DEBUG: No result or no xp_multiplier found for guild {guild_id}")
+            except Exception as e:
+                print(f"⚠️ Could not fetch multiplier from database: {e}")
+                import traceback
+                print(f"🔍 DEBUG: Full traceback: {traceback.format_exc()}")
+        
+        # Check permanent multipliers (from /xpmultiplier command)
         if guild_id in self.multipliers and multiplier_type in self.multipliers[guild_id]:
-            multiplier = self.multipliers[guild_id][multiplier_type]
+            command_multiplier = self.multipliers[guild_id][multiplier_type]
+            multiplier = max(multiplier, command_multiplier)  # Use highest multiplier
+            print(f"🔢 Using command multiplier {command_multiplier}x for guild {guild_id} (final: {multiplier}x)")
             
         # Check temporary multipliers
         if guild_id in self.temporary_multipliers and multiplier_type in self.temporary_multipliers[guild_id]:
             temp_multiplier, expires_at = self.temporary_multipliers[guild_id][multiplier_type]
             if datetime.utcnow() < expires_at:
-                multiplier = max(multiplier, temp_multiplier)
+                multiplier = max(multiplier, temp_multiplier)  # Use highest multiplier
+                print(f"🔢 Using temporary multiplier {temp_multiplier}x for guild {guild_id} (final: {multiplier}x)")
             else:
                 # Remove expired multiplier and log it
                 print(f"🕐 XP Multiplier for {multiplier_type} in guild {guild_id} has expired (was {temp_multiplier}x)")
@@ -152,7 +173,7 @@ class XPSystem(commands.Cog):
         self.cooldown = {}
         self.xp_batch = {}  # For batching XP updates
         self.batch_size = 50  # Process batches of 50 XP updates
-        self.xp_multiplier = XPMultiplier()  # XP multiplier system
+        self.xp_multiplier = XPMultiplier(bot)  # XP multiplier system
         print("✅ XPSystem cog chargé")
 
     @commands.Cog.listener()
@@ -217,7 +238,7 @@ class XPSystem(commands.Cog):
                 data = {"xp": 0, "level": 1, "text_xp": 0, "voice_xp": 0}
 
             # Get guild-specific multipliers
-            guild_multiplier = self.xp_multiplier.get_multiplier(guild_id, source)
+            guild_multiplier = await self.xp_multiplier.get_multiplier(guild_id, source)
             
             # Calculate actual XP gained with multiplier
             base_xp = amount

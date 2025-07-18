@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maybee Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-robot me-2 bee-icon"></i>
+                Maybee Dashboard
+            </a>
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                        <img id="userAvatar" src="" alt="Avatar" class="rounded-circle me-2" width="32" height="32" style="display: none;">
+                        <span id="username">Loading...</span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="logout()">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#overview" data-bs-toggle="pill">
+                                <i class="fas fa-tachometer-alt me-2"></i>
+                                Overview
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#xp-settings" data-bs-toggle="pill">
+                                <i class="fas fa-trophy me-2"></i>
+                                XP System
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#moderation" data-bs-toggle="pill">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                Moderation
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#welcome" data-bs-toggle="pill">
+                                <i class="fas fa-door-open me-2"></i>
+                                Welcome System
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#logs" data-bs-toggle="pill">
+                                <i class="fas fa-file-alt me-2"></i>
+                                Server Logs
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+                <!-- Guild Selector -->
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Dashboard</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <select class="form-select" id="guildSelector" onchange="selectGuild()">
+                            <option value="">Select a server...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Loading overlay -->
+                <div id="loadingOverlay" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Loading dashboard...</p>
+                </div>
+
+                <!-- Content will be loaded here -->
+                <div id="dashboardContent" class="tab-content" style="display: none;">
+                    <!-- Overview Tab -->
+                    <div class="tab-pane fade show active" id="overview">
+                        <div class="row mb-4">
+                            <div class="col-sm-6 col-xl-3">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <div class="text-value-lg" id="totalMembers">0</div>
+                                                <div>Total Members</div>
+                                            </div>
+                                            <div class="icon-xl">
+                                                <i class="fas fa-users"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-sm-6 col-xl-3">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <div class="text-value-lg" id="totalXP">0</div>
+                                                <div>Total XP Given</div>
+                                            </div>
+                                            <div class="icon-xl">
+                                                <i class="fas fa-star"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-sm-6 col-xl-3">
+                                <div class="card bg-warning text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <div class="text-value-lg" id="avgLevel">0</div>
+                                                <div>Average Level</div>
+                                            </div>
+                                            <div class="icon-xl">
+                                                <i class="fas fa-trophy"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-sm-6 col-xl-3">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <div class="text-value-lg" id="recentActivity">0</div>
+                                                <div>Recent Activity</div>
+                                            </div>
+                                            <div class="icon-xl">
+                                                <i class="fas fa-chart-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Top Users -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Top Members</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-dark">
+                                        <thead>
+                                            <tr>
+                                                <th>Rank</th>
+                                                <th>User ID</th>
+                                                <th>Level</th>
+                                                <th>Total XP</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="topUsersTable">
+                                            <!-- Top users will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- XP Settings Tab -->
+                    <div class="tab-pane fade" id="xp-settings">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">🐝 XP System Configuration</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="xpSettingsForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="xpEnabled">
+                                                    <label class="form-check-label" for="xpEnabled">
+                                                        Enable XP System
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="xpChannel" class="form-label">XP Tracking Channel</label>
+                                                <select class="form-select" id="xpChannel">
+                                                    <option value="">No specific channel (track everywhere)</option>
+                                                </select>
+                                                <div class="form-text">Channel where XP is gained from messages. Leave empty to track XP in all channels.</div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="xpMultiplier" class="form-label">XP Multiplier</label>
+                                                <input type="number" class="form-control" id="xpMultiplier" min="0.1" max="10" step="0.1">
+                                                <div class="form-text">Multiply XP gains by this amount (1.0 = normal, 2.0 = double XP)</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="levelUpMessage">
+                                                    <label class="form-check-label" for="levelUpMessage">
+                                                        Send Level Up Messages
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="levelUpChannel" class="form-label">Level Up Announcements Channel</label>
+                                                <select class="form-select" id="levelUpChannel">
+                                                    <option value="">Same channel as message</option>
+                                                </select>
+                                                <div class="form-text">Where to send level up announcements. If empty, announces in the same channel where they leveled up.</div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label class="form-label">Test Level Up Message</label>
+                                                <button type="button" class="btn btn-outline-warning w-100" id="testLevelUpBtn">
+                                                    <i class="fas fa-paper-plane me-2"></i>
+                                                    Send Test Level Up Message
+                                                </button>
+                                                <div class="form-text">Send a fake level up message to verify your settings work correctly.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-warning bee-button">
+                                            <i class="fas fa-save me-2"></i>
+                                            Save XP Settings
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="dashboard.loadGuildConfig()">
+                                            <i class="fas fa-undo me-2"></i>
+                                            Reset to Current
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Moderation Tab -->
+                    <div class="tab-pane fade" id="moderation">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">🛡️ Moderation System</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="mb-3">Member Selection</h6>
+                                        <div class="mb-3">
+                                            <label for="memberSelect" class="form-label">Select Member</label>
+                                            <select class="form-select" id="memberSelect">
+                                                <option value="">Choose a member...</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="moderationAction" class="form-label">Action</label>
+                                            <select class="form-select" id="moderationAction">
+                                                <option value="">Select an action...</option>
+                                                <option value="warn">⚠️ Warning</option>
+                                                <option value="timeout">🔇 Timeout</option>
+                                                <option value="kick">👢 Kick</option>
+                                                <option value="ban">🔨 Ban</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="moderationChannel" class="form-label">Log Channel (Optional)</label>
+                                            <select class="form-select" id="moderationChannel">
+                                                <option value="">No logging</option>
+                                            </select>
+                                            <div class="form-text">Select a channel to log moderation actions</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="moderationReason" class="form-label">Reason</label>
+                                            <textarea class="form-control" id="moderationReason" rows="3" placeholder="Enter reason for moderation action..."></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3" id="timeoutDuration" style="display: none;">
+                                            <label for="timeoutMinutes" class="form-label">Timeout Duration (minutes)</label>
+                                            <input type="number" class="form-control" id="timeoutMinutes" min="1" max="40320" value="60">
+                                            <div class="form-text">Maximum 28 days (40320 minutes)</div>
+                                        </div>
+                                        
+                                        <button type="button" class="btn btn-danger" id="executeModerationBtn">
+                                            <i class="fas fa-gavel me-2"></i>
+                                            Execute Action
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6 class="mb-3">Recent Moderation Actions</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-dark table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>User</th>
+                                                        <th>Action</th>
+                                                        <th>Date</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="moderationHistoryTable">
+                                                    <!-- Moderation history will be loaded here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Welcome System Tab -->
+                    <div class="tab-pane fade" id="welcome">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">🚪 Welcome System Configuration</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="welcomeSettingsForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="welcomeEnabled">
+                                                    <label class="form-check-label" for="welcomeEnabled">
+                                                        Enable Welcome Messages
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="welcomeChannel" class="form-label">Welcome Channel</label>
+                                                <select class="form-select" id="welcomeChannel">
+                                                    <option value="">Select a channel...</option>
+                                                </select>
+                                                <div class="form-text">Channel where welcome messages will be sent</div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="welcomeMessage" class="form-label">Welcome Message</label>
+                                                <textarea class="form-control" id="welcomeMessage" rows="4" placeholder="Welcome {user} to {server}!"></textarea>
+                                                <div class="form-text">Use {user} for member mention and {server} for server name</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="goodbyeEnabled">
+                                                    <label class="form-check-label" for="goodbyeEnabled">
+                                                        Enable Goodbye Messages
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="goodbyeChannel" class="form-label">Goodbye Channel</label>
+                                                <select class="form-select" id="goodbyeChannel">
+                                                    <option value="">Select a channel...</option>
+                                                </select>
+                                                <div class="form-text">Channel where goodbye messages will be sent</div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="goodbyeMessage" class="form-label">Goodbye Message</label>
+                                                <textarea class="form-control" id="goodbyeMessage" rows="4" placeholder="Goodbye {user}, thanks for being part of {server}!"></textarea>
+                                                <div class="form-text">Use {user} for member name and {server} for server name</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-warning bee-button">
+                                            <i class="fas fa-save me-2"></i>
+                                            Save Welcome Settings
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="dashboard.loadWelcomeConfig()">
+                                            <i class="fas fa-undo me-2"></i>
+                                            Reset to Current
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info" id="testWelcomeBtn">
+                                            <i class="fas fa-paper-plane me-2"></i>
+                                            Test Welcome Message
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Server Logs Tab -->
+                    <div class="tab-pane fade" id="logs">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">📋 Server Logs Configuration</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="serverLogsForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="serverLogsEnabled">
+                                                    <label class="form-check-label" for="serverLogsEnabled">
+                                                        Enable Server Logs
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="serverLogsChannel" class="form-label">Logs Channel</label>
+                                                <select class="form-select" id="serverLogsChannel">
+                                                    <option value="">Select a channel...</option>
+                                                </select>
+                                                <div class="form-text">Channel where server logs will be sent</div>
+                                            </div>
+                                            
+                                            <h6 class="mb-3">Log Types to Track</h6>
+                                            
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logMessageDelete">
+                                                        <label class="form-check-label" for="logMessageDelete">
+                                                            Message Deletions
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logMessageEdit">
+                                                        <label class="form-check-label" for="logMessageEdit">
+                                                            Message Edits
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logMemberJoin">
+                                                        <label class="form-check-label" for="logMemberJoin">
+                                                            Member Joins
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logMemberLeave">
+                                                        <label class="form-check-label" for="logMemberLeave">
+                                                            Member Leaves
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logMemberUpdate">
+                                                        <label class="form-check-label" for="logMemberUpdate">
+                                                            Member Updates
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logVoiceStateUpdate">
+                                                        <label class="form-check-label" for="logVoiceStateUpdate">
+                                                            Voice State Changes
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-md-6">
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logRoleCreate">
+                                                        <label class="form-check-label" for="logRoleCreate">
+                                                            Role Creation
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logRoleDelete">
+                                                        <label class="form-check-label" for="logRoleDelete">
+                                                            Role Deletion
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logRoleUpdate">
+                                                        <label class="form-check-label" for="logRoleUpdate">
+                                                            Role Updates
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logChannelCreate">
+                                                        <label class="form-check-label" for="logChannelCreate">
+                                                            Channel Creation
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logChannelDelete">
+                                                        <label class="form-check-label" for="logChannelDelete">
+                                                            Channel Deletion
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" id="logChannelUpdate">
+                                                        <label class="form-check-label" for="logChannelUpdate">
+                                                            Channel Updates
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <h6 class="mb-3">Quick Actions</h6>
+                                            
+                                            <div class="d-grid gap-2">
+                                                <button type="button" class="btn btn-outline-success" onclick="dashboard.toggleAllLogs(true)">
+                                                    <i class="fas fa-check-double me-2"></i>
+                                                    Enable All Logs
+                                                </button>
+                                                
+                                                <button type="button" class="btn btn-outline-danger" onclick="dashboard.toggleAllLogs(false)">
+                                                    <i class="fas fa-times me-2"></i>
+                                                    Disable All Logs
+                                                </button>
+                                                
+                                                <button type="button" class="btn btn-outline-info" id="testLogBtn">
+                                                    <i class="fas fa-paper-plane me-2"></i>
+                                                    Send Test Log
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="mt-4">
+                                                <h6 class="mb-3">Recent Logs</h6>
+                                                <div class="table-responsive">
+                                                    <table class="table table-dark table-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Type</th>
+                                                                <th>User</th>
+                                                                <th>Time</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="recentLogsTable">
+                                                            <!-- Recent logs will be loaded here -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-warning bee-button">
+                                            <i class="fas fa-save me-2"></i>
+                                            Save Server Logs Settings
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="dashboard.loadServerLogsConfig()">
+                                            <i class="fas fa-undo me-2"></i>
+                                            Reset to Current
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>
