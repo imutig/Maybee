@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
+from contextlib import asynccontextmanager
 import uvicorn
 import os
 import json
@@ -32,10 +33,22 @@ import sys
 sys.path.append('..')
 from db import Database
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await init_database()
+    await create_guild_config_table()
+    await create_moderation_tables()
+    yield
+    # Shutdown
+    if database:
+        await database.close()
+
 app = FastAPI(
     title="MaybeBot Dashboard",
     description="Professional web interface for MaybeBot configuration",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS middleware for frontend
@@ -296,17 +309,6 @@ async def create_moderation_tables():
         return False
 
 # Routes
-@app.on_event("startup")
-async def startup_event():
-    await init_database()
-    await create_guild_config_table()
-    await create_moderation_tables()
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    if database:
-        await database.close()
-
 @app.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request):
     """Main dashboard page"""
