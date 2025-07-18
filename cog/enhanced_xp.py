@@ -278,11 +278,17 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
             except Exception as e:
                 logger.error(f"Error adding XP update to batch: {e}")
     
-    @app_commands.command(name="xp", description="Check your XP and level")
+    @app_commands.command(name="xp", description="Check your XP and level with detailed statistics")
+    @app_commands.describe(
+        user="User to check XP for (defaults to yourself)",
+        detailed="Show detailed statistics including recent activity"
+    )
     @handle_errors
     @rate_limit(cooldown=10)
-    async def check_xp(self, interaction: discord.Interaction, user: Optional[discord.Member] = None):
-        """Check XP and level for a user"""
+    async def check_xp(self, interaction: discord.Interaction, 
+                      user: Optional[discord.Member] = None, 
+                      detailed: bool = False):
+        """Check XP and level for a user with optional detailed statistics"""
         target_user = user or interaction.user
         
         try:
@@ -290,11 +296,22 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
             if self.batch_processor:
                 await self.batch_processor.force_process()
             
-            # Get XP data
-            xp_data = await self.bot.db.fetch_one(
-                "SELECT xp, level FROM user_xp WHERE user_id = %s AND guild_id = %s",
-                target_user.id, interaction.guild.id
-            )
+            # Get XP data - try new enhanced table first, fallback to old table
+            xp_data = None
+            try:
+                xp_data = await self.bot.db.fetch_one(
+                    "SELECT xp, level, text_xp, voice_xp FROM user_xp WHERE user_id = %s AND guild_id = %s",
+                    target_user.id, interaction.guild.id
+                )
+            except:
+                # Fallback to old table structure
+                try:
+                    xp_data = await self.bot.db.fetch_one(
+                        "SELECT xp, level, text_xp, voice_xp FROM xp_data WHERE user_id = %s AND guild_id = %s",
+                        target_user.id, interaction.guild.id
+                    )
+                except:
+                    pass
             
             if not xp_data:
                 embed = discord.Embed(
@@ -302,42 +319,118 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
                     description=f"{target_user.mention} has no XP yet!",
                     color=discord.Color.blue()
                 )
+                await interaction.response.send_message(embed=embed)
+                return
+            
+            current_xp, level, text_xp, voice_xp = xp_data
+            next_level_xp = self._calculate_xp_for_level(level + 1)
+            current_level_xp = self._calculate_xp_for_level(level)
+            progress_xp = current_xp - current_level_xp
+            needed_xp = next_level_xp - current_level_xp
+            xp_needed_for_next = next_level_xp - current_xp
+            
+            # Create progress bar
+            progress_percentage = (progress_xp / needed_xp) * 100 if needed_xp > 0 else 100
+            progress_bar = self._create_progress_bar(progress_percentage)
+            
+            # Create embed
+            color = discord.Color.gold() if detailed else discord.Color.blue()
+            title = "📊 Detailed XP Statistics" if detailed else "📊 XP Status"
+            
+            embed = discord.Embed(
+                title=title,
+                color=color,
+                timestamp=datetime.now()
+            )
+            embed.set_thumbnail(url=target_user.display_avatar.url)
+            
+            # Basic information
+            embed.add_field(
+                name="👤 User",
+                value=target_user.mention,
+                inline=True
+            )
+            embed.add_field(
+                name="🏆 Level",
+                value=f"**{level}**",
+                inline=True
+            )
+            embed.add_field(
+                name="⭐ Total XP",
+                value=f"**{current_xp:,}** XP",
+                inline=True
+            )
+            
+            # Progress information
+            embed.add_field(
+                name="📈 Progress to Next Level",
+                value=f"{progress_bar}\n**{progress_xp:,}** / **{needed_xp:,}** XP ({progress_percentage:.1f}%)",
+                inline=False
+            )
+            
+            if detailed:
+                # Detailed statistics
+                embed.add_field(
+                    name="📝 Text XP",
+                    value=f"**{text_xp:,}** XP",
+                    inline=True
+                )
+                embed.add_field(
+                    name="🎤 Voice XP", 
+                    value=f"**{voice_xp:,}** XP",
+                    inline=True
+                )
+                embed.add_field(
+                    name="🎯 XP Needed",
+                    value=f"**{xp_needed_for_next:,}** XP",
+                    inline=True
+                )
+                
+                # Try to get recent activity if available
+                try:
+                    week_ago = datetime.now() - timedelta(days=7)
+                    recent_activity = await self.bot.db.fetch_all(
+                        """SELECT DATE(timestamp) as date, SUM(xp_gained) as daily_xp
+                           FROM xp_history 
+                           WHERE guild_id = %s AND user_id = %s AND timestamp >= %s
+                           GROUP BY DATE(timestamp)
+                           ORDER BY date DESC
+                           LIMIT 5""",
+                        interaction.guild.id, target_user.id, week_ago
+                    )
+                    
+                    if recent_activity:
+                        activity_text = ""
+                        for day_data in recent_activity:
+                            activity_text += f"**{day_data[0]}**: {day_data[1]} XP\n"
+                        
+                        embed.add_field(
+                            name="📅 Recent Activity (Last 5 Days)",
+                            value=activity_text,
+                            inline=False
+                        )
+                except Exception as e:
+                    logger.debug(f"Could not fetch recent activity: {e}")
+                
+                embed.set_footer(text="💡 Use '/xp detailed:False' for a quick overview")
             else:
-                current_xp, level = xp_data
-                next_level_xp = self._calculate_xp_for_level(level + 1)
-                current_level_xp = self._calculate_xp_for_level(level)
-                progress_xp = current_xp - current_level_xp
-                needed_xp = next_level_xp - current_level_xp
-                
-                # Create progress bar
-                progress_percentage = (progress_xp / needed_xp) * 100 if needed_xp > 0 else 100
-                progress_bar = self._create_progress_bar(progress_percentage)
-                
-                embed = discord.Embed(
-                    title="📊 XP Status",
-                    color=discord.Color.gold()
-                )
-                embed.set_thumbnail(url=target_user.display_avatar.url)
+                # Quick stats for non-detailed view
                 embed.add_field(
-                    name="User",
-                    value=target_user.mention,
+                    name="📝 Text XP",
+                    value=f"{text_xp:,}",
                     inline=True
                 )
                 embed.add_field(
-                    name="Level",
-                    value=f"**{level}**",
+                    name="🎤 Voice XP",
+                    value=f"{voice_xp:,}",
                     inline=True
                 )
                 embed.add_field(
-                    name="Total XP",
-                    value=f"{current_xp:,}",
+                    name="🎯 XP Needed",
+                    value=f"{xp_needed_for_next:,}",
                     inline=True
                 )
-                embed.add_field(
-                    name="Progress to Next Level",
-                    value=f"{progress_bar}\n{progress_xp:,} / {needed_xp:,} XP ({progress_percentage:.1f}%)",
-                    inline=False
-                )
+                embed.set_footer(text="💡 Use '/xp detailed:True' for detailed statistics")
             
             await interaction.response.send_message(embed=embed)
             
