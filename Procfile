@@ -1,2 +1,1 @@
-# Railway Deployment Configuration
-web: cd web && python main.py
+web: cd web && pip install -r requirements.txt && python main.py
