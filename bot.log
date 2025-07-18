@@ -1,0 +1,38 @@
+2025-07-18 14:12:41,896 - __main__ - INFO - Configuration loaded successfully
+2025-07-18 14:12:41,897 - services - INFO - Service container initialized
+2025-07-18 14:12:41,897 - cache - INFO - Cache directory created/verified: cache_data
+2025-07-18 14:12:41,898 - cache - INFO - Loaded 0 cache entries from cache_data\leaderboards.json
+2025-07-18 14:12:41,898 - monitoring - INFO - Health check system initialized
+2025-07-18 14:12:41,898 - monitoring - INFO - Monitoring system initialized
+2025-07-18 14:12:41,996 - cog.rolereact - INFO - Initialisation de RoleReact Cog
+2025-07-18 14:12:41,996 - cog.rolereact - INFO - Cog RoleReact chargé avec succès
+2025-07-18 14:12:42,017 - cog.config - INFO - Config cog initialized
+2025-07-18 14:12:42,050 - discord.client - INFO - logging in using static token
+2025-07-18 14:12:43,216 - __main__ - INFO - Database connected successfully
+2025-07-18 14:12:45,038 - __main__ - INFO - Database tables initialized
+2025-07-18 14:12:45,110 - __main__ - INFO - Language preferences loaded from database
+2025-07-18 14:12:45,111 - monitoring - INFO - Health monitoring started with 60s interval
+2025-07-18 14:12:45,111 - __main__ - INFO - Health monitoring started
+2025-07-18 14:12:47,210 - discord.gateway - INFO - Shard ID None has connected to Gateway (Session ID: 5273252b427975eef4d54390b159c0c3).
+2025-07-18 14:12:49,225 - __main__ - INFO - Bot is ready as Maybee#4948
+2025-07-18 14:12:49,225 - __main__ - INFO - Connected to 3 server(s):
+2025-07-18 14:12:49,225 - __main__ - INFO -   - Emojis (ID: 1160917499936772217)
+2025-07-18 14:12:49,228 - __main__ - INFO -   - OuiOui (ID: 1392463988679508030)
+2025-07-18 14:12:49,228 - __main__ - INFO - Cache system initialized
+2025-07-18 14:12:49,228 - __main__ - INFO - Commands in tree before sync: 34
+2025-07-18 14:12:49,228 - __main__ - INFO - Starting global command sync...
+2025-07-18 14:12:49,229 - cog.rolereact - INFO - [DB] Chargement des réactions de rôles depuis la base de données...
+2025-07-18 14:12:49,539 - cog.rolereact - INFO - [DB] 10 configurations chargées.
+2025-07-18 14:12:49,598 - __main__ - INFO - 34 commands synced globally
+2025-07-18 14:12:49,600 - __main__ - INFO - Commands will be available in all servers within a few minutes
+2025-07-18 14:12:49,600 - __main__ - INFO - Bot startup completed successfully
+2025-07-18 14:16:37,974 - __main__ - INFO - Configuration loaded successfully
+2025-07-18 14:16:37,975 - services - INFO - Service container initialized
+2025-07-18 14:16:37,975 - cache - INFO - Cache directory created/verified: cache_data
+2025-07-18 14:16:37,975 - cache - INFO - Loaded 0 cache entries from cache_data\leaderboards.json
+2025-07-18 14:16:37,975 - monitoring - INFO - Health check system initialized
+2025-07-18 14:16:37,975 - monitoring - INFO - Monitoring system initialized
+2025-07-18 14:16:37,991 - cog.rolereact - INFO - Initialisation de RoleReact Cog
+2025-07-18 14:16:37,991 - cog.rolereact - INFO - Cog RoleReact chargÃ© avec succÃ¨s
+2025-07-18 14:16:37,994 - cog.config - INFO - Config cog initialized
+2025-07-18 14:16:37,997 - discord.client - INFO - logging in using static token
