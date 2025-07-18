@@ -450,11 +450,108 @@ class RoleReactionsInfoView(discord.ui.View):
         self.bot = bot
         self.guild_id = guild_id
     
-    @discord.ui.button(label="Use /rolereact", style=discord.ButtonStyle.primary, emoji="⚡")
-    async def use_rolereact(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="Configure Role Reactions", style=discord.ButtonStyle.primary, emoji="⚙️")
+    async def configure_role_reactions(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message(
             _("config_system.role_reactions.use_command_button", interaction.user.id, self.guild_id) + "\n\n" +
             "💡 **Tip:** Type `/rolereact` to access the full role reaction management interface!",
+            ephemeral=True
+        )
+    
+    @discord.ui.button(label="View Current Setup", style=discord.ButtonStyle.secondary, emoji="📊")
+    async def view_current_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Get current role reactions from database
+        result = await self.bot.db.query("SELECT * FROM role_reactions WHERE guild_id = %s ORDER BY message_id", (self.guild_id,))
+        
+        if not result:
+            await interaction.response.send_message(
+                _("config_system.role_reactions.no_reactions_found", interaction.user.id, self.guild_id),
+                ephemeral=True
+            )
+            return
+        
+        # Group by message_id to show organized info
+        messages = {}
+        for row in result:
+            message_id = row['message_id']
+            if message_id not in messages:
+                messages[message_id] = []
+            messages[message_id].append(row)
+        
+        embed = discord.Embed(
+            title=_("config_system.role_reactions.current_setup_title", interaction.user.id, self.guild_id),
+            color=discord.Color.blue()
+        )
+        
+        for message_id, reactions in messages.items():
+            # Try to get the message
+            message = None
+            for channel in interaction.guild.text_channels:
+                try:
+                    message = await channel.fetch_message(message_id)
+                    break
+                except:
+                    continue
+            
+            message_info = f"Message ID: {message_id}"
+            if message:
+                message_info += f"\nChannel: {message.channel.mention}"
+                if len(message.content) > 100:
+                    message_info += f"\nContent: {message.content[:100]}..."
+                else:
+                    message_info += f"\nContent: {message.content}"
+            
+            reactions_list = []
+            for reaction in reactions:
+                role = interaction.guild.get_role(reaction['role_id'])
+                if role:
+                    reactions_list.append(f"{reaction['emoji']} → {role.mention}")
+                else:
+                    reactions_list.append(f"{reaction['emoji']} → Role not found (ID: {reaction['role_id']})")
+            
+            embed.add_field(
+                name=f"📝 {message_info}",
+                value="\n".join(reactions_list) if reactions_list else "No valid reactions",
+                inline=False
+            )
+        
+        if len(embed.fields) == 0:
+            embed.add_field(
+                name="No Active Role Reactions",
+                value="Use `/rolereact` to set up role reactions!",
+                inline=False
+            )
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    @discord.ui.button(label="Clear All", style=discord.ButtonStyle.danger, emoji="🗑️")
+    async def clear_all_reactions(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Confirm before clearing
+        view = ConfirmClearView(self.bot, self.guild_id)
+        await interaction.response.send_message(
+            _("config_system.role_reactions.confirm_clear", interaction.user.id, self.guild_id),
+            view=view,
+            ephemeral=True
+        )
+
+class ConfirmClearView(discord.ui.View):
+    def __init__(self, bot, guild_id: int):
+        super().__init__(timeout=60)
+        self.bot = bot
+        self.guild_id = guild_id
+    
+    @discord.ui.button(label="Yes, Clear All", style=discord.ButtonStyle.danger, emoji="✅")
+    async def confirm_clear(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.bot.db.query("DELETE FROM role_reactions WHERE guild_id = %s", (self.guild_id,))
+        await interaction.response.send_message(
+            _("config_system.role_reactions.cleared_all", interaction.user.id, self.guild_id),
+            ephemeral=True
+        )
+    
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary, emoji="❌")
+    async def cancel_clear(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            _("config_system.role_reactions.clear_cancelled", interaction.user.id, self.guild_id),
             ephemeral=True
         )
 
