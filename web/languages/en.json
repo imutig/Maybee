@@ -1,0 +1,122 @@
+{
+  "_meta": {
+    "name": "English",
+    "code": "en",
+    "flag": "🇺🇸"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "overview": "Overview",
+    "xp_system": "XP System",
+    "moderation": "Moderation",
+    "welcome_system": "Welcome System",
+    "server_logs": "Server Logs",
+    "logout": "Logout",
+    "select_server": "Select a server...",
+    "loading_dashboard": "Loading dashboard..."
+  },
+  "common": {
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "test": "Test",
+    "preview": "Preview",
+    "none": "None",
+    "channel": "Channel",
+    "message": "Message",
+    "user": "User",
+    "server": "Server",
+    "configuration": "Configuration",
+    "settings": "Settings"
+  },
+  "overview": {
+    "total_members": "Total Members",
+    "total_xp": "Total XP Given",
+    "average_level": "Average Level",
+    "recent_activity": "Recent Activity",
+    "top_members": "Top Members",
+    "rank": "Rank",
+    "user_id": "User ID",
+    "level": "Level",
+    "total_xp_column": "Total XP"
+  },
+  "xp_system": {
+    "title": "🐝 XP System Configuration",
+    "enable_xp": "Enable XP System",
+    "enable_xp_description": "Allow users to gain XP from messages and voice chat",
+    "xp_multiplier": "XP Multiplier",
+    "xp_multiplier_description": "Multiply all XP gains by this amount",
+    "level_up_messages": "Level Up Messages",
+    "level_up_messages_description": "Send a message when users level up",
+    "level_up_channel": "Level Up Channel",
+    "level_up_channel_description": "Channel where level up messages are sent",
+    "save_xp_settings": "Save XP Settings",
+    "xp_settings_saved": "XP settings saved successfully!",
+    "xp_settings_error": "Error saving XP settings"
+  },
+  "moderation": {
+    "title": "🛡️ Moderation Settings",
+    "enable_moderation": "Enable Moderation",
+    "enable_moderation_description": "Enable moderation features like warnings and timeouts",
+    "auto_moderation": "Auto Moderation",
+    "auto_moderation_description": "Automatically moderate certain actions",
+    "moderation_log_channel": "Moderation Log Channel",
+    "moderation_log_channel_description": "Channel where moderation actions are logged",
+    "save_moderation_settings": "Save Moderation Settings",
+    "moderation_settings_saved": "Moderation settings saved successfully!",
+    "moderation_settings_error": "Error saving moderation settings"
+  },
+  "welcome": {
+    "title": "👋 Welcome System Configuration",
+    "enable_welcome": "Enable Welcome System",
+    "enable_welcome_description": "Send welcome messages to new members",
+    "welcome_channel": "Welcome Channel",
+    "welcome_channel_description": "Channel where welcome messages are sent",
+    "welcome_message": "Welcome Message",
+    "welcome_message_description": "Message to send when new members join",
+    "goodbye_message": "Goodbye Message",
+    "goodbye_message_description": "Message to send when members leave",
+    "message_variables": "Available variables: {user}, {server}, {memberName}, {memberMention}",
+    "test_welcome": "Test Welcome Message",
+    "test_goodbye": "Test Goodbye Message",
+    "save_welcome_settings": "Save Welcome Settings",
+    "welcome_settings_saved": "Welcome settings saved successfully!",
+    "welcome_settings_error": "Error saving welcome settings"
+  },
+  "logs": {
+    "title": "📋 Server Logs Configuration",
+    "enable_logs": "Enable Server Logs",
+    "enable_logs_description": "Log server events to designated channels",
+    "log_channel": "Log Channel",
+    "log_channel_description": "Main channel for server logs",
+    "member_logs": "Member Logs",
+    "member_logs_description": "Log member joins and leaves",
+    "message_logs": "Message Logs",
+    "message_logs_description": "Log message edits and deletions",
+    "voice_logs": "Voice Logs",
+    "voice_logs_description": "Log voice channel activity",
+    "moderation_logs": "Moderation Logs",
+    "moderation_logs_description": "Log moderation actions",
+    "save_log_settings": "Save Log Settings",
+    "log_settings_saved": "Log settings saved successfully!",
+    "log_settings_error": "Error saving log settings"
+  },
+  "language": {
+    "title": "Language Settings",
+    "select_language": "Select Language",
+    "language_changed": "Language changed successfully!",
+    "language_error": "Error changing language"
+  },
+  "errors": {
+    "no_guilds": "No servers found. Make sure the bot is added to your servers.",
+    "load_error": "Failed to load data. Please try again.",
+    "save_error": "Failed to save settings. Please try again.",
+    "permission_error": "You don't have permission to configure this server.",
+    "network_error": "Network error. Please check your connection."
+  }
+}

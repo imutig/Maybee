@@ -504,3 +504,61 @@ h1, h2, h3, h4, h5, h6 {
 #guildSelect:focus {
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.4) !important;
 }
+
+/* Language selector styles */
+.language-selector {
+    position: relative;
+}
+
+.language-selector .dropdown-toggle {
+    background: var(--bee-black) !important;
+    border: 2px solid var(--bee-yellow) !important;
+    color: var(--text-primary) !important;
+    box-shadow: var(--subtle-glow);
+    text-decoration: none !important;
+}
+
+.language-selector .dropdown-toggle:hover {
+    background: rgba(255, 215, 0, 0.1) !important;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4) !important;
+}
+
+.language-selector .dropdown-menu {
+    background: var(--card-bg) !important;
+    border: 2px solid var(--bee-yellow) !important;
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3) !important;
+}
+
+.language-selector .dropdown-item {
+    color: var(--text-primary) !important;
+    transition: all 0.3s ease;
+}
+
+.language-selector .dropdown-item:hover {
+    background: rgba(255, 215, 0, 0.1) !important;
+    color: var(--bee-yellow) !important;
+    text-shadow: 0 0 5px rgba(255, 215, 0, 0.4);
+}
+
+.language-selector .dropdown-item:active {
+    background: rgba(255, 215, 0, 0.2) !important;
+}
+
+/* Language icon styling */
+.language-selector .fa-globe {
+    color: var(--bee-yellow) !important;
+    filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.4));
+}
+
+/* Success/Error message enhancements */
+.alert-success {
+    background-color: rgba(255, 215, 0, 0.15) !important;
+    border-color: var(--bee-yellow) !important;
+    color: var(--text-primary) !important;
+}
+
+.alert-danger {
+    background-color: rgba(255, 68, 68, 0.15) !important;
+    border-color: var(--danger-color) !important;
+    color: var(--text-primary) !important;
+}

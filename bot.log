@@ -346,3 +346,67 @@ task: <Task pending name='discord.py: on_ready' coro=<Client._run_event() done, 
 2025-07-18 19:43:43,538 - monitoring - WARNING - High memory usage: 90.5%
 2025-07-18 19:44:44,597 - monitoring - WARNING - High memory usage: 93.0%
 2025-07-18 19:45:45,654 - monitoring - WARNING - High memory usage: 93.7%
+2025-07-19 00:06:19,730 - __main__ - INFO - Configuration loaded successfully
+2025-07-19 00:06:19,731 - services - INFO - Service container initialized
+2025-07-19 00:06:19,731 - cache - INFO - Cache directory created/verified: cache_data
+2025-07-19 00:06:19,732 - cache - INFO - Loaded 0 cache entries from cache_data\leaderboards.json
+2025-07-19 00:06:19,732 - monitoring - INFO - Health check system initialized
+2025-07-19 00:06:19,732 - monitoring - INFO - Monitoring system initialized
+2025-07-19 00:06:19,828 - cog.rolereact - INFO - Initialisation de RoleReact Cog
+2025-07-19 00:06:19,828 - cog.rolereact - INFO - Cog RoleReact chargé avec succès
+2025-07-19 00:06:19,860 - cog.config - INFO - Config cog initialized
+2025-07-19 00:06:19,893 - discord.client - INFO - logging in using static token
+2025-07-19 00:06:21,508 - __main__ - INFO - Database connected successfully
+2025-07-19 00:06:23,465 - __main__ - INFO - Database tables initialized
+2025-07-19 00:06:23,465 - __main__ - INFO - Language preferences loaded from database
+2025-07-19 00:06:23,465 - monitoring - INFO - Health monitoring started with 60s interval
+2025-07-19 00:06:23,465 - __main__ - INFO - Health monitoring started
+2025-07-19 00:06:25,505 - discord.gateway - INFO - Shard ID None has connected to Gateway (Session ID: fdcbf3d8304d80e1b6c953ff18ee310d).
+2025-07-19 00:06:27,560 - __main__ - INFO - Bot is ready as Maybee#4948
+2025-07-19 00:06:27,560 - __main__ - INFO - Connected to 3 server(s):
+2025-07-19 00:06:27,560 - __main__ - INFO -   - Emojis (ID: 1160917499936772217)
+2025-07-19 00:06:27,560 - __main__ - INFO -   - L'Aquarium ? (ID: 1223343817264992317)
+2025-07-19 00:06:27,560 - __main__ - INFO -   - OuiOui (ID: 1392463988679508030)
+2025-07-19 00:06:27,560 - __main__ - INFO - Cache system initialized
+2025-07-19 00:06:27,560 - __main__ - INFO - Commands in tree before sync: 32
+2025-07-19 00:06:27,560 - __main__ - INFO - Starting global command sync...
+2025-07-19 00:06:27,561 - cog.rolereact - INFO - [DB] Chargement des réactions de rôles depuis la base de données...
+2025-07-19 00:06:27,894 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='discord.py: on_ready' coro=<Client._run_event() done, defined at C:\Users\jawad\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\discord\client.py:433> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2025-07-19 00:06:27,894 - __main__ - INFO - 32 commands synced globally
+2025-07-19 00:06:27,894 - __main__ - INFO - Commands will be available in all servers within a few minutes
+2025-07-19 00:06:27,894 - __main__ - INFO - Bot startup completed successfully
+2025-07-19 00:06:27,895 - cog.rolereact - INFO - [DB] 10 configurations chargées.
+2025-07-19 00:09:36,563 - cog.rolereact - INFO - Réaction ajoutée détectée: 🤣
+2025-07-19 00:09:39,629 - cog.rolereact - INFO - Réaction ajoutée détectée: ❤️
+2025-07-19 00:09:51,921 - __main__ - INFO - Configuration loaded successfully
+2025-07-19 00:09:51,922 - services - INFO - Service container initialized
+2025-07-19 00:09:51,922 - cache - INFO - Cache directory created/verified: cache_data
+2025-07-19 00:09:51,923 - cache - INFO - Loaded 0 cache entries from cache_data\leaderboards.json
+2025-07-19 00:09:51,923 - monitoring - INFO - Health check system initialized
+2025-07-19 00:09:51,923 - monitoring - INFO - Monitoring system initialized
+2025-07-19 00:09:51,950 - cog.rolereact - INFO - Initialisation de RoleReact Cog
+2025-07-19 00:09:51,950 - cog.rolereact - INFO - Cog RoleReact chargé avec succès
+2025-07-19 00:09:51,959 - cog.config - INFO - Config cog initialized
+2025-07-19 00:09:51,967 - discord.client - INFO - logging in using static token
+2025-07-19 00:09:53,272 - __main__ - INFO - Database connected successfully
+2025-07-19 00:09:57,146 - cog.rolereact - INFO - Réaction ajoutée détectée: 😂
+2025-07-19 00:09:57,517 - __main__ - INFO - Database tables initialized
+2025-07-19 00:09:57,517 - __main__ - INFO - Language preferences loaded from database
+2025-07-19 00:09:57,518 - monitoring - INFO - Health monitoring started with 60s interval
+2025-07-19 00:09:57,518 - __main__ - INFO - Health monitoring started
+2025-07-19 00:09:58,990 - discord.gateway - INFO - Shard ID None has connected to Gateway (Session ID: cabf076ccea59212de4d002c22fb9d2b).
+2025-07-19 00:10:01,010 - __main__ - INFO - Bot is ready as Maybee#4948
+2025-07-19 00:10:01,010 - __main__ - INFO - Connected to 3 server(s):
+2025-07-19 00:10:01,010 - __main__ - INFO -   - Emojis (ID: 1160917499936772217)
+2025-07-19 00:10:01,010 - __main__ - INFO -   - L'Aquarium ? (ID: 1223343817264992317)
+2025-07-19 00:10:01,010 - __main__ - INFO -   - OuiOui (ID: 1392463988679508030)
+2025-07-19 00:10:01,010 - __main__ - INFO - Cache system initialized
+2025-07-19 00:10:01,011 - __main__ - INFO - Commands in tree before sync: 32
+2025-07-19 00:10:01,011 - __main__ - INFO - Starting global command sync...
+2025-07-19 00:10:01,011 - cog.rolereact - INFO - [DB] Chargement des réactions de rôles depuis la base de données...
+2025-07-19 00:10:01,446 - __main__ - INFO - 32 commands synced globally
+2025-07-19 00:10:01,446 - __main__ - INFO - Commands will be available in all servers within a few minutes
+2025-07-19 00:10:01,446 - __main__ - INFO - Bot startup completed successfully
+2025-07-19 00:10:01,853 - cog.rolereact - INFO - [DB] 10 configurations chargées.
+2025-07-19 00:19:08,026 - monitoring - WARNING - High memory usage: 91.8%

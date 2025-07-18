@@ -73,16 +73,23 @@ class Welcome(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member):
         guild_id = member.guild.id
+        print(f"🎉 DEBUG: Member joined - {member.display_name} in guild {guild_id}")
+        
         config = await self.get_welcome_config(guild_id)
+        print(f"🔍 DEBUG: Welcome config for guild {guild_id}: {config}")
         
         channel_id = config.get("welcome_channel")
+        print(f"📢 DEBUG: Welcome channel ID: {channel_id}")
+        
         # Use configured message or default translation
         message = config.get("welcome_message")
         if not message:
             message = _("welcome_system.default_welcome_message", member.id, guild_id)
+        print(f"💬 DEBUG: Welcome message: {message}")
 
         if channel_id:
             channel = self.bot.get_channel(channel_id)
+            print(f"🏠 DEBUG: Welcome channel object: {channel}")
             if channel:
                 embed = Embed(
                     title=_("welcome_system.new_member_title", member.id, guild_id),
@@ -90,7 +97,15 @@ class Welcome(commands.Cog):
                     color=discord.Color.green()
                 )
                 embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
-                await channel.send(embed=embed)
+                try:
+                    await channel.send(embed=embed)
+                    print(f"✅ DEBUG: Welcome message sent successfully to {channel.name}")
+                except Exception as e:
+                    print(f"❌ DEBUG: Failed to send welcome message: {e}")
+            else:
+                print(f"❌ DEBUG: Could not find welcome channel with ID {channel_id}")
+        else:
+            print(f"⚠️ DEBUG: No welcome channel configured for guild {guild_id}")
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):

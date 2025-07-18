@@ -1,0 +1,122 @@
+{
+  "_meta": {
+    "name": "Français",
+    "code": "fr",
+    "flag": "🇫🇷"
+  },
+  "navigation": {
+    "dashboard": "Tableau de bord",
+    "overview": "Vue d'ensemble",
+    "xp_system": "Système XP",
+    "moderation": "Modération",
+    "welcome_system": "Système d'accueil",
+    "server_logs": "Journaux du serveur",
+    "logout": "Déconnexion",
+    "select_server": "Sélectionner un serveur...",
+    "loading_dashboard": "Chargement du tableau de bord..."
+  },
+  "common": {
+    "enabled": "Activé",
+    "disabled": "Désactivé",
+    "save": "Sauvegarder",
+    "cancel": "Annuler",
+    "loading": "Chargement...",
+    "success": "Succès",
+    "error": "Erreur",
+    "warning": "Avertissement",
+    "test": "Test",
+    "preview": "Aperçu",
+    "none": "Aucun",
+    "channel": "Salon",
+    "message": "Message",
+    "user": "Utilisateur",
+    "server": "Serveur",
+    "configuration": "Configuration",
+    "settings": "Paramètres"
+  },
+  "overview": {
+    "total_members": "Membres totaux",
+    "total_xp": "XP total donné",
+    "average_level": "Niveau moyen",
+    "recent_activity": "Activité récente",
+    "top_members": "Meilleurs membres",
+    "rank": "Rang",
+    "user_id": "ID utilisateur",
+    "level": "Niveau",
+    "total_xp_column": "XP total"
+  },
+  "xp_system": {
+    "title": "🐝 Configuration du système XP",
+    "enable_xp": "Activer le système XP",
+    "enable_xp_description": "Permettre aux utilisateurs de gagner de l'XP via les messages et le vocal",
+    "xp_multiplier": "Multiplicateur XP",
+    "xp_multiplier_description": "Multiplier tous les gains d'XP par ce montant",
+    "level_up_messages": "Messages de niveau supérieur",
+    "level_up_messages_description": "Envoyer un message quand les utilisateurs montent de niveau",
+    "level_up_channel": "Salon de niveau supérieur",
+    "level_up_channel_description": "Salon où sont envoyés les messages de niveau supérieur",
+    "save_xp_settings": "Sauvegarder les paramètres XP",
+    "xp_settings_saved": "Paramètres XP sauvegardés avec succès !",
+    "xp_settings_error": "Erreur lors de la sauvegarde des paramètres XP"
+  },
+  "moderation": {
+    "title": "🛡️ Paramètres de modération",
+    "enable_moderation": "Activer la modération",
+    "enable_moderation_description": "Activer les fonctionnalités de modération comme les avertissements et les timeouts",
+    "auto_moderation": "Modération automatique",
+    "auto_moderation_description": "Modérer automatiquement certaines actions",
+    "moderation_log_channel": "Salon de journalisation de la modération",
+    "moderation_log_channel_description": "Salon où les actions de modération sont journalisées",
+    "save_moderation_settings": "Sauvegarder les paramètres de modération",
+    "moderation_settings_saved": "Paramètres de modération sauvegardés avec succès !",
+    "moderation_settings_error": "Erreur lors de la sauvegarde des paramètres de modération"
+  },
+  "welcome": {
+    "title": "👋 Configuration du système d'accueil",
+    "enable_welcome": "Activer le système d'accueil",
+    "enable_welcome_description": "Envoyer des messages d'accueil aux nouveaux membres",
+    "welcome_channel": "Salon d'accueil",
+    "welcome_channel_description": "Salon où sont envoyés les messages d'accueil",
+    "welcome_message": "Message d'accueil",
+    "welcome_message_description": "Message à envoyer quand de nouveaux membres rejoignent",
+    "goodbye_message": "Message d'au revoir",
+    "goodbye_message_description": "Message à envoyer quand les membres partent",
+    "message_variables": "Variables disponibles : {user}, {server}, {memberName}, {memberMention}",
+    "test_welcome": "Tester le message d'accueil",
+    "test_goodbye": "Tester le message d'au revoir",
+    "save_welcome_settings": "Sauvegarder les paramètres d'accueil",
+    "welcome_settings_saved": "Paramètres d'accueil sauvegardés avec succès !",
+    "welcome_settings_error": "Erreur lors de la sauvegarde des paramètres d'accueil"
+  },
+  "logs": {
+    "title": "📋 Configuration des journaux du serveur",
+    "enable_logs": "Activer les journaux du serveur",
+    "enable_logs_description": "Journaliser les événements du serveur dans des salons désignés",
+    "log_channel": "Salon de journalisation",
+    "log_channel_description": "Salon principal pour les journaux du serveur",
+    "member_logs": "Journaux des membres",
+    "member_logs_description": "Journaliser les arrivées et départs des membres",
+    "message_logs": "Journaux des messages",
+    "message_logs_description": "Journaliser les modifications et suppressions de messages",
+    "voice_logs": "Journaux vocaux",
+    "voice_logs_description": "Journaliser l'activité des salons vocaux",
+    "moderation_logs": "Journaux de modération",
+    "moderation_logs_description": "Journaliser les actions de modération",
+    "save_log_settings": "Sauvegarder les paramètres de journalisation",
+    "log_settings_saved": "Paramètres de journalisation sauvegardés avec succès !",
+    "log_settings_error": "Erreur lors de la sauvegarde des paramètres de journalisation"
+  },
+  "language": {
+    "title": "Paramètres de langue",
+    "select_language": "Sélectionner la langue",
+    "language_changed": "Langue changée avec succès !",
+    "language_error": "Erreur lors du changement de langue"
+  },
+  "errors": {
+    "no_guilds": "Aucun serveur trouvé. Assurez-vous que le bot est ajouté à vos serveurs.",
+    "load_error": "Impossible de charger les données. Veuillez réessayer.",
+    "save_error": "Impossible de sauvegarder les paramètres. Veuillez réessayer.",
+    "permission_error": "Vous n'avez pas la permission de configurer ce serveur.",
+    "network_error": "Erreur réseau. Veuillez vérifier votre connexion."
+  }
+}

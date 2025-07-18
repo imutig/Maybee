@@ -5,6 +5,9 @@ class Dashboard {
         this.user = null;
         this.guilds = [];
         this.channels = [];
+        this.currentLanguage = 'en';
+        this.availableLanguages = [];
+        this.strings = {};
         this.init();
     }
 
@@ -17,9 +20,24 @@ class Dashboard {
                 return;
             }
 
+            // Load available languages first
+            await this.loadAvailableLanguages();
+            
+            // Load user's language preference
+            await this.loadUserLanguage();
+            
+            // Load language strings
+            await this.loadLanguageStrings();
+            
+            // Initialize language selector
+            this.initLanguageSelector();
+            
             // Load user data
             await this.loadUser();
             await this.loadGuilds();
+            
+            // Update UI with translations
+            this.updateUILanguage();
             
             // Hide loading overlay
             document.getElementById('loadingOverlay').style.display = 'none';
@@ -111,6 +129,171 @@ class Dashboard {
         } catch (error) {
             console.error('Failed to load guilds:', error);
             throw error;
+        }
+    }
+
+    // Language support methods
+    async loadAvailableLanguages() {
+        try {
+            const response = await this.apiCall('/languages');
+            this.availableLanguages = response.languages;
+        } catch (error) {
+            console.error('Failed to load available languages:', error);
+            // Fallback to English only
+            this.availableLanguages = [{ code: 'en', name: 'English', flag: '🇺🇸' }];
+        }
+    }
+
+    async loadUserLanguage() {
+        try {
+            const response = await this.apiCall('/user/language');
+            this.currentLanguage = response.language;
+        } catch (error) {
+            console.error('Failed to load user language:', error);
+            this.currentLanguage = 'en';
+        }
+    }
+
+    async loadLanguageStrings() {
+        try {
+            const response = await this.apiCall(`/language/${this.currentLanguage}`);
+            this.strings = response;
+        } catch (error) {
+            console.error('Failed to load language strings:', error);
+            // Fallback to basic English strings
+            this.strings = {
+                navigation: { dashboard: 'Dashboard', overview: 'Overview' },
+                common: { loading: 'Loading...' }
+            };
+        }
+    }
+
+    initLanguageSelector() {
+        const languageMenu = document.getElementById('languageMenu');
+        const currentLanguageEl = document.getElementById('currentLanguage');
+        
+        // Clear existing menu
+        languageMenu.innerHTML = '';
+        
+        // Add available languages
+        this.availableLanguages.forEach(lang => {
+            const li = document.createElement('li');
+            li.innerHTML = `<a class="dropdown-item" href="#" onclick="dashboard.changeLanguage('${lang.code}')">${lang.flag} ${lang.name}</a>`;
+            languageMenu.appendChild(li);
+        });
+        
+        // Update current language display
+        const currentLang = this.availableLanguages.find(lang => lang.code === this.currentLanguage);
+        if (currentLang) {
+            currentLanguageEl.textContent = `${currentLang.flag} ${currentLang.name}`;
+        }
+    }
+
+    async changeLanguage(languageCode) {
+        try {
+            // Save language preference
+            await this.apiCall('/user/language', 'PUT', { language: languageCode });
+            
+            // Update current language
+            this.currentLanguage = languageCode;
+            
+            // Load new language strings
+            await this.loadLanguageStrings();
+            
+            // Update UI
+            this.updateUILanguage();
+            this.initLanguageSelector();
+            
+            // Show success message
+            this.showSuccess(this.getString('language.language_changed') || 'Language changed successfully!');
+            
+        } catch (error) {
+            console.error('Failed to change language:', error);
+            this.showError(this.getString('language.language_error') || 'Error changing language');
+        }
+    }
+
+    getString(key) {
+        const keys = key.split('.');
+        let value = this.strings;
+        
+        for (const k of keys) {
+            if (value && typeof value === 'object') {
+                value = value[k];
+            } else {
+                return key; // Return the key if translation not found
+            }
+        }
+        
+        return value || key;
+    }
+
+    updateUILanguage() {
+        // Update all elements with data-translate attribute
+        const translatableElements = document.querySelectorAll('[data-translate]');
+        translatableElements.forEach(element => {
+            const key = element.getAttribute('data-translate');
+            const translation = this.getString(key);
+            if (translation && translation !== key) {
+                element.textContent = translation;
+            }
+        });
+
+        // Update navigation links (preserve icons)
+        const navigationElements = {
+            'overview': document.querySelector('a[href="#overview"]'),
+            'xp-settings': document.querySelector('a[href="#xp-settings"]'),
+            'moderation': document.querySelector('a[href="#moderation"]'),
+            'welcome': document.querySelector('a[href="#welcome"]'),
+            'logs': document.querySelector('a[href="#logs"]')
+        };
+
+        if (navigationElements.overview) {
+            navigationElements.overview.innerHTML = `<i class="fas fa-tachometer-alt me-2"></i>${this.getString('navigation.overview')}`;
+        }
+        if (navigationElements['xp-settings']) {
+            navigationElements['xp-settings'].innerHTML = `<i class="fas fa-trophy me-2"></i>${this.getString('navigation.xp_system')}`;
+        }
+        if (navigationElements.moderation) {
+            navigationElements.moderation.innerHTML = `<i class="fas fa-shield-alt me-2"></i>${this.getString('navigation.moderation')}`;
+        }
+        if (navigationElements.welcome) {
+            navigationElements.welcome.innerHTML = `<i class="fas fa-door-open me-2"></i>${this.getString('navigation.welcome_system')}`;
+        }
+        if (navigationElements.logs) {
+            navigationElements.logs.innerHTML = `<i class="fas fa-file-alt me-2"></i>${this.getString('navigation.server_logs')}`;
+        }
+
+        // Update logout link
+        const logoutLink = document.querySelector('a[onclick="logout()"]');
+        if (logoutLink) {
+            logoutLink.textContent = this.getString('navigation.logout');
+        }
+
+        // Update other specific sections
+        this.updateSectionTitles();
+    }
+
+    updateSectionTitles() {
+        // Update section titles that might not have data-translate attributes
+        const xpTitle = document.querySelector('#xp-settings .card-title');
+        if (xpTitle) {
+            xpTitle.textContent = this.getString('xp_system.title');
+        }
+        
+        const moderationTitle = document.querySelector('#moderation .card-title');
+        if (moderationTitle) {
+            moderationTitle.textContent = this.getString('moderation.title');
+        }
+        
+        const welcomeTitle = document.querySelector('#welcome .card-title');
+        if (welcomeTitle) {
+            welcomeTitle.textContent = this.getString('welcome.title');
+        }
+        
+        const logsTitle = document.querySelector('#logs .card-title');
+        if (logsTitle) {
+            logsTitle.textContent = this.getString('logs.title');
         }
     }
 

@@ -23,6 +23,7 @@ from pydantic import BaseModel
 import aiomysql
 from pathlib import Path
 from dotenv import load_dotenv
+import re
 
 # Load environment variables
 load_dotenv()  # Load from current directory (web/.env)
@@ -33,12 +34,64 @@ import sys
 sys.path.append('..')
 from db import Database
 
+# Language support
+SUPPORTED_LANGUAGES = ['en', 'fr']
+DEFAULT_LANGUAGE = 'en'
+
+def load_language_file(language_code: str) -> Dict[str, Any]:
+    """Load language file for the web dashboard"""
+    try:
+        language_file = Path(__file__).parent / "languages" / f"{language_code}.json"
+        if language_file.exists():
+            with open(language_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        else:
+            # Fallback to English if language file doesn't exist
+            with open(Path(__file__).parent / "languages" / "en.json", 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error loading language file for {language_code}: {e}")
+        # Return basic fallback
+        return {"_meta": {"name": "English", "code": "en", "flag": "🇺🇸"}}
+
+def detect_browser_language(accept_language: str) -> str:
+    """Detect browser language from Accept-Language header"""
+    if not accept_language:
+        return DEFAULT_LANGUAGE
+    
+    # Parse Accept-Language header
+    # Format: "en-US,en;q=0.9,fr;q=0.8"
+    languages = []
+    for lang in accept_language.split(','):
+        lang = lang.strip()
+        if ';' in lang:
+            lang_code, quality = lang.split(';', 1)
+            try:
+                quality = float(quality.split('=')[1])
+            except (ValueError, IndexError):
+                quality = 1.0
+        else:
+            lang_code, quality = lang, 1.0
+        
+        # Extract main language code (e.g., "en" from "en-US")
+        main_lang = lang_code.split('-')[0].lower()
+        if main_lang in SUPPORTED_LANGUAGES:
+            languages.append((main_lang, quality))
+    
+    # Sort by quality and return the best match
+    if languages:
+        languages.sort(key=lambda x: x[1], reverse=True)
+        return languages[0][0]
+    
+    return DEFAULT_LANGUAGE
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     await init_database()
     await create_guild_config_table()
     await create_moderation_tables()
+    await create_user_languages_table()
     yield
     # Shutdown
     if database:
@@ -124,7 +177,8 @@ class ModerationSettings(BaseModel):
     logs_channel: Optional[str] = None
 
 class WelcomeSettings(BaseModel):
-    enabled: bool = False
+    welcome_enabled: bool = False
+    goodbye_enabled: bool = False
     welcome_channel: Optional[str] = None
     welcome_message: str = "Welcome {user} to {server}!"
     goodbye_channel: Optional[str] = None
@@ -152,6 +206,13 @@ class ModerationAction(BaseModel):
     reason: str = "No reason provided"
     duration: Optional[int] = None  # For timeout (in minutes)
     channel_id: Optional[str] = None  # Channel to send moderation messages to
+
+class LanguagePreference(BaseModel):
+    language: str  # Language code (e.g., "en", "fr")
+
+class UserLanguage(BaseModel):
+    user_id: str
+    language: str = DEFAULT_LANGUAGE
 
 # Utility functions
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -306,6 +367,27 @@ async def create_moderation_tables():
         return True
     except Exception as e:
         print(f"❌ Error creating moderation tables: {e}")
+        return False
+
+async def create_user_languages_table():
+    """Create the user_languages table if it doesn't exist"""
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS user_languages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id BIGINT NOT NULL UNIQUE,
+        language_code VARCHAR(10) NOT NULL DEFAULT 'en',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_user_id (user_id)
+    )
+    """
+    
+    try:
+        await database.execute(create_table_sql)
+        print("✅ User languages table created/verified")
+        return True
+    except Exception as e:
+        print(f"❌ Error creating user_languages table: {e}")
         return False
 
 # Routes
@@ -876,6 +958,11 @@ async def dashboard(request: Request):
     """Dashboard page"""
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
+@app.get("/language-test", response_class=HTMLResponse)
+async def language_test_page(request: Request):
+    """Language test page - for testing language functionality"""
+    return templates.TemplateResponse("language-test.html", {"request": request})
+
 async def verify_guild_access(guild_id: str, current_user: str) -> bool:
     """Verify user has access to a guild through Discord API or bot presence"""
     try:
@@ -955,13 +1042,13 @@ async def update_welcome_config(
     """Update welcome configuration for a guild"""
     try:
         print(f"Received welcome config update for guild {guild_id}")
-        print(f"Config data: {config}")
+        print(f"Config data: welcome_enabled={config.welcome_enabled} goodbye_enabled={config.goodbye_enabled} welcome_channel='{config.welcome_channel}' welcome_message='{config.welcome_message}' goodbye_channel='{config.goodbye_channel}' goodbye_message='{config.goodbye_message}'")
         
         # Verify user has access
         if not await verify_guild_access(guild_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this guild")
         
-        if config.enabled:
+        if config.welcome_enabled or config.goodbye_enabled:
             # Insert or update welcome config
             await database.execute(
                 """INSERT INTO welcome_config 
@@ -997,7 +1084,7 @@ async def update_welcome_config(
                welcome_channel = VALUES(welcome_channel),
                welcome_message = VALUES(welcome_message),
                updated_at = VALUES(updated_at)""",
-            (guild_id, config.enabled, 
+            (guild_id, config.welcome_enabled, 
              int(config.welcome_channel) if config.welcome_channel else None,
              config.welcome_message, datetime.utcnow())
         )
@@ -1788,6 +1875,121 @@ async def get_moderation_history(
     
     except Exception as e:
         print(f"Get moderation history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Language endpoints
+@app.get("/api/languages")
+async def get_available_languages():
+    """Get all available languages"""
+    try:
+        languages = []
+        for lang_code in SUPPORTED_LANGUAGES:
+            lang_data = load_language_file(lang_code)
+            languages.append({
+                "code": lang_code,
+                "name": lang_data["_meta"]["name"],
+                "flag": lang_data["_meta"]["flag"]
+            })
+        return {"languages": languages}
+    except Exception as e:
+        print(f"Get languages error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/language/{language_code}")
+async def get_language_strings(language_code: str):
+    """Get language strings for a specific language"""
+    try:
+        if language_code not in SUPPORTED_LANGUAGES:
+            raise HTTPException(status_code=404, detail="Language not found")
+        
+        lang_data = load_language_file(language_code)
+        return lang_data
+    except Exception as e:
+        print(f"Get language strings error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/user/language")
+async def get_user_language_preference(
+    request: Request,
+    current_user: str = Depends(get_current_user)
+):
+    """Get user's language preference"""
+    try:
+        # Get user ID from token
+        payload = jwt.decode(current_user, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Check if user has a saved language preference
+        result = await database.fetch_one(
+            "SELECT language_code FROM user_languages WHERE user_id = %s",
+            (user_id,)
+        )
+        
+        if result:
+            return {"language": result["language_code"]}
+        else:
+            # Detect from browser if no preference saved
+            accept_language = request.headers.get("accept-language", "")
+            detected_language = detect_browser_language(accept_language)
+            
+            # Save the detected language as preference
+            await database.execute(
+                "INSERT INTO user_languages (user_id, language_code) VALUES (%s, %s) ON DUPLICATE KEY UPDATE language_code = %s",
+                (user_id, detected_language, detected_language)
+            )
+            
+            return {"language": detected_language}
+    
+    except Exception as e:
+        print(f"Get user language error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/user/language")
+async def set_user_language_preference(
+    language_pref: LanguagePreference,
+    current_user: str = Depends(get_current_user)
+):
+    """Set user's language preference"""
+    try:
+        # Validate language
+        if language_pref.language not in SUPPORTED_LANGUAGES:
+            raise HTTPException(status_code=400, detail="Unsupported language")
+        
+        # Get user ID from token
+        payload = jwt.decode(current_user, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Save language preference
+        await database.execute(
+            "INSERT INTO user_languages (user_id, language_code) VALUES (%s, %s) ON DUPLICATE KEY UPDATE language_code = %s",
+            (user_id, language_pref.language, language_pref.language)
+        )
+        
+        return {"message": "Language preference saved successfully"}
+    
+    except Exception as e:
+        print(f"Set user language error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/detect-language")
+async def detect_language_from_browser(request: Request):
+    """Detect language from browser Accept-Language header"""
+    try:
+        accept_language = request.headers.get("accept-language", "")
+        detected_language = detect_browser_language(accept_language)
+        
+        return {
+            "detected_language": detected_language,
+            "accept_language_header": accept_language
+        }
+    except Exception as e:
+        print(f"Detect language error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Production server startup
