@@ -5,6 +5,7 @@ class Dashboard {
         this.user = null;
         this.guilds = [];
         this.channels = [];
+        this.members = []; // Store guild members for name resolution
         this.currentLanguage = 'en';
         this.availableLanguages = [];
         this.strings = {};
@@ -309,11 +310,11 @@ class Dashboard {
         this.currentGuild = guildId;
         
         try {
-            // Load guild data
-            await this.loadGuildStats();
+            // Load guild data - load members first so names are available for stats
             await this.loadGuildConfig();
             await this.loadGuildChannels();
             await this.loadGuildMembers();
+            await this.loadGuildStats(); // Move this after members are loaded
             await this.loadModerationHistory();
             await this.loadWelcomeConfig();
             await this.loadServerLogsConfig();
@@ -322,6 +323,58 @@ class Dashboard {
             console.error('Failed to load guild data:', error);
             this.showError('Failed to load server data.');
         }
+    }
+
+    // Helper function to get user display name from user ID
+    async getUserDisplayNameAsync(userId) {
+        console.log('Getting display name for user ID:', userId, typeof userId);
+        console.log('Available members:', this.members?.length || 0);
+        
+        if (!this.members || this.members.length === 0) {
+            console.log('No members data available');
+            return `User ID: ${userId}`;
+        }
+        
+        // Convert userId to string for comparison since API might return different types
+        const userIdStr = String(userId);
+        console.log('Looking for user ID (as string):', userIdStr);
+        
+        // Find exact match
+        const member = this.members.find(member => String(member.id) === userIdStr);
+        
+        if (member) {
+            const displayName = member.display_name || member.username;
+            console.log(`Found member: ${displayName} for ID: ${userId}`);
+            return displayName;
+        }
+        
+        // If not found in members, try to get user info from API
+        try {
+            console.log(`Member not found locally, trying API for ID: ${userId}`);
+            const userInfo = await this.apiCall(`/user/${userId}`);
+            if (userInfo && (userInfo.username || userInfo.display_name)) {
+                const displayName = userInfo.display_name || userInfo.username;
+                console.log(`Found user via API: ${displayName} for ID: ${userId}`);
+                return `${displayName} (ex-member)`;
+            }
+        } catch (error) {
+            console.log(`Failed to get user info from API for ID: ${userId}`, error);
+        }
+        
+        console.log(`Member not found for ID: ${userId}`);
+        return `User ID: ${userId}`;
+    }
+
+    // Synchronous version for backward compatibility
+    getUserDisplayName(userId) {
+        const userIdStr = String(userId);
+        const member = this.members?.find(member => String(member.id) === userIdStr);
+        
+        if (member) {
+            return member.display_name || member.username;
+        }
+        
+        return `User ID: ${userId}`;
     }
 
     async loadGuildStats() {
@@ -341,16 +394,20 @@ class Dashboard {
             topUsersTable.innerHTML = '';
             
             if (stats.top_users && stats.top_users.length > 0) {
-                stats.top_users.forEach((user, index) => {
+                console.log('Processing top users:', stats.top_users);
+                topUsersTable.innerHTML = '';
+                for (const [index, user] of stats.top_users.entries()) {
                     const row = document.createElement('tr');
+                    const displayName = await this.getUserDisplayNameAsync(user.user_id);
+                    console.log(`User ${index + 1}: ID=${user.user_id}, Name=${displayName}`);
                     row.innerHTML = `
                         <td><span class="badge bg-primary">#${index + 1}</span></td>
-                        <td>${user.user_id}</td>
+                        <td>${displayName}</td>
                         <td><span class="badge bg-success">Level ${user.level}</span></td>
                         <td>${user.xp?.toLocaleString() || '0'} XP</td>
                     `;
                     topUsersTable.appendChild(row);
-                });
+                }
             } else {
                 topUsersTable.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No data available</td></tr>';
             }
@@ -482,13 +539,19 @@ class Dashboard {
 
         try {
             const response = await this.apiCall(`/guild/${this.currentGuild}/members`);
-            const members = response.members || [];
+            this.members = response.members || []; // Store members for later use
+            
+            console.log('Loaded guild members:', this.members.length);
+            if (this.members.length > 0) {
+                console.log('Sample member:', this.members[0]);
+                console.log('All member IDs:', this.members.map(m => ({id: m.id, name: m.display_name || m.username})));
+            }
             
             const memberSelect = document.getElementById('memberSelect');
             memberSelect.innerHTML = '<option value="">Choose a member...</option>';
             
-            if (members.length > 0) {
-                members.forEach(member => {
+            if (this.members.length > 0) {
+                this.members.forEach(member => {
                     const option = document.createElement('option');
                     option.value = member.id;
                     option.textContent = member.display_name || member.username;
@@ -507,6 +570,58 @@ class Dashboard {
             const memberSelect = document.getElementById('memberSelect');
             memberSelect.innerHTML = '<option value="">Error loading members</option>';
         }
+        
+        // Refresh displays that depend on member names
+        await this.refreshUserDisplays();
+    }
+
+    // Refresh displays that show user names after members are loaded
+    async refreshUserDisplays() {
+        try {
+            // Refresh top users if stats are already loaded
+            if (this.currentGuild) {
+                const statsResponse = await this.apiCall(`/guild/${this.currentGuild}/stats`);
+                const stats = statsResponse;
+                
+                const topUsersTable = document.getElementById('topUsersTable');
+                if (topUsersTable && stats.top_users && stats.top_users.length > 0) {
+                    topUsersTable.innerHTML = '';
+                    for (const [index, user] of stats.top_users.entries()) {
+                        const row = document.createElement('tr');
+                        const displayName = await this.getUserDisplayNameAsync(user.user_id);
+                        row.innerHTML = `
+                            <td><span class="badge bg-primary">#${index + 1}</span></td>
+                            <td>${displayName}</td>
+                            <td><span class="badge bg-success">Level ${user.level}</span></td>
+                            <td>${user.xp?.toLocaleString() || '0'} XP</td>
+                        `;
+                        topUsersTable.appendChild(row);
+                    }
+                }
+                
+                // Refresh moderation history too
+                const historyResponse = await this.apiCall(`/guild/${this.currentGuild}/moderation/history`);
+                const history = historyResponse.history || [];
+                
+                const historyTable = document.getElementById('moderationHistoryTable');
+                if (historyTable && history.length > 0) {
+                    historyTable.innerHTML = '';
+                    for (const action of history) {
+                        const row = document.createElement('tr');
+                        const actionBadge = action.action_type === 'warning' ? 'bg-warning' : 'bg-danger';
+                        const displayName = await this.getUserDisplayNameAsync(action.user_id);
+                        row.innerHTML = `
+                            <td>${displayName}</td>
+                            <td><span class="badge ${actionBadge}">${action.action_type}</span></td>
+                            <td>${new Date(action.created_at).toLocaleDateString()}</td>
+                        `;
+                        historyTable.appendChild(row);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to refresh user displays:', error);
+        }
     }
 
     async loadModerationHistory() {
@@ -520,16 +635,18 @@ class Dashboard {
             historyTable.innerHTML = '';
             
             if (history.length > 0) {
-                history.forEach(action => {
+                historyTable.innerHTML = '';
+                for (const action of history) {
                     const row = document.createElement('tr');
                     const actionBadge = action.action_type === 'warning' ? 'bg-warning' : 'bg-danger';
+                    const displayName = await this.getUserDisplayNameAsync(action.user_id);
                     row.innerHTML = `
-                        <td>${action.user_id}</td>
+                        <td>${displayName}</td>
                         <td><span class="badge ${actionBadge}">${action.action_type}</span></td>
                         <td>${new Date(action.created_at).toLocaleDateString()}</td>
                     `;
                     historyTable.appendChild(row);
-                });
+                }
             } else {
                 historyTable.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No moderation history</td></tr>';
             }

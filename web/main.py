@@ -723,7 +723,13 @@ async def get_guild_stats(guild_id: str, current_user: str = Depends(get_current
             "SELECT user_id, xp, level FROM xp_data WHERE guild_id = %s ORDER BY xp DESC LIMIT 5",
             (guild_id,)
         )
-        stats["top_users"] = [dict(user) for user in top_users] if top_users else []
+        # Convert user_id to string to prevent JavaScript precision loss with large integers
+        stats["top_users"] = []
+        if top_users:
+            for user in top_users:
+                user_dict = dict(user)
+                user_dict["user_id"] = str(user_dict["user_id"])  # Convert to string for JavaScript
+                stats["top_users"].append(user_dict)
         
         return stats
         
@@ -1019,17 +1025,29 @@ async def language_test_page(request: Request):
 async def verify_guild_access(guild_id: str, current_user: str) -> bool:
     """Verify user has access to a guild through Discord API or bot presence"""
     try:
+        print(f"🔍 Verifying guild access for guild {guild_id}")
         payload = jwt.decode(current_user, SECRET_KEY, algorithms=[ALGORITHM])
         discord_token = payload.get("discord_token")
+        print(f"🔍 Discord token available: {bool(discord_token)}")
+        
         user_guilds = await get_user_guilds(discord_token)
         bot_guilds = await get_bot_guilds()
+        
+        print(f"🔍 User guilds count: {len(user_guilds)}")
+        print(f"🔍 Bot guilds: {bot_guilds}")
         
         # Check if user has access through Discord API OR if the guild is in bot's list
         has_user_access = any(guild["id"] == guild_id for guild in user_guilds)
         has_bot_access = guild_id in bot_guilds
         
-        return has_user_access or has_bot_access
-    except Exception:
+        print(f"🔍 User access: {has_user_access}, Bot access: {has_bot_access}")
+        
+        result = has_user_access or has_bot_access
+        print(f"🔍 Final access result: {result}")
+        
+        return result
+    except Exception as e:
+        print(f"❌ Exception in verify_guild_access: {e}")
         return False
 
 # Welcome System API Endpoints
@@ -1885,8 +1903,8 @@ async def get_guild_moderation_history(
         history = []
         for warning in warnings:
             history.append({
-                "user_id": warning["user_id"],
-                "moderator_id": warning["moderator_id"],
+                "user_id": str(warning["user_id"]),  # Convert to string for JavaScript
+                "moderator_id": str(warning["moderator_id"]),  # Convert to string for JavaScript
                 "action_type": "warning",
                 "reason": warning["reason"],
                 "created_at": warning["timestamp"]
@@ -1894,8 +1912,8 @@ async def get_guild_moderation_history(
         
         for timeout in timeouts:
             history.append({
-                "user_id": timeout["user_id"],
-                "moderator_id": timeout["moderator_id"],
+                "user_id": str(timeout["user_id"]),  # Convert to string for JavaScript
+                "moderator_id": str(timeout["moderator_id"]),  # Convert to string for JavaScript
                 "action_type": "timeout",
                 "reason": timeout["reason"],
                 "duration": timeout["duration"],
