@@ -198,7 +198,7 @@ async def on_ready():
     
     logger.info("Bot startup completed successfully")
     print("successfully finished startup")
-    await bot.change_presence(activity=discord.Game(name="Enhanced MaybeBot | /help"))
+    await bot.change_presence(activity=discord.Game(name="Maybee | /config"))
     bot.add_view(TicketPanelView())
     bot.add_view(TicketCloseView())
 

@@ -139,11 +139,26 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "http://localhost:8000/auth/discord/callback")
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_TOKEN")  # Use same token as main bot
+
+# Get and clean the Discord bot token
+_raw_token = os.getenv("DISCORD_TOKEN")
+if _raw_token:
+    # Clean the token of any potential formatting issues
+    DISCORD_BOT_TOKEN = _raw_token.strip()
+    # Remove any potential key=value format
+    if '=' in DISCORD_BOT_TOKEN and 'DISCORD_TOKEN=' in DISCORD_BOT_TOKEN:
+        DISCORD_BOT_TOKEN = DISCORD_BOT_TOKEN.split('=', 1)[1].strip()
+    # Remove any quotes
+    DISCORD_BOT_TOKEN = DISCORD_BOT_TOKEN.strip('"').strip("'")
+else:
+    DISCORD_BOT_TOKEN = None
 
 # Debug: Print environment variable status (without exposing values)
 print(f"🔍 Environment variables loaded:")
 print(f"  - DISCORD_TOKEN: {'✅ Found' if DISCORD_BOT_TOKEN else '❌ Missing'}")
+if DISCORD_BOT_TOKEN:
+    print(f"  - Token length: {len(DISCORD_BOT_TOKEN)}")
+    print(f"  - Token prefix: '{DISCORD_BOT_TOKEN[:10]}...' (should start with MTM)")
 print(f"  - DB_HOST: {'✅ Found' if os.getenv('DB_HOST') else '❌ Missing'}")
 print(f"  - DB_USER: {'✅ Found' if os.getenv('DB_USER') else '❌ Missing'}")
 print(f"  - DISCORD_CLIENT_ID: {'✅ Found' if DISCORD_CLIENT_ID else '❌ Missing'}")
@@ -720,13 +735,31 @@ async def get_guild_channels(guild_id: str, current_user: str = Depends(get_curr
     """Get guild channels for configuration"""
     try:
         print(f"Fetching channels for guild {guild_id}")
-        print(f"Bot token exists: {bool(DISCORD_BOT_TOKEN)}")
+        
+        # Debug the bot token
+        bot_token = DISCORD_BOT_TOKEN
+        print(f"Bot token exists: {bool(bot_token)}")
+        if bot_token:
+            print(f"🔍 Raw token length: {len(bot_token)}")
+            print(f"🔍 Token starts with: '{bot_token[:5]}...'" if bot_token else "❌ No token")
+            print(f"🔍 Token ends with: '...{bot_token[-5:]}'" if bot_token else "❌ No token")
+            
+            # Clean the token
+            bot_token = bot_token.strip()
+            if bot_token and not bot_token.startswith('MTM'):
+                print(f"⚠️  Token doesn't start with expected prefix. First 10 chars: '{bot_token[:10]}'")
+                # Try to fix common issues
+                if '=' in bot_token and 'DISCORD_TOKEN=' in bot_token:
+                    bot_token = bot_token.split('=', 1)[1]
+                    print(f"🔧 Cleaned token from env format: '{bot_token[:10]}...'")
+            
+            print(f"🔍 Using cleaned token: '{bot_token[:10]}...'")
         
         # Try to get Discord guild channels via bot token
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
                 f"https://discord.com/api/guilds/{guild_id}/channels",
-                headers={"Authorization": f"Bot {DISCORD_BOT_TOKEN}"}
+                headers={"Authorization": f"Bot {bot_token}"}
             )
             
             print(f"Discord API response status: {response.status_code}")
@@ -1450,8 +1483,22 @@ async def get_guild_members(
             print("❌ No Discord bot token found")
             return {"members": []}
         
-        print(f"🔍 Using bot token: {bot_token[:20]}..." if bot_token else "❌ No bot token found")  # Show only first 20 chars for security
-        print(f"🔍 Environment DISCORD_TOKEN: {os.getenv('DISCORD_TOKEN')[:20] if os.getenv('DISCORD_TOKEN') else 'NOT FOUND'}...")
+        # Debug: Check for token corruption
+        print(f"🔍 Raw token length: {len(bot_token) if bot_token else 0}")
+        print(f"🔍 Token starts with: '{bot_token[:5]}...'" if bot_token else "❌ No token")
+        print(f"🔍 Token ends with: '...{bot_token[-5:]}'" if bot_token else "❌ No token")
+        print(f"🔍 Environment raw: '{os.getenv('DISCORD_TOKEN')[:5]}...{os.getenv('DISCORD_TOKEN')[-5:]}'" if os.getenv('DISCORD_TOKEN') else 'NOT FOUND')
+        
+        # Clean the token - remove any whitespace or invisible characters
+        bot_token = bot_token.strip() if bot_token else None
+        if bot_token and not bot_token.startswith('MTM'):
+            print(f"⚠️  Token doesn't start with expected prefix. First 10 chars: '{bot_token[:10]}'")
+            # Try to fix common issues
+            if '=' in bot_token and bot_token.startswith('DISCORD_TOKEN='):
+                bot_token = bot_token.split('=', 1)[1]
+                print(f"🔧 Cleaned token from env format: '{bot_token[:10]}...'")
+        
+        print(f"🔍 Using cleaned bot token: {bot_token[:20]}..." if bot_token else "❌ No bot token found")
         print(f"🔍 Guild ID being accessed: {guild_id}")
         
         # Get guild members from Discord API

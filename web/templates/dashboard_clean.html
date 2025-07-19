@@ -246,6 +246,7 @@
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="xpEnabled" class="toggle-input" checked>
                                                 <label for="xpEnabled" class="toggle-label">
+                                                    <span class="toggle-slider"></span>
                                                     <span class="toggle-text">Enable XP System</span>
                                                 </label>
                                             </div>
@@ -254,8 +255,8 @@
                                         <div class="form-group">
                                             <label class="form-label">XP Multiplier</label>
                                             <div class="input-group">
-                                                <span class="input-prefix">×</span>
                                                 <input type="number" id="xpMultiplier" class="form-input" min="0.1" max="10" step="0.1" value="1.0">
+                                                <span class="input-suffix">×</span>
                                             </div>
                                             <div class="form-hint">Adjust how much XP users earn per message</div>
                                         </div>
@@ -277,6 +278,7 @@
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="levelUpMessage" class="toggle-input" checked>
                                                 <label for="levelUpMessage" class="toggle-label">
+                                                    <span class="toggle-slider"></span>
                                                     <span class="toggle-text">Show Level Up Messages</span>
                                                 </label>
                                             </div>
@@ -418,6 +420,7 @@
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="welcomeEnabled" class="toggle-input">
                                                 <label for="welcomeEnabled" class="toggle-label">
+                                                    <span class="toggle-slider"></span>
                                                     <span class="toggle-text">Enable Welcome Messages</span>
                                                 </label>
                                             </div>
@@ -446,6 +449,7 @@
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="goodbyeEnabled" class="toggle-input">
                                                 <label for="goodbyeEnabled" class="toggle-label">
+                                                    <span class="toggle-slider"></span>
                                                     <span class="toggle-text">Enable Goodbye Messages</span>
                                                 </label>
                                             </div>
@@ -502,6 +506,7 @@
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="serverLogsEnabled" class="toggle-input">
                                                 <label for="serverLogsEnabled" class="toggle-label">
+                                                    <span class="toggle-slider"></span>
                                                     <span class="toggle-text">Enable Server Logs</span>
                                                 </label>
                                             </div>
@@ -520,149 +525,123 @@
                                     <div class="settings-section">
                                         <h4 class="section-title">Log Events</h4>
                                         
-                                        <div class="toggle-grid">
+                                        <div class="checkbox-grid">
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logMessageDelete" class="toggle-input">
-                                                    <label for="logMessageDelete" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-trash-alt"></i>
-                                                            Message Deletions
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logMessageDelete" class="checkbox-input">
+                                                    <label for="logMessageDelete" class="checkbox-label">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                        Message Deletions
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logMessageEdit" class="toggle-input">
-                                                    <label for="logMessageEdit" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-edit"></i>
-                                                            Message Edits
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logMessageEdit" class="checkbox-input">
+                                                    <label for="logMessageEdit" class="checkbox-label">
+                                                        <i class="fas fa-edit"></i>
+                                                        Message Edits
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logMemberJoin" class="toggle-input">
-                                                    <label for="logMemberJoin" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-user-plus"></i>
-                                                            Member Joins
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logMemberJoin" class="checkbox-input">
+                                                    <label for="logMemberJoin" class="checkbox-label">
+                                                        <i class="fas fa-user-plus"></i>
+                                                        Member Joins
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logMemberLeave" class="toggle-input">
-                                                    <label for="logMemberLeave" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-user-minus"></i>
-                                                            Member Leaves
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logMemberLeave" class="checkbox-input">
+                                                    <label for="logMemberLeave" class="checkbox-label">
+                                                        <i class="fas fa-user-minus"></i>
+                                                        Member Leaves
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logMemberUpdate" class="toggle-input">
-                                                    <label for="logMemberUpdate" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-user-edit"></i>
-                                                            Member Updates
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logMemberUpdate" class="checkbox-input">
+                                                    <label for="logMemberUpdate" class="checkbox-label">
+                                                        <i class="fas fa-user-edit"></i>
+                                                        Member Updates
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logVoiceStateUpdate" class="toggle-input">
-                                                    <label for="logVoiceStateUpdate" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-microphone"></i>
-                                                            Voice State Changes
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logVoiceStateUpdate" class="checkbox-input">
+                                                    <label for="logVoiceStateUpdate" class="checkbox-label">
+                                                        <i class="fas fa-microphone"></i>
+                                                        Voice State Changes
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logRoleCreate" class="toggle-input">
-                                                    <label for="logRoleCreate" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-plus-circle"></i>
-                                                            Role Creation
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logRoleCreate" class="checkbox-input">
+                                                    <label for="logRoleCreate" class="checkbox-label">
+                                                        <i class="fas fa-plus-circle"></i>
+                                                        Role Creation
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logRoleDelete" class="toggle-input">
-                                                    <label for="logRoleDelete" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-minus-circle"></i>
-                                                            Role Deletion
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logRoleDelete" class="checkbox-input">
+                                                    <label for="logRoleDelete" class="checkbox-label">
+                                                        <i class="fas fa-minus-circle"></i>
+                                                        Role Deletion
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logRoleUpdate" class="toggle-input">
-                                                    <label for="logRoleUpdate" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-edit"></i>
-                                                            Role Updates
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logRoleUpdate" class="checkbox-input">
+                                                    <label for="logRoleUpdate" class="checkbox-label">
+                                                        <i class="fas fa-edit"></i>
+                                                        Role Updates
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logChannelCreate" class="toggle-input">
-                                                    <label for="logChannelCreate" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-hashtag"></i>
-                                                            Channel Creation
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logChannelCreate" class="checkbox-input">
+                                                    <label for="logChannelCreate" class="checkbox-label">
+                                                        <i class="fas fa-hashtag"></i>
+                                                        Channel Creation
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logChannelDelete" class="toggle-input">
-                                                    <label for="logChannelDelete" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-hashtag"></i>
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-hashtag"></i>
-                                                            Channel Deletion
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logChannelDelete" class="checkbox-input">
+                                                    <label for="logChannelDelete" class="checkbox-label">
+                                                        <i class="fas fa-hashtag"></i>
+                                                        Channel Deletion
                                                     </label>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="toggle-switch">
-                                                    <input type="checkbox" id="logChannelUpdate" class="toggle-input">
-                                                    <label for="logChannelUpdate" class="toggle-label">
-                                                        <span class="toggle-text">
-                                                            <i class="fas fa-hashtag"></i>
-                                                            Channel Updates
-                                                        </span>
+                                                <div class="checkbox-item">
+                                                    <input type="checkbox" id="logChannelUpdate" class="checkbox-input">
+                                                    <label for="logChannelUpdate" class="checkbox-label">
+                                                        <i class="fas fa-hashtag"></i>
+                                                        Channel Updates
                                                     </label>
                                                 </div>
                                             </div>

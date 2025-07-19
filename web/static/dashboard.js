@@ -791,6 +791,268 @@ class Dashboard {
         document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         window.location.href = '/';
     }
+
+    // Navigation methods for modern sidebar
+    async loadOverviewData() {
+        await this.loadGuildStats();
+    }
+
+    async loadXPSettings() {
+        await this.loadGuildConfig();
+        await this.loadGuildChannels();
+        this.populateXPSettings();
+    }
+
+    async loadModerationData() {
+        await this.loadGuildMembers();
+        await this.loadGuildChannels();
+        await this.loadModerationHistory();
+        this.populateModerationSettings();
+    }
+
+    async loadWelcomeSettings() {
+        await this.loadWelcomeConfig();
+        await this.loadGuildChannels();
+        this.populateWelcomeSettings();
+    }
+
+    async loadLogsSettings() {
+        await this.loadServerLogsConfig();
+        await this.loadGuildChannels();
+        this.populateLogsSettings();
+    }
+
+    populateXPSettings() {
+        // Populate XP settings form with current guild config
+        // This will be called when the XP Settings tab is loaded
+        console.log('Populating XP settings...');
+    }
+
+    populateModerationSettings() {
+        // Populate moderation settings form
+        console.log('Populating moderation settings...');
+    }
+
+    populateWelcomeSettings() {
+        // Populate welcome settings form
+        console.log('Populating welcome settings...');
+    }
+
+    populateLogsSettings() {
+        // Populate logs settings form
+        console.log('Populating logs settings...');
+    }
+}
+
+// Setup modern navigation for the new sidebar
+function setupModernNavigation() {
+    console.log('=== Setting up modern navigation ===');
+    
+    try {
+        const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
+        const tabPanes = document.querySelectorAll('.tab-pane');
+        
+        console.log('Modern navigation - Nav items found:', navItems.length);
+        console.log('Modern navigation - Tab panes found:', tabPanes.length);
+        
+        // Log each nav item and tab pane for debugging
+        navItems.forEach((item, index) => {
+            console.log(`Nav item ${index}:`, item.getAttribute('href'), item);
+        });
+        
+        tabPanes.forEach((pane, index) => {
+            console.log(`Tab pane ${index}:`, pane.id, pane);
+        });
+        
+        if (navItems.length === 0 || tabPanes.length === 0) {
+            console.error('No navigation elements found, falling back to simple navigation');
+            setupSimpleNavigation();
+            return;
+        }
+        
+        // Initialize tabs - hide all except first
+        tabPanes.forEach((pane, index) => {
+            if (index === 0) {
+                pane.style.display = 'block';
+                pane.classList.add('show', 'active');
+                pane.classList.remove('fade');
+                console.log('✅ Initialized first tab:', pane.id);
+            } else {
+                pane.style.display = 'none';
+                pane.classList.remove('show', 'active');
+                console.log('❌ Hidden tab:', pane.id);
+            }
+        });
+        
+        // Initialize nav items - set first as active
+        navItems.forEach((item, index) => {
+            if (index === 0) {
+                item.classList.add('active');
+                console.log('✅ Set first nav active:', item.getAttribute('href'));
+            } else {
+                item.classList.remove('active');
+            }
+        });
+        
+        // Add click listeners with enhanced debugging
+        navItems.forEach((navItem, index) => {
+            const href = navItem.getAttribute('href');
+            console.log(`🔗 Setting up click handler for: ${href}`);
+            
+            navItem.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const targetId = href.substring(1);
+                const targetPane = document.getElementById(targetId);
+                
+                console.log('🖱️ NAVIGATION CLICKED:', {
+                    href: href,
+                    targetId: targetId,
+                    targetPane: targetPane,
+                    targetFound: !!targetPane
+                });
+                
+                if (!targetPane) {
+                    console.error('❌ Target pane not found:', targetId);
+                    return;
+                }
+                
+                // Update nav items - remove active from all, add to clicked
+                navItems.forEach(item => {
+                    item.classList.remove('active');
+                    console.log('➖ Removed active from:', item.getAttribute('href'));
+                });
+                this.classList.add('active');
+                console.log('➕ Added active to:', href);
+                
+                // Update tab panes - hide all, show target
+                tabPanes.forEach(pane => {
+                    pane.style.display = 'none';
+                    pane.classList.remove('show', 'active');
+                    console.log('👁️ Hidden pane:', pane.id);
+                });
+                
+                // Show target pane with enhanced visibility
+                targetPane.style.display = 'block';
+                targetPane.style.visibility = 'visible';
+                targetPane.style.opacity = '1';
+                targetPane.classList.add('show', 'active');
+                targetPane.classList.remove('fade');
+                
+                console.log('🎯 SWITCHED TO:', {
+                    paneId: targetId,
+                    display: targetPane.style.display,
+                    visibility: targetPane.style.visibility,
+                    opacity: targetPane.style.opacity,
+                    classes: targetPane.className
+                });
+                
+                // Double-check visibility
+                setTimeout(() => {
+                    const rect = targetPane.getBoundingClientRect();
+                    console.log('📏 Pane dimensions:', {
+                        width: rect.width,
+                        height: rect.height,
+                        visible: rect.width > 0 && rect.height > 0
+                    });
+                }, 100);
+            });
+        });
+        
+        console.log('✅ Modern navigation setup completed successfully');
+        
+    } catch (error) {
+        console.error('❌ Error in modern navigation setup:', error);
+        setupSimpleNavigation();
+    }
+}
+
+// Simple fallback navigation
+function setupSimpleNavigation() {
+    console.log('=== Setting up simple navigation fallback ===');
+    
+    const links = [
+        { href: '#overview', target: 'overview' },
+        { href: '#xp-settings', target: 'xp-settings' }, 
+        { href: '#moderation', target: 'moderation' },
+        { href: '#welcome', target: 'welcome' },
+        { href: '#logs', target: 'logs' }
+    ];
+    
+    links.forEach((link, index) => {
+        const navItem = document.querySelector(`a[href="${link.href}"]`);
+        const targetPane = document.getElementById(link.target);
+        
+        console.log(`Simple nav ${index}: ${link.href}`, {
+            navItem: navItem ? 'FOUND' : 'NOT FOUND',
+            targetPane: targetPane ? 'FOUND' : 'NOT FOUND',
+            navElement: navItem,
+            paneElement: targetPane
+        });
+        
+        if (navItem && targetPane) {
+            // Remove any existing click handlers
+            navItem.onclick = null;
+            
+            // Add new click handler
+            navItem.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('🖱️ SIMPLE NAVIGATION CLICKED:', link.target);
+                
+                // Hide all tabs and remove active from all nav items
+                links.forEach(l => {
+                    const pane = document.getElementById(l.target);
+                    const nav = document.querySelector(`a[href="${l.href}"]`);
+                    if (pane) {
+                        pane.style.display = 'none';
+                        pane.style.visibility = 'hidden';
+                        pane.classList.remove('show', 'active');
+                        console.log('👁️ Simple hidden:', l.target);
+                    }
+                    if (nav) {
+                        nav.classList.remove('active');
+                    }
+                });
+                
+                // Show target and set active with enhanced visibility
+                targetPane.style.display = 'block';
+                targetPane.style.visibility = 'visible';
+                targetPane.style.opacity = '1';
+                targetPane.classList.add('show', 'active');
+                targetPane.classList.remove('fade');
+                navItem.classList.add('active');
+                
+                console.log('🎯 SIMPLE SWITCHED TO:', {
+                    target: link.target,
+                    display: targetPane.style.display,
+                    visibility: targetPane.style.visibility,
+                    classes: targetPane.className
+                });
+                
+                return false;
+            };
+            
+            // Initialize first tab
+            if (index === 0) {
+                targetPane.style.display = 'block';
+                targetPane.style.visibility = 'visible';
+                targetPane.classList.add('show', 'active');
+                targetPane.classList.remove('fade');
+                navItem.classList.add('active');
+                console.log('✅ Simple initialized first tab:', link.target);
+            } else {
+                targetPane.style.display = 'none';
+                targetPane.style.visibility = 'hidden';
+                targetPane.classList.remove('show', 'active');
+                navItem.classList.remove('active');
+            }
+        }
+    });
+    
+    console.log('✅ Simple navigation setup complete');
 }
 
 // Global functions
@@ -805,12 +1067,50 @@ function logout() {
 // Initialize dashboard when page loads
 let dashboard;
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing dashboard...');
+    console.log('Browser:', navigator.userAgent);
+    
     dashboard = new Dashboard();
     
+    // Make dashboard globally available for debugging
+    window.dashboard = dashboard;
+    
+    // Setup navigation with multiple approaches for reliability
+    // Add a small delay for browsers that need more time to render DOM
+    setTimeout(() => {
+        try {
+            setupModernNavigation();
+            setupSimpleNavigation();
+            console.log('✅ Navigation setup complete');
+        } catch (error) {
+            console.error('❌ Navigation setup failed:', error);
+            // Try simple navigation only as last resort
+            try {
+                setupSimpleNavigation();
+            } catch (fallbackError) {
+                console.error('❌ Fallback navigation also failed:', fallbackError);
+            }
+        }
+    }, 100);
+    
+    // Make setupNav globally available for debugging
+    window.setupNav = setupModernNavigation;
+    
     // Setup form handlers
-    document.getElementById('xpSettingsForm').addEventListener('submit', (e) => dashboard.saveXPSettings(e));
-    document.getElementById('welcomeSettingsForm').addEventListener('submit', (e) => dashboard.saveWelcomeSettings(e));
-    document.getElementById('serverLogsForm').addEventListener('submit', (e) => dashboard.saveServerLogsSettings(e));
+    const xpForm = document.getElementById('xpSettingsForm');
+    if (xpForm) {
+        xpForm.addEventListener('submit', (e) => dashboard.saveXPSettings(e));
+    }
+    
+    const welcomeForm = document.getElementById('welcomeSettingsForm');
+    if (welcomeForm) {
+        welcomeForm.addEventListener('submit', (e) => dashboard.saveWelcomeSettings(e));
+    }
+    
+    const logsForm = document.getElementById('logsSettingsForm');
+    if (logsForm) {
+        logsForm.addEventListener('submit', (e) => dashboard.saveServerLogsSettings(e));
+    }
     
     // Setup test buttons
     const testLevelUpBtn = document.getElementById('testLevelUpBtn');
@@ -839,10 +1139,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (moderationAction) {
         moderationAction.addEventListener('change', (e) => {
             const timeoutDuration = document.getElementById('timeoutDuration');
-            if (e.target.value === 'timeout') {
-                timeoutDuration.style.display = 'block';
-            } else {
-                timeoutDuration.style.display = 'none';
+            if (timeoutDuration) {
+                if (e.target.value === 'timeout') {
+                    timeoutDuration.style.display = 'block';
+                } else {
+                    timeoutDuration.style.display = 'none';
+                }
             }
         });
     }
