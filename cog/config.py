@@ -236,10 +236,22 @@ class ConfigView(discord.ui.View):
         )
         
         # Get current XP system settings  
-        # XP system is always enabled, check if there's a config entry
-        result = await self.bot.db.query("SELECT xp_channel FROM xp_config WHERE guild_id = %s", (self.guild_id,))
-        xp_enabled = len(result) > 0 if result else False
-        xp_channel = result[0]["xp_channel"] if result and result[0]["xp_channel"] else None
+        # Check both xp_config and guild_config for level up channel
+        xp_result = await self.bot.db.query("SELECT xp_channel FROM xp_config WHERE guild_id = %s", (self.guild_id,))
+        guild_result = await self.bot.db.query("SELECT level_up_channel, level_up_message FROM guild_config WHERE guild_id = %s", (self.guild_id,))
+        
+        xp_enabled = len(xp_result) > 0 if xp_result else False
+        
+        # Prefer guild_config level_up_channel over xp_config xp_channel
+        level_up_channel = None
+        level_up_enabled = True
+        
+        if guild_result and guild_result[0]:
+            level_up_channel = guild_result[0].get("level_up_channel")
+            level_up_enabled = guild_result[0].get("level_up_message", True)
+        
+        if not level_up_channel and xp_result and xp_result[0]:
+            level_up_channel = xp_result[0].get("xp_channel")
         
         embed.add_field(
             name=_("config_system.xp_system.current_status", interaction.user.id, self.guild_id),
@@ -247,8 +259,8 @@ class ConfigView(discord.ui.View):
             inline=False
         )
         
-        if xp_channel:
-            channel = self.bot.get_channel(xp_channel)
+        if level_up_channel:
+            channel = self.bot.get_channel(level_up_channel)
             embed.add_field(
                 name=_("config_system.xp_system.xp_channel", interaction.user.id, self.guild_id),
                 value=channel.mention if channel else _("config_system.xp_system.channel_not_found", interaction.user.id, self.guild_id),
@@ -260,6 +272,13 @@ class ConfigView(discord.ui.View):
                 value=_("config_system.xp_system.not_configured", interaction.user.id, self.guild_id),
                 inline=False
             )
+        
+        # Add level up messages status
+        embed.add_field(
+            name="Level Up Messages",
+            value="✅ Enabled" if level_up_enabled else "❌ Disabled",
+            inline=True
+        )
         
         view = XPSystemConfigView(self.bot, self.guild_id)
         view.setup_buttons_for_user(interaction.user.id)
@@ -575,6 +594,60 @@ class ConfirmClearView(discord.ui.View):
             ephemeral=True
         )
 
+class ConfirmResetXPView(discord.ui.View):
+    def __init__(self, bot, guild_id: int):
+        super().__init__(timeout=60)
+        self.bot = bot
+        self.guild_id = guild_id
+    
+    @discord.ui.button(label="Yes, Reset ALL XP", style=discord.ButtonStyle.danger, emoji="🗑️")
+    async def confirm_reset(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Reset all XP data for the server"""
+        try:
+            # Get count before deletion for feedback
+            count_result = await self.bot.db.query(
+                'SELECT COUNT(*) as count FROM xp_data WHERE guild_id = %s', 
+                (self.guild_id,), 
+                fetchone=True
+            )
+            count = count_result['count'] if count_result else 0
+            
+            # Delete all XP-related data for the guild
+            await self.bot.db.execute('DELETE FROM xp_data WHERE guild_id = %s', (self.guild_id,))
+            await self.bot.db.execute('DELETE FROM xp_history WHERE guild_id = %s', (self.guild_id,))
+            await self.bot.db.execute('DELETE FROM level_roles WHERE guild_id = %s', (self.guild_id,))
+            await self.bot.db.execute('DELETE FROM xp_multipliers WHERE guild_id = %s', (self.guild_id,))
+            
+            # Also clear guild-specific XP configuration but keep the guild in the system
+            # Don't delete from xp_config as it just enables/disables the system
+            
+            # Clear any cached leaderboard data
+            if hasattr(self.bot, 'cache') and hasattr(self.bot.cache, 'invalidate_leaderboard'):
+                await self.bot.cache.invalidate_leaderboard(self.guild_id)
+            
+            await interaction.response.send_message(
+                f"✅ **XP Reset Complete!**\n\n"
+                f"Successfully deleted:\n"
+                f"• {count} user XP records\n"
+                f"• All XP history records\n"
+                f"• All level role assignments\n\n"
+                f"All users will start fresh with 0 XP!",
+                ephemeral=True
+            )
+            
+        except Exception as e:
+            await interaction.response.send_message(
+                f"❌ **Error resetting XP data:**\n{str(e)[:1000]}",
+                ephemeral=True
+            )
+    
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary, emoji="❌")
+    async def cancel_reset(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "✅ **XP reset cancelled.** No data was deleted.",
+            ephemeral=True
+        )
+
 class XPSystemConfigView(discord.ui.View):
     def __init__(self, bot, guild_id: int):
         super().__init__(timeout=300)
@@ -617,6 +690,22 @@ class XPSystemConfigView(discord.ui.View):
         )
         self.set_rate_button.callback = self.set_xp_rate
         self.add_item(self.set_rate_button)
+        
+        self.toggle_levelup_button = discord.ui.Button(
+            label="Toggle Level Up Messages",
+            style=discord.ButtonStyle.secondary,
+            emoji="📢"
+        )
+        self.toggle_levelup_button.callback = self.toggle_levelup_messages
+        self.add_item(self.toggle_levelup_button)
+        
+        self.reset_xp_button = discord.ui.Button(
+            label="Reset Server XP",
+            style=discord.ButtonStyle.danger,
+            emoji="🗑️"
+        )
+        self.reset_xp_button.callback = self.reset_server_xp
+        self.add_item(self.reset_xp_button)
     
     async def set_xp_channel(self, interaction: discord.Interaction):
         modal = XPChannelModal(self.bot, self.guild_id, interaction.user.id)
@@ -635,6 +724,43 @@ class XPSystemConfigView(discord.ui.View):
     async def set_xp_rate(self, interaction: discord.Interaction):
         modal = XPRateModal(self.bot, self.guild_id)
         await interaction.response.send_modal(modal)
+    
+    async def toggle_levelup_messages(self, interaction: discord.Interaction):
+        """Toggle level up messages on/off and sync with dashboard"""
+        # Get current status
+        result = await self.bot.db.query("SELECT level_up_message FROM guild_config WHERE guild_id = %s", (self.guild_id,))
+        current_status = result[0].get("level_up_message", True) if result and result[0] else True
+        
+        # Toggle the status
+        new_status = not current_status
+        
+        # Update guild_config table (syncs with dashboard)
+        await self.bot.db.query(
+            """INSERT INTO guild_config (guild_id, level_up_message, updated_at) 
+               VALUES (%s, %s, %s) AS new_values
+               ON DUPLICATE KEY UPDATE 
+               level_up_message = new_values.level_up_message,
+               updated_at = new_values.updated_at""",
+            (self.guild_id, new_status, datetime.utcnow())
+        )
+        
+        status_text = "✅ Enabled" if new_status else "❌ Disabled"
+        await interaction.response.send_message(f"Level up messages: {status_text}", ephemeral=True)
+
+    async def reset_server_xp(self, interaction: discord.Interaction):
+        """Show confirmation dialog for resetting server XP"""
+        view = ConfirmResetXPView(self.bot, self.guild_id)
+        await interaction.response.send_message(
+            "⚠️ **WARNING**: This will permanently delete ALL XP data for this server!\n\n"
+            "This includes:\n"
+            "• All user XP and levels\n"
+            "• XP history records\n"
+            "• Level role assignments\n\n"
+            "**This action cannot be undone!**\n\n"
+            "Are you sure you want to reset all XP data?",
+            view=view,
+            ephemeral=True
+        )
 
 class TicketSystemConfigView(discord.ui.View):
     def __init__(self, bot, guild_id: int):
@@ -1066,7 +1192,20 @@ class XPChannelModal(discord.ui.Modal):
             await interaction.response.send_message(_("config_system.xp_system.channel_not_found", interaction.user.id, self.guild_id), ephemeral=True)
             return
         
+        # Update xp_config table for legacy compatibility
         await self.bot.db.query("INSERT INTO xp_config (guild_id, xp_channel) VALUES (%s, %s) ON DUPLICATE KEY UPDATE xp_channel = %s", (self.guild_id, channel.id, channel.id))
+        
+        # Also update guild_config table for dashboard sync
+        await self.bot.db.query(
+            """INSERT INTO guild_config (guild_id, level_up_channel, level_up_message, updated_at) 
+               VALUES (%s, %s, TRUE, %s) AS new_values
+               ON DUPLICATE KEY UPDATE 
+               level_up_channel = new_values.level_up_channel,
+               level_up_message = new_values.level_up_message,
+               updated_at = new_values.updated_at""",
+            (self.guild_id, channel.id, datetime.utcnow())
+        )
+        
         await interaction.response.send_message(_("config_system.xp_system.channel_success", interaction.user.id, self.guild_id, channel=channel.mention), ephemeral=True)
 
 class XPRateModal(discord.ui.Modal):

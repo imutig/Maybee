@@ -12,8 +12,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from contextlib import asynccontextmanager
 import uvicorn
 import os
+import sys
 import json
 import asyncio
+import traceback
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 import httpx
@@ -92,6 +94,8 @@ async def lifespan(app: FastAPI):
     await create_guild_config_table()
     await create_moderation_tables()
     await create_user_languages_table()
+    await create_welcome_config_table()
+    await create_role_menu_tables()  # Add role menu tables
     yield
     # Shutdown
     if database:
@@ -215,9 +219,13 @@ class WelcomeSettings(BaseModel):
     welcome_enabled: bool = False
     goodbye_enabled: bool = False
     welcome_channel: Optional[str] = None
+    welcome_title: str = "👋 New member!"
     welcome_message: str = "Welcome {user} to {server}!"
+    welcome_fields: Optional[List[dict]] = None
     goodbye_channel: Optional[str] = None
+    goodbye_title: str = "👋 Departure"
     goodbye_message: str = "Goodbye {user}, we'll miss you!"
+    goodbye_fields: Optional[List[dict]] = None
 
 class ServerLogsSettings(BaseModel):
     enabled: bool = False
@@ -425,11 +433,158 @@ async def create_user_languages_table():
         print(f"❌ Error creating user_languages table: {e}")
         return False
 
+async def create_welcome_config_table():
+    """Create the welcome_config table if it doesn't exist"""
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS welcome_config (
+        guild_id VARCHAR(20) PRIMARY KEY,
+        welcome_channel VARCHAR(20) NULL,
+        welcome_message VARCHAR(500) DEFAULT 'Welcome {user} to {server}!',
+        welcome_fields JSON NULL,
+        goodbye_channel VARCHAR(20) NULL,
+        goodbye_message VARCHAR(500) DEFAULT 'Goodbye {user}, we will miss you!',
+        goodbye_fields JSON NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+    """
+    
+    try:
+        await database.execute(create_table_sql)
+        print("✅ Welcome config table created/verified")
+        
+        # Check if new columns exist, add them if they don't
+        await migrate_welcome_config_table()
+        
+        return True
+    except Exception as e:
+        print(f"❌ Error creating welcome_config table: {e}")
+        return False
+
+async def create_role_menu_tables():
+    """Create role menu tables if they don't exist"""
+    role_menus_table = """
+    CREATE TABLE IF NOT EXISTS role_menus (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        guild_id BIGINT NOT NULL,
+        channel_id BIGINT NOT NULL,
+        message_id BIGINT NULL,
+        title VARCHAR(100) NOT NULL,
+        description TEXT NULL,
+        color VARCHAR(7) DEFAULT '#5865F2',
+        placeholder VARCHAR(150) DEFAULT 'Select a role...',
+        max_values INT DEFAULT 1,
+        min_values INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_guild (guild_id),
+        INDEX idx_channel (channel_id),
+        INDEX idx_message (message_id)
+    )
+    """
+    
+    role_menu_options_table = """
+    CREATE TABLE IF NOT EXISTS role_menu_options (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        menu_id INT NOT NULL,
+        role_id BIGINT NOT NULL,
+        label VARCHAR(80) NOT NULL,
+        description VARCHAR(100) NULL,
+        emoji VARCHAR(100) NULL,
+        position INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_menu (menu_id),
+        INDEX idx_role (role_id),
+        INDEX idx_position (position),
+        FOREIGN KEY (menu_id) REFERENCES role_menus(id) ON DELETE CASCADE
+    )
+    """
+    
+    try:
+        await database.execute(role_menus_table)
+        await database.execute(role_menu_options_table)
+        print("✅ Role menu tables created/verified")
+        return True
+    except Exception as e:
+        print(f"❌ Error creating role menu tables: {e}")
+        return False
+
+async def migrate_welcome_config_table():
+    """Add missing columns to existing welcome_config table"""
+    try:
+        # Check if welcome_fields column exists
+        check_query = """
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'welcome_config' 
+        AND COLUMN_NAME = 'welcome_fields'
+        """
+        
+        result = await database.fetch_one(check_query)
+        
+        if not result:
+            print("🔧 Adding welcome_fields column to welcome_config table...")
+            await database.execute("""
+                ALTER TABLE welcome_config 
+                ADD COLUMN welcome_fields JSON NULL AFTER welcome_message
+            """)
+            print("✅ Added welcome_fields column")
+        
+        # Check if goodbye_fields column exists
+        check_query2 = """
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'welcome_config' 
+        AND COLUMN_NAME = 'goodbye_fields'
+        """
+        
+        result2 = await database.fetch_one(check_query2)
+        
+        if not result2:
+            print("🔧 Adding goodbye_fields column to welcome_config table...")
+            await database.execute("""
+                ALTER TABLE welcome_config 
+                ADD COLUMN goodbye_fields JSON NULL AFTER goodbye_message
+            """)
+            print("✅ Added goodbye_fields column")
+            
+    except Exception as e:
+        print(f"⚠️ Migration error (this may be normal if columns already exist): {e}")
+
 # Routes
 @app.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request):
     """Main dashboard page"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    # Detect language from query parameter, cookie, or browser
+    lang = request.query_params.get('lang')
+    if not lang:
+        lang = request.cookies.get('language')
+    if not lang:
+        accept_language = request.headers.get('accept-language', '')
+        lang = detect_browser_language(accept_language)
+    
+    # Ensure language is supported
+    if lang not in SUPPORTED_LANGUAGES:
+        lang = DEFAULT_LANGUAGE
+    
+    # Load language data
+    lang_data = load_language_file(lang)
+    
+    # Create response with language data
+    response = templates.TemplateResponse("index.html", {
+        "request": request,
+        "lang_data": lang_data,
+        "current_lang": lang,
+        "supported_languages": SUPPORTED_LANGUAGES
+    })
+    
+    # Set language cookie if it was changed via query parameter
+    if request.query_params.get('lang'):
+        response.set_cookie("language", lang, max_age=365*24*60*60)  # 1 year
+    
+    return response
 
 @app.get("/auth/discord")
 async def discord_auth():
@@ -653,19 +808,19 @@ async def update_guild_config(
                (guild_id, xp_enabled, xp_multiplier, level_up_message, level_up_channel,
                 moderation_enabled, welcome_enabled, welcome_channel, welcome_message,
                 logs_enabled, logs_channel, updated_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) AS new_values
                ON DUPLICATE KEY UPDATE
-               xp_enabled = VALUES(xp_enabled),
-               xp_multiplier = VALUES(xp_multiplier),
-               level_up_message = VALUES(level_up_message),
-               level_up_channel = VALUES(level_up_channel),
-               moderation_enabled = VALUES(moderation_enabled),
-               welcome_enabled = VALUES(welcome_enabled),
-               welcome_channel = VALUES(welcome_channel),
-               welcome_message = VALUES(welcome_message),
-               logs_enabled = VALUES(logs_enabled),
-               logs_channel = VALUES(logs_channel),
-               updated_at = VALUES(updated_at)""",
+               xp_enabled = new_values.xp_enabled,
+               xp_multiplier = new_values.xp_multiplier,
+               level_up_message = new_values.level_up_message,
+               level_up_channel = new_values.level_up_channel,
+               moderation_enabled = new_values.moderation_enabled,
+               welcome_enabled = new_values.welcome_enabled,
+               welcome_channel = new_values.welcome_channel,
+               welcome_message = new_values.welcome_message,
+               logs_enabled = new_values.logs_enabled,
+               logs_channel = new_values.logs_channel,
+               updated_at = new_values.updated_at""",
             (guild_id, config.xp_enabled, config.xp_multiplier, config.level_up_message,
             config.level_up_channel, config.moderation_enabled, config.welcome_enabled,
             config.welcome_channel, config.welcome_message, config.logs_enabled,
@@ -858,8 +1013,8 @@ async def update_xp_config(
         if config.xp_channel:
             await database.execute(
                 """INSERT INTO xp_config (guild_id, xp_channel) 
-                   VALUES (%s, %s) 
-                   ON DUPLICATE KEY UPDATE xp_channel = VALUES(xp_channel)""",
+                   VALUES (%s, %s) AS new_values
+                   ON DUPLICATE KEY UPDATE xp_channel = new_values.xp_channel""",
                 (guild_id, int(config.xp_channel))
             )
         else:
@@ -875,13 +1030,13 @@ async def update_xp_config(
                (guild_id, xp_enabled, xp_multiplier, level_up_message, level_up_channel,
                 moderation_enabled, welcome_enabled, welcome_channel, welcome_message,
                 logs_enabled, logs_channel, updated_at)
-               VALUES (%s, %s, %s, %s, %s, TRUE, FALSE, NULL, 'Welcome {user} to {server}!', FALSE, NULL, %s)
+               VALUES (%s, %s, %s, %s, %s, TRUE, FALSE, NULL, 'Welcome {user} to {server}!', FALSE, NULL, %s) AS new_values
                ON DUPLICATE KEY UPDATE
-               xp_enabled = VALUES(xp_enabled),
-               xp_multiplier = VALUES(xp_multiplier),
-               level_up_message = VALUES(level_up_message),
-               level_up_channel = VALUES(level_up_channel),
-               updated_at = VALUES(updated_at)""",
+               xp_enabled = new_values.xp_enabled,
+               xp_multiplier = new_values.xp_multiplier,
+               level_up_message = new_values.level_up_message,
+               level_up_channel = new_values.level_up_channel,
+               updated_at = new_values.updated_at""",
             (guild_id, config.enabled, config.multiplier, config.level_up_message,
             config.level_up_channel, datetime.utcnow())
         )
@@ -1012,10 +1167,404 @@ async def send_test_levelup_message(
         print(f"Test levelup traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/guild/{guild_id}/xp/reset")
+async def reset_server_xp(
+    guild_id: str, 
+    current_user: str = Depends(get_current_user)
+):
+    """Reset all XP data for a server"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get count before deletion for feedback
+        count_result = await database.fetch_one(
+            'SELECT COUNT(*) as count FROM xp_data WHERE guild_id = %s', 
+            (guild_id,)
+        )
+        count = count_result['count'] if count_result else 0
+        
+        # Delete all XP-related data for the guild
+        await database.execute('DELETE FROM xp_data WHERE guild_id = %s', (guild_id,))
+        await database.execute('DELETE FROM xp_history WHERE guild_id = %s', (guild_id,))
+        await database.execute('DELETE FROM level_roles WHERE guild_id = %s', (guild_id,))
+        await database.execute('DELETE FROM xp_multipliers WHERE guild_id = %s', (guild_id,))
+        
+        return {
+            "success": True,
+            "message": f"Successfully reset XP data for guild {guild_id}",
+            "deleted_records": count
+        }
+        
+    except Exception as e:
+        print(f"Reset XP error: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(f"Reset XP traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Role Menu Endpoints
+@app.get("/api/guild/{guild_id}/role-menus")
+async def get_role_menus(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get all role menus for a guild"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get all role menus for the guild (without guild_channels table)
+        menus = await database.fetch_all(
+            """SELECT rm.*, 
+                      COUNT(rmo.id) as options_count
+               FROM role_menus rm 
+               LEFT JOIN role_menu_options rmo ON rm.id = rmo.menu_id
+               WHERE rm.guild_id = %s 
+               GROUP BY rm.id 
+               ORDER BY rm.created_at DESC""",
+            (guild_id,)
+        )
+        
+        # Get channel names from Discord API
+        channels_map = {}
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    f"https://discord.com/api/guilds/{guild_id}/channels",
+                    headers={"Authorization": f"Bot {DISCORD_BOT_TOKEN}"}
+                )
+                if response.status_code == 200:
+                    channels = response.json()
+                    channels_map = {ch["id"]: ch["name"] for ch in channels}
+        except Exception as e:
+            print(f"Error fetching channel names: {e}")
+        
+        # Add channel names to menus
+        result_menus = []
+        for menu in menus:
+            menu_dict = dict(menu)
+            menu_dict['channel_name'] = channels_map.get(str(menu_dict['channel_id']), 'Unknown Channel')
+            result_menus.append(menu_dict)
+        
+        return {"menus": result_menus}
+        
+    except Exception as e:
+        print(f"Get role menus error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guild/{guild_id}/role-menus/{menu_id}")
+async def get_role_menu(
+    guild_id: str,
+    menu_id: int,
+    current_user: str = Depends(get_current_user)
+):
+    """Get a specific role menu with its options"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get menu
+        menu = await database.fetch_one(
+            "SELECT * FROM role_menus WHERE id = %s AND guild_id = %s",
+            (menu_id, guild_id)
+        )
+        
+        if not menu:
+            raise HTTPException(status_code=404, detail="Role menu not found")
+        
+        # Get options
+        options = await database.fetch_all(
+            "SELECT * FROM role_menu_options WHERE menu_id = %s ORDER BY position",
+            (menu_id,)
+        )
+        
+        menu_dict = dict(menu)
+        menu_dict['options'] = options
+        
+        return {"menu": menu_dict}
+        
+    except Exception as e:
+        print(f"Get role menu error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/guild/{guild_id}/role-menus")
+async def create_role_menu(
+    guild_id: str,
+    request: dict,
+    current_user: str = Depends(get_current_user)
+):
+    """Create a new role menu"""
+    try:
+        print(f"🔍 DEBUG: Creating role menu for guild {guild_id}")
+        print(f"🔍 DEBUG: Request data: {request}")
+        
+        if not await verify_guild_access(guild_id, current_user):
+            print(f"❌ DEBUG: Guild access denied for guild {guild_id}")
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        print(f"✅ DEBUG: Guild access verified for guild {guild_id}")
+        
+        menu_data = request.get("menu", {})
+        options_data = request.get("options", [])
+        
+        print(f"🔍 DEBUG: Menu data: {menu_data}")
+        print(f"🔍 DEBUG: Options data: {options_data}")
+        
+        # Validate required fields
+        if not menu_data.get("title") or not menu_data.get("channel_id"):
+            raise HTTPException(status_code=400, detail="Title and channel are required")
+        
+        if not options_data:
+            raise HTTPException(status_code=400, detail="At least one role option is required")
+        
+        # Create menu (note: MySQL doesn't support RETURNING, so we'll get the ID after insert)
+        await database.execute(
+            """INSERT INTO role_menus 
+               (guild_id, channel_id, title, description, color, placeholder, max_values, min_values)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                guild_id,
+                menu_data["channel_id"],
+                menu_data["title"],
+                menu_data.get("description"),
+                menu_data.get("color", "#5865F2"),
+                menu_data.get("placeholder", "Select a role..."),
+                menu_data.get("max_values", 1),  # Use value from form
+                menu_data.get("min_values", 0)   # Use value from form
+            )
+        )
+        
+        # Get the menu ID that was just inserted
+        menu_result = await database.query(
+            "SELECT id FROM role_menus WHERE guild_id = %s ORDER BY id DESC LIMIT 1",
+            (guild_id,),
+            fetchone=True
+        )
+        menu_id = menu_result['id']
+        
+        # Create options
+        for option in options_data:
+            await database.execute(
+                """INSERT INTO role_menu_options 
+                   (menu_id, role_id, label, description, emoji, position)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (
+                    menu_id,
+                    option["role_id"],
+                    option["label"],
+                    option.get("description"),
+                    option.get("emoji"),
+                    option.get("position", 0)
+                )
+            )
+        
+        # Trigger bot to create/update the message
+        await notify_bot_role_menu_update(guild_id, menu_id)
+        
+        return {"success": True, "menu_id": menu_id}
+        
+    except Exception as e:
+        print(f"Create role menu error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/guild/{guild_id}/role-menus/{menu_id}")
+async def update_role_menu(
+    guild_id: str,
+    menu_id: int,
+    request: dict,
+    current_user: str = Depends(get_current_user)
+):
+    """Update an existing role menu"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        menu_data = request.get("menu", {})
+        options_data = request.get("options", [])
+        
+        # Validate menu exists
+        existing_menu = await database.fetch_one(
+            "SELECT * FROM role_menus WHERE id = %s AND guild_id = %s",
+            (menu_id, guild_id)
+        )
+        
+        if not existing_menu:
+            raise HTTPException(status_code=404, detail="Role menu not found")
+        
+        # Update menu
+        await database.execute(
+            """UPDATE role_menus 
+               SET title = %s, description = %s, color = %s, placeholder = %s, 
+                   channel_id = %s, min_values = %s, max_values = %s, updated_at = %s
+               WHERE id = %s""",
+            (
+                menu_data.get("title", existing_menu["title"]),
+                menu_data.get("description", existing_menu["description"]),
+                menu_data.get("color", existing_menu["color"]),
+                menu_data.get("placeholder", existing_menu["placeholder"]),
+                menu_data.get("channel_id", existing_menu["channel_id"]),
+                menu_data.get("min_values", existing_menu.get("min_values", 0)),
+                menu_data.get("max_values", existing_menu.get("max_values", 1)),
+                datetime.utcnow(),
+                menu_id
+            )
+        )
+        
+        # Delete existing options
+        await database.execute(
+            "DELETE FROM role_menu_options WHERE menu_id = %s",
+            (menu_id,)
+        )
+        
+        # Create new options
+        for option in options_data:
+            await database.execute(
+                """INSERT INTO role_menu_options 
+                   (menu_id, role_id, label, description, emoji, position)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (
+                    menu_id,
+                    option["role_id"],
+                    option["label"],
+                    option.get("description"),
+                    option.get("emoji"),
+                    option.get("position", 0)
+                )
+            )
+        
+        # Trigger bot to update the message
+        await notify_bot_role_menu_update(guild_id, menu_id)
+        
+        return {"success": True}
+        
+    except Exception as e:
+        print(f"Update role menu error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/guild/{guild_id}/role-menus/{menu_id}")
+async def delete_role_menu(
+    guild_id: str,
+    menu_id: int,
+    current_user: str = Depends(get_current_user)
+):
+    """Delete a role menu"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get menu to check message_id for deletion
+        menu = await database.fetch_one(
+            "SELECT * FROM role_menus WHERE id = %s AND guild_id = %s",
+            (menu_id, guild_id)
+        )
+        
+        if not menu:
+            raise HTTPException(status_code=404, detail="Role menu not found")
+        
+        # Delete menu (options will be deleted automatically due to CASCADE)
+        await database.execute(
+            "DELETE FROM role_menus WHERE id = %s",
+            (menu_id,)
+        )
+        
+        # Trigger bot to delete the message
+        if menu["message_id"]:
+            await notify_bot_role_menu_delete(guild_id, menu["channel_id"], menu["message_id"])
+        
+        return {"success": True}
+        
+    except Exception as e:
+        print(f"Delete role menu error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guild/{guild_id}/roles")
+async def get_guild_roles(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get roles for a guild"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Try to get roles from Discord API
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            headers = {"Authorization": f"Bot {DISCORD_BOT_TOKEN}"}
+            response = await client.get(
+                f"https://discord.com/api/v10/guilds/{guild_id}/roles",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                roles = response.json()
+                # Sort roles by position (higher position = higher in hierarchy)
+                roles.sort(key=lambda r: r.get('position', 0), reverse=True)
+                return {"roles": roles}
+            else:
+                raise HTTPException(status_code=500, detail="Failed to fetch roles from Discord")
+                
+    except Exception as e:
+        print(f"Get guild roles error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def notify_bot_role_menu_update(guild_id: str, menu_id: int):
+    """Role menu created - bot will automatically detect and create Discord message"""
+    try:
+        print(f"✅ Role menu {menu_id} created for guild {guild_id}")
+        print(f"🤖 Bot will automatically create Discord message within 30 seconds")
+        return True
+        
+    except Exception as e:
+        print(f"Error in notify_bot_role_menu_update: {e}")
+        return False
+
+async def notify_bot_role_menu_delete(guild_id: str, channel_id: int, message_id: int):
+    """Notify bot to delete role menu message"""
+    try:
+        # Try to delete the message directly through Discord API
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            headers = {"Authorization": f"Bot {DISCORD_BOT_TOKEN}"}
+            response = await client.delete(
+                f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}",
+                headers=headers
+            )
+            print(f"🗑️ Deleted role menu message {message_id} in channel {channel_id}")
+            
+    except Exception as e:
+        print(f"Error deleting role menu message: {e}")
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """Dashboard page"""
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    # Detect language from query parameter, cookie, or browser
+    lang = request.query_params.get('lang')
+    if not lang:
+        lang = request.cookies.get('language')
+    if not lang:
+        accept_language = request.headers.get('accept-language', '')
+        lang = detect_browser_language(accept_language)
+    
+    # Ensure language is supported
+    if lang not in SUPPORTED_LANGUAGES:
+        lang = DEFAULT_LANGUAGE
+    
+    # Load language data
+    lang_data = load_language_file(lang)
+    
+    # Create response with language data
+    response = templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "lang_data": lang_data,
+        "current_lang": lang,
+        "supported_languages": SUPPORTED_LANGUAGES
+    })
+    
+    # Set language cookie if it was changed via query parameter
+    if request.query_params.get('lang'):
+        response.set_cookie("language", lang, max_age=365*24*60*60)  # 1 year
+    
+    return response
 
 @app.get("/language-test", response_class=HTMLResponse)
 async def language_test_page(request: Request):
@@ -1051,6 +1600,48 @@ async def verify_guild_access(guild_id: str, current_user: str) -> bool:
         return False
 
 # Welcome System API Endpoints
+@app.post("/api/admin/migrate-titles")
+async def migrate_welcome_titles():
+    """Temporary endpoint to add welcome_title and goodbye_title columns"""
+    try:
+        # Add welcome_title column
+        try:
+            await database.execute("""
+                ALTER TABLE welcome_config 
+                ADD COLUMN welcome_title VARCHAR(256) DEFAULT '👋 New member!' 
+                AFTER welcome_channel
+            """)
+            print("✅ Added welcome_title column")
+        except Exception as e:
+            if "Duplicate column name" in str(e):
+                print("ℹ️ welcome_title column already exists")
+            else:
+                print(f"❌ Error adding welcome_title: {e}")
+        
+        # Add goodbye_title column
+        try:
+            await database.execute("""
+                ALTER TABLE welcome_config 
+                ADD COLUMN goodbye_title VARCHAR(256) DEFAULT '👋 Departure' 
+                AFTER goodbye_channel
+            """)
+            print("✅ Added goodbye_title column")
+        except Exception as e:
+            if "Duplicate column name" in str(e):
+                print("ℹ️ goodbye_title column already exists")
+            else:
+                print(f"❌ Error adding goodbye_title: {e}")
+        
+        # Test the columns
+        result = await database.fetch_one("SELECT welcome_title, goodbye_title FROM welcome_config LIMIT 1")
+        print(f"✅ Test query successful: {result}")
+        
+        return {"success": True, "message": "Migration completed"}
+        
+    except Exception as e:
+        print(f"❌ Migration failed: {e}")
+        return {"success": False, "error": str(e)}
+
 @app.get("/api/guild/{guild_id}/welcome")
 async def get_welcome_config(
     guild_id: str,
@@ -1076,28 +1667,43 @@ async def get_welcome_config(
         
         if welcome_config:
             return {
-                "enabled": True,
+                "welcome_enabled": True,
                 "welcome_channel": str(welcome_config["welcome_channel"]) if welcome_config["welcome_channel"] else None,
+                "welcome_title": welcome_config.get("welcome_title", "👋 New member!"),
                 "welcome_message": welcome_config["welcome_message"] or "Welcome {user} to {server}!",
+                "welcome_fields": json.loads(welcome_config["welcome_fields"]) if welcome_config["welcome_fields"] else None,
+                "goodbye_enabled": True,
                 "goodbye_channel": str(welcome_config["goodbye_channel"]) if welcome_config["goodbye_channel"] else None,
-                "goodbye_message": welcome_config["goodbye_message"] or "Goodbye {user}, we'll miss you!"
+                "goodbye_title": welcome_config.get("goodbye_title", "👋 Departure"),
+                "goodbye_message": welcome_config["goodbye_message"] or "Goodbye {user}, we'll miss you!",
+                "goodbye_fields": json.loads(welcome_config["goodbye_fields"]) if welcome_config["goodbye_fields"] else None
             }
         elif guild_config and guild_config.get("welcome_enabled") and guild_config.get("welcome_channel"):
             # If no welcome_config but guild_config has welcome settings, use those
             return {
-                "enabled": guild_config.get("welcome_enabled", False),
+                "welcome_enabled": guild_config.get("welcome_enabled", False),
                 "welcome_channel": str(guild_config["welcome_channel"]) if guild_config["welcome_channel"] else None,
+                "welcome_title": "👋 New member!",
                 "welcome_message": guild_config.get("welcome_message", "Welcome {user} to {server}!"),
+                "welcome_fields": None,
+                "goodbye_enabled": False,
                 "goodbye_channel": None,
-                "goodbye_message": "Goodbye {user}, we'll miss you!"
+                "goodbye_title": "👋 Departure",
+                "goodbye_message": "Goodbye {user}, we'll miss you!",
+                "goodbye_fields": None
             }
         else:
             return {
-                "enabled": False,
+                "welcome_enabled": False,
                 "welcome_channel": None,
+                "welcome_title": "👋 New member!",
                 "welcome_message": "Welcome {user} to {server}!",
+                "welcome_fields": None,
+                "goodbye_enabled": False,
                 "goodbye_channel": None,
-                "goodbye_message": "Goodbye {user}, we'll miss you!"
+                "goodbye_title": "👋 Departure",
+                "goodbye_message": "Goodbye {user}, we'll miss you!",
+                "goodbye_fields": None
             }
     
     except Exception as e:
@@ -1113,7 +1719,7 @@ async def update_welcome_config(
     """Update welcome configuration for a guild"""
     try:
         print(f"Received welcome config update for guild {guild_id}")
-        print(f"Config data: welcome_enabled={config.welcome_enabled} goodbye_enabled={config.goodbye_enabled} welcome_channel='{config.welcome_channel}' welcome_message='{config.welcome_message}' goodbye_channel='{config.goodbye_channel}' goodbye_message='{config.goodbye_message}'")
+        print(f"Config data: welcome_enabled={config.welcome_enabled} goodbye_enabled={config.goodbye_enabled} welcome_channel='{config.welcome_channel}' welcome_title='{config.welcome_title}' welcome_message='{config.welcome_message}' goodbye_channel='{config.goodbye_channel}' goodbye_title='{config.goodbye_title}' goodbye_message='{config.goodbye_message}'")
         
         # Verify user has access
         if not await verify_guild_access(guild_id, current_user):
@@ -1123,19 +1729,27 @@ async def update_welcome_config(
             # Insert or update welcome config
             await database.execute(
                 """INSERT INTO welcome_config 
-                   (guild_id, welcome_channel, welcome_message, goodbye_channel, goodbye_message, updated_at)
-                   VALUES (%s, %s, %s, %s, %s, %s)
+                   (guild_id, welcome_channel, welcome_title, welcome_message, welcome_fields, goodbye_channel, goodbye_title, goodbye_message, goodbye_fields, updated_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) AS new_values
                    ON DUPLICATE KEY UPDATE
-                   welcome_channel = VALUES(welcome_channel),
-                   welcome_message = VALUES(welcome_message),
-                   goodbye_channel = VALUES(goodbye_channel),
-                   goodbye_message = VALUES(goodbye_message),
-                   updated_at = VALUES(updated_at)""",
+                   welcome_channel = new_values.welcome_channel,
+                   welcome_title = new_values.welcome_title,
+                   welcome_message = new_values.welcome_message,
+                   welcome_fields = new_values.welcome_fields,
+                   goodbye_channel = new_values.goodbye_channel,
+                   goodbye_title = new_values.goodbye_title,
+                   goodbye_message = new_values.goodbye_message,
+                   goodbye_fields = new_values.goodbye_fields,
+                   updated_at = new_values.updated_at""",
                 (guild_id, 
                  int(config.welcome_channel) if config.welcome_channel else None,
+                 config.welcome_title,
                  config.welcome_message,
+                 json.dumps(config.welcome_fields) if config.welcome_fields else None,
                  int(config.goodbye_channel) if config.goodbye_channel else None,
+                 config.goodbye_title,
                  config.goodbye_message,
+                 json.dumps(config.goodbye_fields) if config.goodbye_fields else None,
                  datetime.utcnow())
             )
         else:
@@ -1149,12 +1763,12 @@ async def update_welcome_config(
         await database.execute(
             """INSERT INTO guild_config 
                (guild_id, welcome_enabled, welcome_channel, welcome_message, updated_at)
-               VALUES (%s, %s, %s, %s, %s)
+               VALUES (%s, %s, %s, %s, %s) AS new_values
                ON DUPLICATE KEY UPDATE
-               welcome_enabled = VALUES(welcome_enabled),
-               welcome_channel = VALUES(welcome_channel),
-               welcome_message = VALUES(welcome_message),
-               updated_at = VALUES(updated_at)""",
+               welcome_enabled = new_values.welcome_enabled,
+               welcome_channel = new_values.welcome_channel,
+               welcome_message = new_values.welcome_message,
+               updated_at = new_values.updated_at""",
             (guild_id, config.welcome_enabled, 
              int(config.welcome_channel) if config.welcome_channel else None,
              config.welcome_message, datetime.utcnow())
@@ -1237,27 +1851,45 @@ async def send_test_welcome_message(
             
             print(f"🔍 Guild response status: {guild_response.status_code}")
             guild_name = "Unknown Server"
+            member_count = "Unknown"
             if guild_response.status_code == 200:
                 guild_data = guild_response.json()
                 guild_name = guild_data.get("name", "Unknown Server")
+                member_count = str(guild_data.get("member_count", "Unknown"))
                 print(f"🔍 Guild name: {guild_name}")
+                print(f"🔍 Member count: {member_count}")
             
-            # Get user info for avatar
+            # Get user info for avatar and username
             user_response = await client.get(
                 f"https://discord.com/api/v10/users/{user_id}",
                 headers=headers
             )
             
             user_avatar_url = None
+            username = "TestUser"
+            display_name = "TestUser"
             if user_response.status_code == 200:
                 user_data = user_response.json()
+                username = user_data.get("username", "TestUser")
+                display_name = user_data.get("global_name") or user_data.get("display_name") or username
                 avatar_hash = user_data.get("avatar")
                 if avatar_hash:
                     user_avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png?size=256"
+                print(f"🔍 Username: {username}")
+                print(f"🔍 Display name: {display_name}")
                 print(f"🔍 User avatar URL: {user_avatar_url}")
             
-            # Format the welcome message
-            formatted_message = welcome_message.replace("{user}", f"<@{user_id}>").replace("{server}", guild_name)
+            # Format the welcome message with multiple placeholder support
+            formatted_message = welcome_message\
+                .replace("{user}", f"<@{user_id}>")\
+                .replace("{server}", guild_name)\
+                .replace("{memberMention}", f"<@{user_id}>")\
+                .replace("{serverName}", guild_name)\
+                .replace("{userMention}", f"<@{user_id}>")\
+                .replace("{memberName}", f"<@{user_id}>")\
+                .replace("{username}", username)\
+                .replace("{displayname}", display_name)\
+                .replace("{memberCount}", member_count)
             print(f"🔍 Formatted message: {formatted_message}")
             
             # Create embed with user avatar
@@ -1275,6 +1907,47 @@ async def send_test_welcome_message(
                     "timestamp": datetime.utcnow().isoformat()
                 }]
             }
+            
+            # Add custom fields if configured
+            welcome_fields = welcome_config.get("welcome_fields") if welcome_config else None
+            if welcome_fields:
+                try:
+                    if isinstance(welcome_fields, str):
+                        fields_data = json.loads(welcome_fields)
+                    else:
+                        fields_data = welcome_fields
+                    
+                    if isinstance(fields_data, list):
+                        embed_fields = []
+                        for field in fields_data:
+                            if isinstance(field, dict) and "name" in field and "value" in field:
+                                # Format field name and value with placeholders
+                                field_name = field["name"]\
+                                    .replace("{user}", f"<@{user_id}>")\
+                                    .replace("{server}", guild_name)\
+                                    .replace("{username}", username)\
+                                    .replace("{displayname}", display_name)\
+                                    .replace("{memberCount}", member_count)
+                                    
+                                field_value = field["value"]\
+                                    .replace("{user}", f"<@{user_id}>")\
+                                    .replace("{server}", guild_name)\
+                                    .replace("{username}", username)\
+                                    .replace("{displayname}", display_name)\
+                                    .replace("{memberCount}", member_count)
+                                
+                                embed_fields.append({
+                                    "name": field_name,
+                                    "value": field_value,
+                                    "inline": field.get("inline", False)
+                                })
+                        
+                        if embed_fields:
+                            embed_data["embeds"][0]["fields"] = embed_fields
+                            print(f"🔍 Added {len(embed_fields)} custom fields to embed")
+                
+                except Exception as e:
+                    print(f"⚠️ Error processing welcome fields for test: {e}")
             
             # Remove thumbnail field if no avatar
             if not user_avatar_url:

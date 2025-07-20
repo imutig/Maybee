@@ -18,7 +18,14 @@ class Welcome(commands.Cog):
         )
         
         if result:
-            return result
+            print(f"🔍 DEBUG: Raw welcome_config result: {dict(result) if result else None}")
+            # Check if title columns exist, if not add default values
+            config_dict = dict(result)
+            if 'welcome_title' not in config_dict:
+                config_dict['welcome_title'] = '👋 New member!'
+            if 'goodbye_title' not in config_dict:  
+                config_dict['goodbye_title'] = '👋 Departure'
+            return config_dict
             
         # If no welcome_config, check guild_config table for dashboard consistency
         guild_result = await self.db.query(
@@ -65,10 +72,25 @@ class Welcome(commands.Cog):
             await self.db.query(query, values)
 
     def format_message(self, template: str, member: discord.Member):
-        return template\
+        """Format welcome/goodbye message with member and guild information"""
+        print(f"🔧 DEBUG: Formatting template: '{template}'")
+        print(f"🔧 DEBUG: Member: {member.display_name} ({member.mention})")
+        
+        result = template\
             .replace("{memberName}", member.display_name)\
             .replace("{memberMention}", member.mention)\
-            .replace("{serverName}", member.guild.name)
+            .replace("{serverName}", member.guild.name)\
+            .replace("{memberUsername}", member.name)\
+            .replace("{memberTag}", str(member))\
+            .replace("{memberCount}", str(member.guild.member_count))\
+            .replace("{user}", member.mention)\
+            .replace("{server}", member.guild.name)\
+            .replace("{username}", member.name)\
+            .replace("{displayname}", member.display_name)\
+            .replace("{userMention}", member.mention)
+        
+        print(f"🔧 DEBUG: Formatted result: '{result}'")
+        return result
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -91,12 +113,46 @@ class Welcome(commands.Cog):
             channel = self.bot.get_channel(channel_id)
             print(f"🏠 DEBUG: Welcome channel object: {channel}")
             if channel:
+                # Use custom title or default
+                welcome_title = config.get("welcome_title", "👋 New member!")
+                print(f"🏷️ DEBUG: Raw welcome title: '{welcome_title}'")
+                
+                # Format the title with placeholders
+                formatted_title = self.format_message(welcome_title, member)
+                print(f"🏷️ DEBUG: Formatted welcome title: '{formatted_title}'")
+                
+                # Format the message with placeholders
+                formatted_message = self.format_message(message, member)
+                print(f"💬 DEBUG: Formatted welcome message: '{formatted_message}'")
+                
+                print(f"🔍 DEBUG: Full config: {config}")
                 embed = Embed(
-                    title=_("welcome_system.new_member_title", member.id, guild_id),
-                    description=self.format_message(message, member),
+                    title=formatted_title,
+                    description=formatted_message,
                     color=discord.Color.green()
                 )
                 embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
+                
+                # Add custom fields if configured
+                welcome_fields = config.get("welcome_fields")
+                if welcome_fields:
+                    try:
+                        import json
+                        if isinstance(welcome_fields, str):
+                            fields_data = json.loads(welcome_fields)
+                        else:
+                            fields_data = welcome_fields
+                            
+                        for field in fields_data:
+                            if isinstance(field, dict) and "name" in field and "value" in field:
+                                embed.add_field(
+                                    name=self.format_message(field["name"], member),
+                                    value=self.format_message(field["value"], member),
+                                    inline=field.get("inline", False)
+                                )
+                    except Exception as e:
+                        print(f"⚠️ DEBUG: Error processing welcome fields: {e}")
+                
                 try:
                     await channel.send(embed=embed)
                     print(f"✅ DEBUG: Welcome message sent successfully to {channel.name}")
@@ -121,12 +177,45 @@ class Welcome(commands.Cog):
         if channel_id:
             channel = self.bot.get_channel(channel_id)
             if channel:
+                # Use custom title or default
+                goodbye_title = config.get("goodbye_title", "👋 Departure")
+                print(f"🏷️ DEBUG: Raw goodbye title: '{goodbye_title}'")
+                
+                # Format the title with placeholders
+                formatted_title = self.format_message(goodbye_title, member)
+                print(f"🏷️ DEBUG: Formatted goodbye title: '{formatted_title}'")
+                
+                # Format the message with placeholders
+                formatted_message = self.format_message(message, member)
+                print(f"💬 DEBUG: Formatted goodbye message: '{formatted_message}'")
+                
                 embed = Embed(
-                    title=_("welcome_system.member_left_title", member.id, guild_id),
-                    description=self.format_message(message, member),
+                    title=formatted_title,
+                    description=formatted_message,
                     color=discord.Color.red()
                 )
                 embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
+                
+                # Add custom fields if configured
+                goodbye_fields = config.get("goodbye_fields")
+                if goodbye_fields:
+                    try:
+                        import json
+                        if isinstance(goodbye_fields, str):
+                            fields_data = json.loads(goodbye_fields)
+                        else:
+                            fields_data = goodbye_fields
+                            
+                        for field in fields_data:
+                            if isinstance(field, dict) and "name" in field and "value" in field:
+                                embed.add_field(
+                                    name=self.format_message(field["name"], member),
+                                    value=self.format_message(field["value"], member),
+                                    inline=field.get("inline", False)
+                                )
+                    except Exception as e:
+                        print(f"⚠️ DEBUG: Error processing goodbye fields: {e}")
+                
                 await channel.send(embed=embed)
 
     # Configuration commands removed - use unified /config command instead

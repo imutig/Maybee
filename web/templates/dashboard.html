@@ -62,35 +62,42 @@
                     <div class="nav-icon">
                         <i class="fas fa-tachometer-alt"></i>
                     </div>
-                    <span class="nav-text">Overview</span>
+                    <span class="nav-text" data-translate="navigation.overview">Overview</span>
                 </a>
                 
                 <a class="nav-item" href="#xp-settings" data-translate="navigation.xp_system">
                     <div class="nav-icon">
                         <i class="fas fa-trophy"></i>
                     </div>
-                    <span class="nav-text">XP System</span>
+                    <span class="nav-text" data-translate="navigation.xp_system">XP System</span>
                 </a>
                 
                 <a class="nav-item" href="#moderation" data-translate="navigation.moderation">
                     <div class="nav-icon">
                         <i class="fas fa-shield-alt"></i>
                     </div>
-                    <span class="nav-text">Moderation</span>
+                    <span class="nav-text" data-translate="navigation.moderation">Moderation</span>
                 </a>
                 
                 <a class="nav-item" href="#welcome" data-translate="navigation.welcome_system">
                     <div class="nav-icon">
                         <i class="fas fa-door-open"></i>
                     </div>
-                    <span class="nav-text">Welcome System</span>
+                    <span class="nav-text" data-translate="navigation.welcome_system">Welcome System</span>
+                </a>
+                
+                <a class="nav-item" href="#role-menus" data-translate="navigation.role_menus">
+                    <div class="nav-icon">
+                        <i class="fas fa-list"></i>
+                    </div>
+                    <span class="nav-text" data-translate="navigation.role_menus">Role Menus</span>
                 </a>
                 
                 <a class="nav-item" href="#logs" data-translate="navigation.server_logs">
                     <div class="nav-icon">
                         <i class="fas fa-file-alt"></i>
                     </div>
-                    <span class="nav-text">Server Logs</span>
+                    <span class="nav-text" data-translate="navigation.server_logs">Server Logs</span>
                 </a>
             </nav>
         </aside>
@@ -100,13 +107,13 @@
             <!-- Dashboard Header -->
             <div class="dashboard-header">
                 <div class="header-left">
-                    <h1 class="page-title">Dashboard</h1>
-                    <p class="page-subtitle">Manage your server settings</p>
+                    <h1 class="page-title" data-translate="navigation.dashboard">Dashboard</h1>
+                    <p class="page-subtitle" data-translate="dashboard.subtitle">Manage your server settings</p>
                 </div>
                 
                 <div class="header-right">
                     <div class="server-selector">
-                        <label class="selector-label">Server</label>
+                        <label class="selector-label" data-translate="common.server">Server</label>
                         <select class="modern-select" id="guildSelector" onchange="selectGuild()">
                             <option value="" data-translate="navigation.select_server">Select a server...</option>
                         </select>
@@ -138,10 +145,6 @@
                                 <div class="stat-value" id="totalMembers">0</div>
                                 <div class="stat-label" data-translate="overview.total_members">Total Members</div>
                             </div>
-                            <div class="stat-trend positive">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+5.2%</span>
-                            </div>
                         </div>
                         
                         <div class="stat-card success">
@@ -151,10 +154,6 @@
                             <div class="stat-content">
                                 <div class="stat-value" id="totalXP">0</div>
                                 <div class="stat-label" data-translate="overview.total_xp">Total XP Given</div>
-                            </div>
-                            <div class="stat-trend positive">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+12.8%</span>
                             </div>
                         </div>
                         
@@ -166,10 +165,6 @@
                                 <div class="stat-value" id="avgLevel">0</div>
                                 <div class="stat-label" data-translate="overview.average_level">Average Level</div>
                             </div>
-                            <div class="stat-trend neutral">
-                                <i class="fas fa-minus"></i>
-                                <span>0%</span>
-                            </div>
                         </div>
                         
                         <div class="stat-card info">
@@ -179,10 +174,6 @@
                             <div class="stat-content">
                                 <div class="stat-value" id="recentActivity">0</div>
                                 <div class="stat-label" data-translate="overview.recent_activity">Recent Activity</div>
-                            </div>
-                            <div class="stat-trend positive">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+8.1%</span>
                             </div>
                         </div>
                     </div>
@@ -203,15 +194,15 @@
                                 <table class="modern-table">
                                     <thead>
                                         <tr>
-                                            <th>Rank</th>
-                                            <th>Member</th>
-                                            <th>Level</th>
-                                            <th>Experience</th>
+                                            <th data-translate="overview.rank">Rank</th>
+                                            <th data-translate="common.user">Member</th>
+                                            <th data-translate="overview.level">Level</th>
+                                            <th data-translate="overview.total_xp_column">Experience</th>
                                         </tr>
                                     </thead>
                                     <tbody id="topUsersTable">
                                         <tr>
-                                            <td colspan="4" class="no-data">Select a server to view data</td>
+                                            <td colspan="4" class="no-data" data-translate="dashboard.select_server_data">Select a server to view data</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -224,14 +215,14 @@
                 <div class="tab-pane fade" id="xp-settings">
                     <div class="content-card">
                         <div class="card-header">
-                            <h3 class="card-title">
+                            <h3 class="card-title" data-translate="xp_system.title">
                                 <i class="fas fa-trophy me-2"></i>
                                 XP System Configuration
                             </h3>
                             <div class="card-actions">
-                                <button class="action-btn-small" type="button" id="resetXPBtn">
-                                    <i class="fas fa-undo"></i>
-                                    Reset
+                                <button class="action-btn-small" type="button" id="resetXPBtn" style="background: #dc3545; border-color: #dc3545;">
+                                    <i class="fas fa-trash-alt"></i>
+                                    <span data-translate="xp_system.reset_xp">Reset All XP</span>
                                 </button>
                             </div>
                         </div>
@@ -240,60 +231,60 @@
                                 <div class="settings-grid">
                                     <!-- General Settings -->
                                     <div class="settings-section">
-                                        <h4 class="section-title">General Settings</h4>
+                                        <h4 class="section-title" data-translate="xp_system.general_settings">General Settings</h4>
                                         
                                         <div class="form-group">
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="xpEnabled" class="toggle-input" checked>
                                                 <label for="xpEnabled" class="toggle-label">
-                                                    <span class="toggle-text">Enable XP System</span>
+                                                    <span class="toggle-text" data-translate="xp_system.enable_xp">Enable XP System</span>
                                                 </label>
                                             </div>
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label">XP Multiplier</label>
+                                            <label class="form-label" data-translate="xp_system.xp_multiplier">XP Multiplier</label>
                                             <div class="input-group">
                                                 <span class="input-prefix">×</span>
                                                 <input type="number" id="xpMultiplier" class="form-input" min="0.1" max="10" step="0.1" value="1.0">
                                             </div>
-                                            <div class="form-hint">Adjust how much XP users earn per message</div>
+                                            <div class="form-hint" data-translate="xp_system.xp_multiplier_description">Adjust how much XP users earn per message</div>
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label">XP Channel</label>
+                                            <label class="form-label" data-translate="xp_system.xp_channel">XP Channel</label>
                                             <select id="xpChannel" class="form-select">
-                                                <option value="">All channels</option>
+                                                <option value="" data-translate="xp_system.all_channels">All channels</option>
                                             </select>
-                                            <div class="form-hint">Channel where XP can be earned (leave blank for all)</div>
+                                            <div class="form-hint" data-translate="xp_system.xp_channel_description">Channel where XP can be earned (leave blank for all)</div>
                                         </div>
                                     </div>
 
                                     <!-- Level Up Settings -->
                                     <div class="settings-section">
-                                        <h4 class="section-title">Level Up Settings</h4>
+                                        <h4 class="section-title" data-translate="xp_system.level_up_settings">Level Up Settings</h4>
                                         
                                         <div class="form-group">
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="levelUpMessage" class="toggle-input" checked>
                                                 <label for="levelUpMessage" class="toggle-label">
-                                                    <span class="toggle-text">Show Level Up Messages</span>
+                                                    <span class="toggle-text" data-translate="xp_system.level_up_messages">Show Level Up Messages</span>
                                                 </label>
                                             </div>
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label">Level Up Channel</label>
+                                            <label class="form-label" data-translate="xp_system.level_up_channel">Level Up Channel</label>
                                             <select id="levelUpChannel" class="form-select">
-                                                <option value="">Same as message channel</option>
+                                                <option value="" data-translate="xp_system.same_channel">Same as message channel</option>
                                             </select>
-                                            <div class="form-hint">Channel for level up announcements</div>
+                                            <div class="form-hint" data-translate="xp_system.level_up_channel_description">Channel for level up announcements</div>
                                         </div>
 
                                         <div class="form-group">
                                             <button type="button" class="btn-secondary" id="testLevelUpBtn">
                                                 <i class="fas fa-paper-plane"></i>
-                                                Test Level Up Message
+                                                <span data-translate="xp_system.test_level_up">Test Level Up Message</span>
                                             </button>
                                         </div>
                                     </div>
@@ -302,11 +293,11 @@
                                 <div class="form-actions">
                                     <button type="submit" class="btn-primary">
                                         <i class="fas fa-save me-2"></i>
-                                        Save XP Settings
+                                        <span data-translate="xp_system.save_xp_settings">Save XP Settings</span>
                                     </button>
                                     <button type="button" class="btn-secondary">
                                         <i class="fas fa-undo me-2"></i>
-                                        Reset to Defaults
+                                        <span data-translate="common.reset_defaults">Reset to Defaults</span>
                                     </button>
                                 </div>
                             </form>
@@ -318,7 +309,7 @@
                 <div class="tab-pane fade" id="moderation">
                     <div class="content-card">
                         <div class="card-header">
-                            <h3 class="card-title">
+                            <h3 class="card-title" data-translate="moderation.title">
                                 <i class="fas fa-shield-alt me-2"></i>
                                 Moderation Tools
                             </h3>
@@ -327,67 +318,67 @@
                             <div class="settings-grid">
                                 <!-- Moderation Actions -->
                                 <div class="settings-section">
-                                    <h4 class="section-title">Execute Action</h4>
+                                    <h4 class="section-title" data-translate="moderation.execute_action">Execute Action</h4>
                                     
                                     <div class="form-group">
-                                        <label class="form-label">Select Member</label>
+                                        <label class="form-label" data-translate="moderation.select_member">Select Member</label>
                                         <select id="memberSelect" class="form-select">
-                                            <option value="">Choose a member...</option>
+                                            <option value="" data-translate="moderation.choose_member">Choose a member...</option>
                                         </select>
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="form-label">Action</label>
+                                        <label class="form-label" data-translate="moderation.action">Action</label>
                                         <select id="moderationAction" class="form-select">
-                                            <option value="">Select action...</option>
-                                            <option value="warn">Warn</option>
-                                            <option value="timeout">Timeout</option>
-                                            <option value="kick">Kick</option>
-                                            <option value="ban">Ban</option>
+                                            <option value="" data-translate="moderation.select_action">Select action...</option>
+                                            <option value="warn" data-translate="moderation.warn">Warn</option>
+                                            <option value="timeout" data-translate="moderation.timeout">Timeout</option>
+                                            <option value="kick" data-translate="moderation.kick">Kick</option>
+                                            <option value="ban" data-translate="moderation.ban">Ban</option>
                                         </select>
                                     </div>
 
                                     <div class="form-group" id="timeoutDuration" style="display: none;">
-                                        <label class="form-label">Timeout Duration (minutes)</label>
+                                        <label class="form-label" data-translate="moderation.timeout_duration">Timeout Duration (minutes)</label>
                                         <input type="number" id="timeoutMinutes" class="form-input" min="1" max="10080" value="60">
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="form-label">Reason</label>
-                                        <textarea id="moderationReason" class="form-textarea" rows="3" placeholder="Enter reason for this action..."></textarea>
+                                        <label class="form-label" data-translate="moderation.reason">Reason</label>
+                                        <textarea id="moderationReason" class="form-textarea" rows="3" data-translate="moderation.reason_placeholder" placeholder="Enter reason for this action..."></textarea>
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="form-label">Notification Channel</label>
+                                        <label class="form-label" data-translate="moderation.notification_channel">Notification Channel</label>
                                         <select id="moderationChannel" class="form-select">
-                                            <option value="">No notification</option>
+                                            <option value="" data-translate="moderation.no_notification">No notification</option>
                                         </select>
-                                        <div class="form-hint">Channel to log this action</div>
+                                        <div class="form-hint" data-translate="moderation.notification_channel_description">Channel to log this action</div>
                                     </div>
 
                                     <div class="form-actions">
                                         <button type="button" class="btn-danger" id="executeModerationBtn">
                                             <i class="fas fa-gavel me-2"></i>
-                                            Execute Action
+                                            <span data-translate="moderation.execute_action">Execute Action</span>
                                         </button>
                                     </div>
                                 </div>
 
                                 <!-- Moderation History -->
                                 <div class="settings-section">
-                                    <h4 class="section-title">Recent Actions</h4>
+                                    <h4 class="section-title" data-translate="moderation.recent_actions">Recent Actions</h4>
                                     <div class="table-container">
                                         <table class="modern-table">
                                             <thead>
                                                 <tr>
-                                                    <th>User</th>
-                                                    <th>Action</th>
-                                                    <th>Date</th>
+                                                    <th data-translate="common.user">User</th>
+                                                    <th data-translate="moderation.action">Action</th>
+                                                    <th data-translate="common.date">Date</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="moderationHistoryTable">
                                                 <tr>
-                                                    <td colspan="3" class="no-data">No moderation history</td>
+                                                    <td colspan="3" class="no-data" data-translate="overview.no_history">No moderation history</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -432,9 +423,47 @@
                                         </div>
 
                                         <div class="form-group">
+                                            <label class="form-label">Welcome Title</label>
+                                            <input type="text" id="welcomeTitle" class="form-control" placeholder="👋 New member!" maxlength="256">
+                                            <div class="form-hint">Title displayed at the top of the welcome embed (max 256 characters)</div>
+                                        </div>
+
+                                        <div class="form-group">
                                             <label class="form-label">Welcome Message</label>
                                             <textarea id="welcomeMessage" class="form-textarea" rows="4" placeholder="Welcome {user} to {server}!"></textarea>
-                                            <div class="form-hint">Use {user} for member mention and {server} for server name</div>
+                                            <div class="form-hint">
+                                                <strong>Available placeholders:</strong><br>
+                                                <code>{user}</code> - Member mention (@User) • 
+                                                <code>{server}</code> - Server name • 
+                                                <code>{username}</code> - Username<br>
+                                                <code>{displayname}</code> - Display name • 
+                                                <code>{memberCount}</code> - Current member count
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <div class="toggle-switch">
+                                                <input type="checkbox" id="welcomeFields" class="toggle-input">
+                                                <label for="welcomeFields" class="toggle-label">
+                                                    <span class="toggle-text">Add Custom Fields</span>
+                                                </label>
+                                            </div>
+                                            <div class="form-hint">Add custom fields to the welcome embed</div>
+                                        </div>
+
+                                        <div id="welcomeFieldsContainer" style="display: none;">
+                                            <div class="form-group">
+                                                <label class="form-label">Custom Fields</label>
+                                                <div id="welcomeFieldsList">
+                                                    <!-- Dynamic fields will be added here -->
+                                                </div>
+                                                <button type="button" class="add-field-btn" id="addWelcomeField">
+                                                    <i class="fas fa-plus me-2"></i>Add Field
+                                                </button>
+                                                <div class="form-hint">
+                                                    <strong>Available placeholders:</strong> {user}, {server}, {username}, {displayname}, {memberCount}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -460,9 +489,47 @@
                                         </div>
 
                                         <div class="form-group">
+                                            <label class="form-label">Goodbye Title</label>
+                                            <input type="text" id="goodbyeTitle" class="form-control" placeholder="👋 Departure" maxlength="256">
+                                            <div class="form-hint">Title displayed at the top of the goodbye embed (max 256 characters)</div>
+                                        </div>
+
+                                        <div class="form-group">
                                             <label class="form-label">Goodbye Message</label>
                                             <textarea id="goodbyeMessage" class="form-textarea" rows="4" placeholder="Goodbye {user}, thanks for being part of {server}!"></textarea>
-                                            <div class="form-hint">Use {user} for member name and {server} for server name</div>
+                                            <div class="form-hint">
+                                                <strong>Available placeholders:</strong><br>
+                                                <code>{user}</code> - Member mention (@User) • 
+                                                <code>{server}</code> - Server name • 
+                                                <code>{username}</code> - Username<br>
+                                                <code>{displayname}</code> - Display name • 
+                                                <code>{memberCount}</code> - Current member count
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <div class="toggle-switch">
+                                                <input type="checkbox" id="goodbyeFields" class="toggle-input">
+                                                <label for="goodbyeFields" class="toggle-label">
+                                                    <span class="toggle-text">Add Custom Fields</span>
+                                                </label>
+                                            </div>
+                                            <div class="form-hint">Add custom fields to the goodbye embed</div>
+                                        </div>
+
+                                        <div id="goodbyeFieldsContainer" style="display: none;">
+                                            <div class="form-group">
+                                                <label class="form-label">Custom Fields</label>
+                                                <div id="goodbyeFieldsList">
+                                                    <!-- Dynamic fields will be added here -->
+                                                </div>
+                                                <button type="button" class="add-field-btn" id="addGoodbyeField">
+                                                    <i class="fas fa-plus me-2"></i>Add Field
+                                                </button>
+                                                <div class="form-hint">
+                                                    <strong>Available placeholders:</strong> {user}, {server}, {username}, {displayname}, {memberCount}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -478,6 +545,43 @@
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Role Menus Tab -->
+                <div class="tab-pane fade" id="role-menus">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-list me-2"></i>
+                                Role Menu Management
+                            </h3>
+                            <div class="card-actions">
+                                <button class="action-btn-small" type="button" id="refreshRoleMenusBtn">
+                                    <i class="fas fa-sync-alt"></i>
+                                    <span>Refresh</span>
+                                </button>
+                                <button class="action-btn-small" type="button" id="createRoleMenuBtn">
+                                    <span>Create Menu</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <!-- Role Menus List -->
+                            <div class="role-menus-container">
+                                <div class="role-menus-list" id="roleMenusList">
+                                    <!-- Role menus will be loaded here dynamically -->
+                                </div>
+                                <div class="empty-state" id="roleMenusEmpty">
+                                    <i class="fas fa-list-ul fa-3x"></i>
+                                    <h3>No Role Menus Found</h3>
+                                    <p>Create your first role menu to get started!</p>
+                                    <button class="btn-primary" onclick="document.getElementById('createRoleMenuBtn').click()">
+                                        Create Role Menu
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -714,6 +818,12 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize language data from backend
+        window.langData = {{ lang_data | tojson }};
+        window.currentLang = "{{ current_lang }}";
+        window.supportedLanguages = {{ supported_languages | tojson }};
+    </script>
     <script src="/static/dashboard.js"></script>
 </body>
 </html>

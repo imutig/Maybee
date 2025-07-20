@@ -146,7 +146,7 @@ async def load_extensions():
     extensions = [
         "cog.meeting", "cog.rename", "cog.career", "cog.scan", "cog.ping",
         "cog.avatar", "cog.roll", "cog.confession", "cog.embed", "cog.XPSystem",
-        "cog.role", "cog.welcome", "cog.rolereact", "cog.ticket", "cog.clear",
+        "cog.role", "cog.welcome", "cog.role_menus", "cog.ticket", "cog.clear",
         "cog.language", "cog.config", "cog.moderation", "cog.cache", "cog.server_logs"
     ]
     

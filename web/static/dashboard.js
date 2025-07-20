@@ -21,24 +21,33 @@ class Dashboard {
                 return;
             }
 
-            // Load available languages first
-            await this.loadAvailableLanguages();
-            
-            // Load user's language preference
-            await this.loadUserLanguage();
-            
-            // Load language strings
-            await this.loadLanguageStrings();
-            
-            // Initialize language selector
-            this.initLanguageSelector();
+            // Use language data from backend if available, otherwise load from API
+            if (window.langData && window.currentLang && window.supportedLanguages) {
+                this.currentLanguage = window.currentLang;
+                this.strings = window.langData;
+                this.availableLanguages = window.supportedLanguages.map(code => ({
+                    code: code,
+                    name: code === 'en' ? 'English' : 'Français',
+                    flag: code === 'en' ? '🇺🇸' : '🇫🇷'
+                }));
+                
+                // Initialize language selector
+                this.initLanguageSelector();
+                
+                // Update UI with translations immediately
+                this.updateUILanguage();
+            } else {
+                // Fallback to old method
+                await this.loadAvailableLanguages();
+                await this.loadUserLanguage();
+                await this.loadLanguageStrings();
+                this.initLanguageSelector();
+                this.updateUILanguage();
+            }
             
             // Load user data
             await this.loadUser();
             await this.loadGuilds();
-            
-            // Update UI with translations
-            this.updateUILanguage();
             
             // Hide loading overlay
             document.getElementById('loadingOverlay').style.display = 'none';
@@ -46,7 +55,7 @@ class Dashboard {
             
         } catch (error) {
             console.error('Initialization error:', error);
-            this.showError('Failed to load dashboard. Please try logging in again.');
+            this.showError(this.getString('errors.load_error') || 'Failed to load dashboard. Please try logging in again.');
         }
     }
 
@@ -54,6 +63,12 @@ class Dashboard {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
         if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    setCookie(name, value, days) {
+        const expires = new Date();
+        expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+        document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
     }
 
     async apiCall(endpoint, method = 'GET', data = null) {
@@ -114,7 +129,7 @@ class Dashboard {
             this.guilds = this.user.guilds || [];
             
             const guildSelector = document.getElementById('guildSelector');
-            guildSelector.innerHTML = '<option value="">Select a server...</option>';
+            guildSelector.innerHTML = `<option value="">${this.getString('navigation.select_server')}</option>`;
             
             this.guilds.forEach(guild => {
                 const option = document.createElement('option');
@@ -124,7 +139,7 @@ class Dashboard {
             });
             
             if (this.guilds.length === 0) {
-                this.showError('No manageable servers found. Make sure the bot is in your server and you have administrator permissions.');
+                this.showError(this.getString('errors.no_guilds') || 'No manageable servers found. Make sure the bot is in your server and you have administrator permissions.');
             }
             
         } catch (error) {
@@ -192,8 +207,11 @@ class Dashboard {
 
     async changeLanguage(languageCode) {
         try {
-            // Save language preference
+            // Save language preference to server
             await this.apiCall('/user/language', 'PUT', { language: languageCode });
+            
+            // Set language cookie for persistence
+            this.setCookie('language', languageCode, 365);
             
             // Update current language
             this.currentLanguage = languageCode;
@@ -207,6 +225,11 @@ class Dashboard {
             
             // Show success message
             this.showSuccess(this.getString('language.language_changed') || 'Language changed successfully!');
+            
+            // Update URL to reflect language change (optional, for consistency)
+            const url = new URL(window.location);
+            url.searchParams.set('lang', languageCode);
+            window.history.replaceState({}, '', url);
             
         } catch (error) {
             console.error('Failed to change language:', error);
@@ -318,10 +341,11 @@ class Dashboard {
             await this.loadModerationHistory();
             await this.loadWelcomeConfig();
             await this.loadServerLogsConfig();
+            await this.loadRoleMenus();
             
         } catch (error) {
             console.error('Failed to load guild data:', error);
-            this.showError('Failed to load server data.');
+            this.showError(this.getString('messages.server_data_error') || 'Failed to load server data.');
         }
     }
 
@@ -332,7 +356,7 @@ class Dashboard {
         
         if (!this.members || this.members.length === 0) {
             console.log('No members data available');
-            return `User ID: ${userId}`;
+            return `${this.getString('overview.user_id')}: ${userId}`;
         }
         
         // Convert userId to string for comparison since API might return different types
@@ -362,7 +386,7 @@ class Dashboard {
         }
         
         console.log(`Member not found for ID: ${userId}`);
-        return `User ID: ${userId}`;
+        return `${this.getString('overview.user_id')}: ${userId}`;
     }
 
     // Synchronous version for backward compatibility
@@ -374,7 +398,7 @@ class Dashboard {
             return member.display_name || member.username;
         }
         
-        return `User ID: ${userId}`;
+        return `${this.getString('overview.user_id')}: ${userId}`;
     }
 
     async loadGuildStats() {
@@ -409,7 +433,7 @@ class Dashboard {
                     topUsersTable.appendChild(row);
                 }
             } else {
-                topUsersTable.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No data available</td></tr>';
+                topUsersTable.innerHTML = `<tr><td colspan="4" class="text-center text-muted">${this.getString('overview.no_data')}</td></tr>`;
             }
             
         } catch (error) {
@@ -496,7 +520,7 @@ class Dashboard {
         event.preventDefault();
         
         if (!this.currentGuild) {
-            this.showError('Please select a server first.');
+            this.showError(this.getString('messages.please_select_server') || 'Please select a server first.');
             return;
         }
 
@@ -511,27 +535,700 @@ class Dashboard {
             };
 
             await this.apiCall(`/guild/${this.currentGuild}/xp`, 'PUT', xpConfig);
-            this.showSuccess('XP settings saved successfully!');
+            this.showSuccess(this.getString('messages.xp_settings_saved') || 'XP settings saved successfully!');
             
         } catch (error) {
             console.error('Failed to save XP settings:', error);
-            this.showError('Failed to save XP settings. Please try again.');
+            this.showError(this.getString('messages.save_error') || 'Failed to save XP settings. Please try again.');
         }
     }
 
     async testLevelUpMessage() {
         if (!this.currentGuild) {
-            this.showError('Please select a server first.');
+            this.showError(this.getString('messages.please_select_server') || 'Please select a server first.');
             return;
         }
 
         try {
             const response = await this.apiCall(`/guild/${this.currentGuild}/xp/test-levelup`, 'POST');
-            this.showSuccess('Test level up message sent successfully!');
+            this.showSuccess(this.getString('messages.test_success') || 'Test level up message sent successfully!');
         } catch (error) {
             console.error('Failed to send test message:', error);
-            this.showError('Failed to send test message. Please try again.');
+            this.showError(this.getString('messages.test_error') || 'Failed to send test message. Please try again.');
         }
+    }
+
+    async resetServerXP() {
+        if (!this.currentGuild) {
+            this.showError(this.getString('messages.please_select_server') || 'Please select a server first.');
+            return;
+        }
+
+        // Show confirmation dialog
+        const confirmed = confirm(
+            '⚠️ WARNING: This will permanently delete ALL XP data for this server!\n\n' +
+            'This includes:\n' +
+            '• All user XP and levels\n' +
+            '• XP history records\n' +
+            '• Level role assignments\n' +
+            '• XP multipliers\n\n' +
+            'This action cannot be undone!\n\n' +
+            'Are you sure you want to reset all XP data?'
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        // Second confirmation
+        const doubleConfirmed = confirm(
+            'FINAL CONFIRMATION\n\n' +
+            'This will DELETE ALL XP DATA for this server permanently.\n\n' +
+            'Type "DELETE" and click OK to confirm:'
+        );
+
+        if (!doubleConfirmed) {
+            return;
+        }
+
+        try {
+            const response = await this.apiCall(`/guild/${this.currentGuild}/xp/reset`, 'POST');
+            
+            if (response.success) {
+                this.showSuccess(
+                    `✅ XP Reset Complete!\n\n` +
+                    `Successfully deleted:\n` +
+                    `• ${response.deleted_records} user XP records\n` +
+                    `• All XP history records\n` +
+                    `• All level role assignments\n` +
+                    `• All XP multipliers\n\n` +
+                    `All users will start fresh with 0 XP!`
+                );
+                
+                // Refresh the page to show updated data
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                this.showError('Failed to reset XP data: ' + (response.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Failed to reset XP data:', error);
+            this.showError('Failed to reset XP data. Please try again.');
+        }
+    }
+
+    // Role Menu Management Methods
+    async loadRoleMenus() {
+        console.log(`🔄 Loading role menus for guild: ${this.currentGuild}`);
+        if (!this.currentGuild) {
+            console.log('❌ No current guild set');
+            return;
+        }
+
+        try {
+            console.log(`📡 Making API call to get role menus`);
+            const response = await this.apiCall(`/guild/${this.currentGuild}/role-menus`);
+            console.log(`✅ API call successful, received ${response.menus?.length || 0} role menus`);
+            this.displayRoleMenus(response.menus || []);
+        } catch (error) {
+            console.error('❌ Failed to load role menus:', error);
+            this.showError('Failed to load role menus. Please try again.');
+        }
+    }
+
+    displayRoleMenus(menus) {
+        console.log(`🎨 Displaying ${menus.length} role menus`);
+        
+        // Store the menus data for later use
+        this.cachedRoleMenus = menus;
+        
+        // Check if role menus tab is currently active (Bootstrap 5 uses both 'active' and 'show')
+        const roleMenusTab = document.getElementById('role-menus');
+        const isTabActive = roleMenusTab && (
+            roleMenusTab.classList.contains('active') || 
+            roleMenusTab.classList.contains('show') ||
+            (roleMenusTab.classList.contains('active') && roleMenusTab.classList.contains('show'))
+        );
+        
+        console.log('🔍 Tab state check:', {
+            tabExists: !!roleMenusTab,
+            isActive: isTabActive,
+            hasActiveClass: roleMenusTab?.classList.contains('active'),
+            hasShowClass: roleMenusTab?.classList.contains('show'),
+            tabClasses: roleMenusTab ? Array.from(roleMenusTab.classList) : null
+        });
+        
+        // Always try to render if we have the tab element, regardless of active state
+        // This will help us debug what's happening
+        if (!roleMenusTab) {
+            console.log('📋 Role menus tab not found, caching data for later render');
+            return;
+        }
+        
+        // Try to render immediately, but also cache for later
+        this.renderRoleMenusNow(menus);
+    }
+    
+    renderRoleMenusNow(menus) {
+        console.log(`🎨 Rendering ${menus.length} role menus now`);
+        
+        const menusList = document.getElementById('roleMenusList');
+        const emptyState = document.getElementById('roleMenusEmpty');
+        
+        // Add comprehensive debugging
+        console.log('🔍 DOM element search:', {
+            menusList: menusList ? 'Found' : 'Not found',
+            emptyState: emptyState ? 'Found' : 'Not found',
+            domReady: document.readyState,
+            allRoleMenusElements: document.querySelectorAll('[id*="roleMenus"]').length,
+            allTabPanes: document.querySelectorAll('.tab-pane').length,
+            activeTabPanes: document.querySelectorAll('.tab-pane.active').length,
+            currentTab: document.querySelector('.tab-pane.active')?.id || 'none'
+        });
+        
+        // Check if elements exist but maybe have different IDs
+        const allElements = document.querySelectorAll('*[id]');
+        const roleMenusRelated = Array.from(allElements).filter(el => 
+            el.id.toLowerCase().includes('rolemenu') || el.id.toLowerCase().includes('role-menu')
+        );
+        console.log('🔍 All role menu related elements:', roleMenusRelated.map(el => ({id: el.id, tagName: el.tagName})));
+        
+        // Add null checks to prevent errors
+        if (!menusList || !emptyState) {
+            console.error('❌ Role menus DOM elements not found:', {
+                menusList: !!menusList,
+                emptyState: !!emptyState,
+                domReady: document.readyState,
+                roleMenusTabExists: !!document.querySelector('#role-menus'),
+                roleMenusTabActive: !!document.querySelector('#role-menus.active'),
+                bootstrap5TabActive: !!document.querySelector('#role-menus.show.active'),
+                allTabsWithShow: document.querySelectorAll('.tab-pane.show').length
+            });
+            
+            // Try again with a small delay in case DOM is still loading
+            console.log('🔄 Retrying DOM element search in 100ms...');
+            setTimeout(() => {
+                const retryMenusList = document.getElementById('roleMenusList');
+                const retryEmptyState = document.getElementById('roleMenusEmpty');
+                
+                console.log('🔄 Retry DOM search results:', {
+                    menusList: !!retryMenusList,
+                    emptyState: !!retryEmptyState,
+                    currentActiveTab: document.querySelector('.tab-pane.active, .tab-pane.show')?.id || 'none'
+                });
+                
+                if (retryMenusList && retryEmptyState) {
+                    console.log('✅ Found DOM elements on retry, rendering now');
+                    this.renderRoleMenusList(menus, retryMenusList, retryEmptyState);
+                } else {
+                    console.error('❌ Still cannot find DOM elements after retry');
+                }
+            }, 100);
+            
+            return;
+        }
+        
+        this.renderRoleMenusList(menus, menusList, emptyState);
+    }
+    
+    // Method to check if role menus tab is active and render cached data
+    checkAndRenderCachedRoleMenus() {
+        const roleMenusTab = document.getElementById('role-menus');
+        const isTabActive = roleMenusTab && roleMenusTab.classList.contains('active');
+        
+        if (isTabActive && this.cachedRoleMenus) {
+            console.log('🔄 Tab is active and cached data available, rendering now');
+            this.renderRoleMenusNow(this.cachedRoleMenus);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // Force render role menus regardless of tab state (for debugging/manual refresh)
+    forceRenderRoleMenus() {
+        console.log('🔧 Force rendering role menus...');
+        if (this.cachedRoleMenus) {
+            console.log(`📋 Found ${this.cachedRoleMenus.length} cached role menus`);
+            this.renderRoleMenusNow(this.cachedRoleMenus);
+        } else {
+            console.log('📡 No cached data, loading from API...');
+            this.loadRoleMenus();
+        }
+    }
+    
+    renderRoleMenusList(menus, menusList, emptyState) {
+        
+        if (menus.length === 0) {
+            console.log('📭 No menus to display, showing empty state');
+            emptyState.style.display = 'block';
+            menusList.innerHTML = '';
+            return;
+        }
+        
+        console.log('📝 Generating HTML for menus');
+        emptyState.style.display = 'none';
+        
+        menusList.innerHTML = menus.map(menu => {
+            console.log(`  - Menu: ${menu.title} (ID: ${menu.id})`);
+            return `
+            <div class="role-menu-item" data-menu-id="${menu.id}">
+                <div class="role-menu-header">
+                    <div class="role-menu-info">
+                        <h4 class="role-menu-title">${this.escapeHtml(menu.title)}</h4>
+                        <p class="role-menu-description">${this.escapeHtml(menu.description || 'No description')}</p>
+                        <div class="role-menu-meta">
+                            <span class="meta-item">
+                                <i class="fas fa-hashtag"></i>
+                                Channel: ${menu.channel_name || 'Unknown Channel'}
+                            </span>
+                            <span class="meta-item">
+                                <i class="fas fa-list"></i>
+                                ${menu.options_count || 0} roles
+                            </span>
+                        </div>
+                    </div>
+                    <div class="role-menu-actions">
+                        <button class="action-btn-small" onclick="dashboard.editRoleMenu(${menu.id})">
+                            <i class="fas fa-edit"></i>
+                            Edit
+                        </button>
+                        <button class="action-btn-small" onclick="dashboard.deleteRoleMenu(${menu.id})" style="background: #dc3545; border-color: #dc3545;">
+                            <i class="fas fa-trash"></i>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        }).join('');
+        console.log('✅ Role menus HTML updated');
+    }
+
+    async createRoleMenu() {
+        // Show create role menu modal
+        this.showRoleMenuModal();
+    }
+
+    async editRoleMenu(menuId) {
+        console.log(`✏️ Editing role menu with ID: ${menuId}`);
+        try {
+            console.log(`📡 Fetching role menu data for ID: ${menuId}`);
+            const response = await this.apiCall(`/guild/${this.currentGuild}/role-menus/${menuId}`);
+            console.log(`✅ Received role menu data:`, response.menu);
+            this.showRoleMenuModal(response.menu);
+        } catch (error) {
+            console.error('❌ Failed to load role menu:', error);
+            this.showError('Failed to load role menu for editing.');
+        }
+    }
+
+    async deleteRoleMenu(menuId) {
+        console.log(`🗑️ Attempting to delete role menu with ID: ${menuId}`);
+        if (!confirm('Are you sure you want to delete this role menu? This action cannot be undone.')) {
+            console.log('❌ User cancelled deletion');
+            return;
+        }
+
+        try {
+            console.log(`🔄 Making API call to delete menu ${menuId}`);
+            await this.apiCall(`/guild/${this.currentGuild}/role-menus/${menuId}`, 'DELETE');
+            console.log(`✅ Delete API call successful for menu ${menuId}`);
+            this.showSuccess('Role menu deleted successfully!');
+            console.log(`🔄 Refreshing role menus list...`);
+            await this.loadRoleMenus(); // Add await here
+            console.log(`✅ Role menus list refreshed`);
+        } catch (error) {
+            console.error('❌ Failed to delete role menu:', error);
+            this.showError('Failed to delete role menu. Please try again.');
+        }
+    }
+
+    showRoleMenuModal(menu = null) {
+        const isEdit = menu !== null;
+        console.log(`🪟 Showing role menu modal - isEdit: ${isEdit}`);
+        if (isEdit) {
+            console.log(`📝 Edit mode - menu data:`, menu);
+            console.log(`📝 Channel ID to pre-select: ${menu.channel_id}`);
+        }
+        
+        // Create modal HTML
+        const modalHtml = `
+            <div class="modal-overlay" id="roleMenuModal">
+                <div class="modal-content large-modal">
+                    <div class="modal-header">
+                        <h3>${isEdit ? 'Edit Role Menu' : 'Create Role Menu'}</h3>
+                        <button class="modal-close" onclick="dashboard.closeRoleMenuModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="roleMenuForm">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">Menu Title</label>
+                                    <input type="text" id="menuTitle" class="form-input" 
+                                           value="${isEdit ? this.escapeHtml(menu.title) : ''}" 
+                                           placeholder="Select Your Role" required maxlength="256">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Channel</label>
+                                    <select id="menuChannel" class="form-select" required>
+                                        <option value="">Select a channel...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group full-width">
+                                    <label class="form-label">Description</label>
+                                    <textarea id="menuDescription" class="form-textarea" rows="3" 
+                                              placeholder="Choose a role from the dropdown below">${isEdit ? this.escapeHtml(menu.description || '') : ''}</textarea>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Color</label>
+                                    <input type="text" id="menuColor" class="form-input" 
+                                           value="${isEdit ? menu.color : '#5865F2'}" 
+                                           placeholder="#5865F2" pattern="^#[0-9A-Fa-f]{6}$">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Placeholder Text</label>
+                                    <input type="text" id="menuPlaceholder" class="form-input" 
+                                           value="${isEdit ? this.escapeHtml(menu.placeholder || '') : 'Select a role...'}" 
+                                           placeholder="Select a role..." maxlength="150">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Selection Mode</label>
+                                    <select id="selectionMode" class="form-select" onchange="dashboard.updateSelectionValues()">
+                                        <option value="single" ${isEdit && menu.max_values === 1 ? 'selected' : ''}>Single Selection (1 role)</option>
+                                        <option value="multiple" ${isEdit && menu.max_values > 1 ? 'selected' : !isEdit ? 'selected' : ''}>Multiple Selection</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group" id="maxValuesGroup" style="${isEdit && menu.max_values === 1 ? 'display: none;' : ''}">
+                                    <label class="form-label">Maximum Selections</label>
+                                    <input type="number" id="maxValues" class="form-input" 
+                                           value="${isEdit ? menu.max_values : 5}" 
+                                           min="1" max="25" placeholder="5">
+                                    <small class="form-help">Maximum number of roles a user can select (1-25)</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <div class="section-header">
+                                    <h4>Role Options</h4>
+                                    <button type="button" class="btn-secondary" onclick="dashboard.addRoleOption()">
+                                        <i class="fas fa-plus"></i>
+                                        Add Role
+                                    </button>
+                                </div>
+                                <div id="roleOptionsList" class="role-options-list">
+                                    <!-- Role options will be added here -->
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" onclick="dashboard.closeRoleMenuModal()">Cancel</button>
+                        <button type="button" class="btn-primary" onclick="dashboard.saveRoleMenu(${isEdit ? menu.id : 'null'})">
+                            ${isEdit ? 'Update Menu' : 'Create Menu'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Small delay to ensure DOM is ready, then load channels and roles
+        setTimeout(async () => {
+            console.log(`⏱️ Starting async loading of channels and roles`);
+            console.log(`📍 Channel ID to select: ${isEdit ? menu.channel_id : null}`);
+            await this.loadChannelsForModal(isEdit ? menu.channel_id : null);
+            await this.loadRolesForModal();
+            
+            // After loading channels, ensure the correct channel is selected
+            if (isEdit && menu.channel_id) {
+                console.log(`🔄 Double-checking channel selection...`);
+                const channelSelect = document.getElementById('menuChannel');
+                if (channelSelect) {
+                    console.log(`📋 Channel select current value: "${channelSelect.value}"`);
+                    console.log(`🎯 Setting channel select value to: "${menu.channel_id}"`);
+                    channelSelect.value = String(menu.channel_id);
+                    console.log(`✅ Channel select value after setting: "${channelSelect.value}"`);
+                } else {
+                    console.error(`❌ Channel select element not found!`);
+                }
+            }
+        }, 100);
+        
+        // Load existing options if editing
+        if (isEdit && menu.options) {
+            menu.options.forEach(option => {
+                this.addRoleOption(option);
+            });
+        } else {
+            // Add one empty option by default
+            this.addRoleOption();
+        }
+    }
+
+    updateSelectionValues() {
+        const selectionMode = document.getElementById('selectionMode').value;
+        const maxValuesGroup = document.getElementById('maxValuesGroup');
+        const maxValuesInput = document.getElementById('maxValues');
+        
+        if (selectionMode === 'single') {
+            maxValuesGroup.style.display = 'none';
+            maxValuesInput.value = 1;
+        } else {
+            maxValuesGroup.style.display = 'block';
+            if (maxValuesInput.value == 1) {
+                maxValuesInput.value = 5; // Default to 5 for multiple selection
+            }
+        }
+    }
+
+    closeRoleMenuModal() {
+        const modal = document.getElementById('roleMenuModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    async loadChannelsForModal(selectedChannelId = null) {
+        console.log(`📡 Loading channels for modal with selectedChannelId: ${selectedChannelId}`);
+        const channelSelect = document.getElementById('menuChannel');
+        if (!channelSelect) {
+            console.error('❌ menuChannel select element not found');
+            return;
+        }
+        
+        console.log('🔍 Current channels available:', this.channels?.length || 0);
+        console.log('🎯 Selected channel ID to match:', selectedChannelId);
+        
+        // Clear existing options
+        channelSelect.innerHTML = '<option value="">Select a channel...</option>';
+        
+        // Use the same channels that are already loaded (like in welcome section)
+        if (this.channels && this.channels.length > 0) {
+            console.log(`📝 Adding ${this.channels.length} channels to role menu modal`);
+            this.channels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel.id;
+                option.textContent = `#${channel.name}`;
+                
+                console.log(`🔍 Comparing channel "${channel.name}" (${channel.id}) with selected (${selectedChannelId})`);
+                console.log(`   - channel.id type: ${typeof channel.id}, value: "${channel.id}"`);
+                console.log(`   - selectedChannelId type: ${typeof selectedChannelId}, value: "${selectedChannelId}"`);
+                
+                if (selectedChannelId && String(channel.id) === String(selectedChannelId)) {
+                    option.selected = true;
+                    console.log(`✅ Pre-selected channel: #${channel.name} (${channel.id})`);
+                }
+                channelSelect.appendChild(option);
+            });
+            console.log(`✅ Added all channels to select`);
+        } else {
+            // If channels aren't loaded yet, try to load them
+            console.warn('⚠️ No channels available for role menu. Attempting to reload...');
+            try {
+                await this.loadGuildChannels();
+                console.log('🔄 Reloaded channels:', this.channels?.length || 0);
+                if (this.channels && this.channels.length > 0) {
+                    this.channels.forEach(channel => {
+                        const option = document.createElement('option');
+                        option.value = channel.id;
+                        option.textContent = `#${channel.name}`;
+                        if (selectedChannelId && String(channel.id) === String(selectedChannelId)) {
+                            option.selected = true;
+                            console.log(`✅ Pre-selected channel after reload: #${channel.name} (${channel.id})`);
+                        }
+                        channelSelect.appendChild(option);
+                    });
+                    console.log(`✅ Added ${this.channels.length} channels after reload`);
+                }
+            } catch (error) {
+                console.error('❌ Failed to load channels for role menu:', error);
+            }
+        }
+    }
+
+    async loadRolesForModal() {
+        // This will be called when role options are added
+        // The actual role loading happens in loadRolesForOption() for each individual role select
+        console.log('loadRolesForModal called - roles will be loaded per option');
+    }
+
+    addRoleOption(optionData = null) {
+        const optionsList = document.getElementById('roleOptionsList');
+        const optionId = Date.now() + Math.random();
+        
+        const optionHtml = `
+            <div class="role-option-item" data-option-id="${optionId}">
+                <div class="role-option-grid">
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <select class="role-select" required>
+                            <option value="">Select a role...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Label</label>
+                        <input type="text" class="option-label" placeholder="Member Role" 
+                               value="${optionData ? this.escapeHtml(optionData.label) : ''}" maxlength="80" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="option-description" placeholder="Access to member-only channels" 
+                               value="${optionData ? this.escapeHtml(optionData.description || '') : ''}" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Emoji (optional)</label>
+                        <input type="text" class="option-emoji" placeholder="🎭" 
+                               value="${optionData ? this.escapeHtml(optionData.emoji || '') : ''}" maxlength="10">
+                    </div>
+                </div>
+                <button type="button" class="remove-option-btn" onclick="dashboard.removeRoleOption('${optionId}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        optionsList.insertAdjacentHTML('beforeend', optionHtml);
+        
+        // Load roles for the new option
+        this.loadRolesForOption(optionId, optionData?.role_id);
+    }
+
+    async loadRolesForOption(optionId, selectedRoleId = null) {
+        console.log(`🎭 Loading roles for option ${optionId} with selectedRoleId: ${selectedRoleId}`);
+        const optionElement = document.querySelector(`[data-option-id="${optionId}"]`);
+        const roleSelect = optionElement.querySelector('.role-select');
+        
+        if (!this.currentGuild) {
+            console.log('❌ No current guild for role loading');
+            return;
+        }
+        
+        try {
+            console.log(`📡 Fetching roles for guild ${this.currentGuild}`);
+            const response = await this.apiCall(`/guild/${this.currentGuild}/roles`);
+            const roles = response.roles || [];
+            console.log(`✅ Received ${roles.length} roles`);
+            
+            roleSelect.innerHTML = '<option value="">Select a role...</option>';
+            
+            roles.forEach(role => {
+                if (role.name !== '@everyone') {  // Skip @everyone role
+                    const option = document.createElement('option');
+                    option.value = role.id;
+                    option.textContent = role.name;
+                    
+                    console.log(`🔍 Comparing role "${role.name}" (${role.id}) with selected (${selectedRoleId})`);
+                    console.log(`   - role.id type: ${typeof role.id}, value: "${role.id}"`);
+                    console.log(`   - selectedRoleId type: ${typeof selectedRoleId}, value: "${selectedRoleId}"`);
+                    
+                    if (selectedRoleId && String(role.id) === String(selectedRoleId)) {
+                        option.selected = true;
+                        console.log(`✅ Pre-selected role: ${role.name} (${role.id})`);
+                    }
+                    roleSelect.appendChild(option);
+                }
+            });
+            console.log(`✅ Added roles to option ${optionId}`);
+        } catch (error) {
+            console.error(`❌ Failed to load roles for option ${optionId}:`, error);
+        }
+    }
+
+    removeRoleOption(optionId) {
+        const optionElement = document.querySelector(`[data-option-id="${optionId}"]`);
+        if (optionElement) {
+            optionElement.remove();
+        }
+    }
+
+    async saveRoleMenu(menuId) {
+        const form = document.getElementById('roleMenuForm');
+        const formData = new FormData(form);
+        
+        // Collect basic menu data
+        const menuData = {
+            title: document.getElementById('menuTitle').value.trim(),
+            channel_id: document.getElementById('menuChannel').value,
+            description: document.getElementById('menuDescription').value.trim(),
+            color: document.getElementById('menuColor').value.trim(),
+            placeholder: document.getElementById('menuPlaceholder').value.trim(),
+            min_values: 0, // Always allow no selection
+            max_values: parseInt(document.getElementById('maxValues').value) || 1
+        };
+        
+        // Validate required fields
+        if (!menuData.title || !menuData.channel_id) {
+            this.showError('Please fill in all required fields.');
+            return;
+        }
+        
+        // Collect role options
+        const options = [];
+        const optionElements = document.querySelectorAll('.role-option-item');
+        
+        for (let i = 0; i < optionElements.length; i++) {
+            const element = optionElements[i];
+            const roleId = element.querySelector('.role-select').value;
+            const label = element.querySelector('.option-label').value.trim();
+            const description = element.querySelector('.option-description').value.trim();
+            const emoji = element.querySelector('.option-emoji').value.trim();
+            
+            if (!roleId || !label) {
+                this.showError('Please fill in role and label for all options.');
+                return;
+            }
+            
+            options.push({
+                role_id: roleId,
+                label: label,
+                description: description,
+                emoji: emoji,
+                position: i
+            });
+        }
+        
+        if (options.length === 0) {
+            this.showError('Please add at least one role option.');
+            return;
+        }
+        
+        try {
+            const url = menuId ? `/guild/${this.currentGuild}/role-menus/${menuId}` : `/guild/${this.currentGuild}/role-menus`;
+            const method = menuId ? 'PUT' : 'POST';
+            
+            const response = await this.apiCall(url, method, {
+                menu: menuData,
+                options: options
+            });
+            
+            this.showSuccess(menuId ? 'Role menu updated successfully!' : 'Role menu created successfully!');
+            this.closeRoleMenuModal();
+            
+            console.log('🔄 Reloading role menus after successful creation/update');
+            await this.loadRoleMenus(); // Make it await for proper sequencing
+            
+        } catch (error) {
+            console.error('Failed to save role menu:', error);
+            this.showError('Failed to save role menu. Please try again.');
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     async loadGuildMembers() {
@@ -548,7 +1245,7 @@ class Dashboard {
             }
             
             const memberSelect = document.getElementById('memberSelect');
-            memberSelect.innerHTML = '<option value="">Choose a member...</option>';
+            memberSelect.innerHTML = `<option value="">${this.getString('moderation.choose_member')}</option>`;
             
             if (this.members.length > 0) {
                 this.members.forEach(member => {
@@ -560,7 +1257,7 @@ class Dashboard {
             } else {
                 const option = document.createElement('option');
                 option.value = '';
-                option.textContent = 'No members available - Enable GUILD_MEMBERS intent in Discord Developer Portal';
+                option.textContent = this.getString('moderation.no_members') || 'No members available - Enable GUILD_MEMBERS intent in Discord Developer Portal';
                 option.disabled = true;
                 memberSelect.appendChild(option);
             }
@@ -568,7 +1265,7 @@ class Dashboard {
         } catch (error) {
             console.error('Failed to load guild members:', error);
             const memberSelect = document.getElementById('memberSelect');
-            memberSelect.innerHTML = '<option value="">Error loading members</option>';
+            memberSelect.innerHTML = `<option value="">${this.getString('errors.load_error')}</option>`;
         }
         
         // Refresh displays that depend on member names
@@ -648,13 +1345,13 @@ class Dashboard {
                     historyTable.appendChild(row);
                 }
             } else {
-                historyTable.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No moderation history</td></tr>';
+                historyTable.innerHTML = `<tr><td colspan="3" class="text-center text-muted">${this.getString('overview.no_history')}</td></tr>`;
             }
             
         } catch (error) {
             console.error('Failed to load moderation history:', error);
             const historyTable = document.getElementById('moderationHistoryTable');
-            historyTable.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Error loading history</td></tr>';
+            historyTable.innerHTML = `<tr><td colspan="3" class="text-center text-muted">${this.getString('errors.load_error')}</td></tr>`;
         }
     }
 
@@ -666,11 +1363,63 @@ class Dashboard {
             
             document.getElementById('welcomeEnabled').checked = config.welcome_enabled || false;
             document.getElementById('welcomeChannel').value = config.welcome_channel || '';
+            document.getElementById('welcomeTitle').value = config.welcome_title || '👋 New member!';
             document.getElementById('welcomeMessage').value = config.welcome_message || 'Welcome {user} to {server}!';
+            
+            // Handle welcome fields
+            const welcomeFieldsToggle = document.getElementById('welcomeFields');
+            const welcomeFieldsContainer = document.getElementById('welcomeFieldsContainer');
+            const welcomeFieldsList = document.getElementById('welcomeFieldsList');
+            
+            if (config.welcome_fields && config.welcome_fields.length > 0) {
+                welcomeFieldsToggle.checked = true;
+                welcomeFieldsContainer.style.display = 'block';
+                
+                // Clear existing fields
+                welcomeFieldsList.innerHTML = '';
+                
+                // Add fields from config
+                config.welcome_fields.forEach(field => {
+                    const fieldItem = this.createFieldItem(field.name, field.value, field.inline, welcomeFieldsList);
+                    welcomeFieldsList.appendChild(fieldItem);
+                });
+                
+                this.updateFieldMoveButtons(welcomeFieldsList);
+            } else {
+                welcomeFieldsToggle.checked = false;
+                welcomeFieldsContainer.style.display = 'none';
+                welcomeFieldsList.innerHTML = '';
+            }
             
             document.getElementById('goodbyeEnabled').checked = config.goodbye_enabled || false;
             document.getElementById('goodbyeChannel').value = config.goodbye_channel || '';
+            document.getElementById('goodbyeTitle').value = config.goodbye_title || '👋 Departure';
             document.getElementById('goodbyeMessage').value = config.goodbye_message || 'Goodbye {user}, thanks for being part of {server}!';
+            
+            // Handle goodbye fields
+            const goodbyeFieldsToggle = document.getElementById('goodbyeFields');
+            const goodbyeFieldsContainer = document.getElementById('goodbyeFieldsContainer');
+            const goodbyeFieldsList = document.getElementById('goodbyeFieldsList');
+            
+            if (config.goodbye_fields && config.goodbye_fields.length > 0) {
+                goodbyeFieldsToggle.checked = true;
+                goodbyeFieldsContainer.style.display = 'block';
+                
+                // Clear existing fields
+                goodbyeFieldsList.innerHTML = '';
+                
+                // Add fields from config
+                config.goodbye_fields.forEach(field => {
+                    const fieldItem = this.createFieldItem(field.name, field.value, field.inline, goodbyeFieldsList);
+                    goodbyeFieldsList.appendChild(fieldItem);
+                });
+                
+                this.updateFieldMoveButtons(goodbyeFieldsList);
+            } else {
+                goodbyeFieldsToggle.checked = false;
+                goodbyeFieldsContainer.style.display = 'none';
+                goodbyeFieldsList.innerHTML = '';
+            }
             
         } catch (error) {
             console.error('Failed to load welcome config:', error);
@@ -713,7 +1462,7 @@ class Dashboard {
 
     async executeModerationAction() {
         if (!this.currentGuild) {
-            this.showError('Please select a server first.');
+            this.showError(this.getString('messages.please_select_server') || 'Please select a server first.');
             return;
         }
 
@@ -723,7 +1472,7 @@ class Dashboard {
         const channelId = document.getElementById('moderationChannel').value;
 
         if (!memberId || !action) {
-            this.showError('Please select a member and action.');
+            this.showError(this.getString('moderation.select_member_action') || 'Please select a member and action.');
             return;
         }
 
@@ -745,7 +1494,7 @@ class Dashboard {
             }
 
             await this.apiCall(`/guild/${this.currentGuild}/moderation/action`, 'POST', actionData);
-            this.showSuccess(`${action.charAt(0).toUpperCase() + action.slice(1)} executed successfully!`);
+            this.showSuccess(this.getString('moderation.action_success') || `${action.charAt(0).toUpperCase() + action.slice(1)} executed successfully!`);
             
             // Clear form and reload history
             document.getElementById('memberSelect').value = '';
@@ -759,7 +1508,7 @@ class Dashboard {
             
         } catch (error) {
             console.error('Failed to execute moderation action:', error);
-            this.showError('Failed to execute moderation action. Please try again.');
+            this.showError(this.getString('moderation.action_error') || 'Failed to execute moderation action. Please try again.');
         }
     }
 
@@ -767,34 +1516,143 @@ class Dashboard {
         event.preventDefault();
         
         if (!this.currentGuild) {
-            this.showError('Please select a server first.');
+            this.showError(this.getString('messages.please_select_server') || 'Please select a server first.');
             return;
         }
 
         try {
+            // Parse custom fields if enabled
+            let welcomeFields = null;
+            let goodbyeFields = null;
+            
+            if (document.getElementById('welcomeFields').checked) {
+                welcomeFields = this.collectWelcomeFields();
+            }
+            
+            if (document.getElementById('goodbyeFields').checked) {
+                goodbyeFields = this.collectGoodbyeFields();
+            }
+
             const welcomeConfig = {
                 welcome_enabled: document.getElementById('welcomeEnabled').checked,
                 welcome_channel: document.getElementById('welcomeChannel').value || null,
+                welcome_title: document.getElementById('welcomeTitle').value || '👋 New member!',
                 welcome_message: document.getElementById('welcomeMessage').value || 'Welcome {user} to {server}!',
+                welcome_fields: welcomeFields,
                 goodbye_enabled: document.getElementById('goodbyeEnabled').checked,
                 goodbye_channel: document.getElementById('goodbyeChannel').value || null,
-                goodbye_message: document.getElementById('goodbyeMessage').value || 'Goodbye {user}, thanks for being part of {server}!'
+                goodbye_title: document.getElementById('goodbyeTitle').value || '👋 Departure',
+                goodbye_message: document.getElementById('goodbyeMessage').value || 'Goodbye {user}, thanks for being part of {server}!',
+                goodbye_fields: goodbyeFields
             };
 
             await this.apiCall(`/guild/${this.currentGuild}/welcome`, 'PUT', welcomeConfig);
-            this.showSuccess('Welcome settings saved successfully!');
+            this.showSuccess(this.getString('messages.welcome_settings_saved') || 'Welcome settings saved successfully!');
             
         } catch (error) {
             console.error('Failed to save welcome settings:', error);
-            this.showError('Failed to save welcome settings. Please try again.');
+            this.showError(this.getString('messages.save_error') || 'Failed to save welcome settings. Please try again.');
         }
+    }
+
+    collectWelcomeFields() {
+        const fields = [];
+        const fieldItems = document.querySelectorAll('#welcomeFieldsList .custom-field-item');
+        fieldItems.forEach(item => {
+            const name = item.querySelector('.field-name').value.trim();
+            const value = item.querySelector('.field-value').value.trim();
+            const inline = item.querySelector('.field-inline').checked;
+            
+            if (name && value) {
+                fields.push({ name, value, inline });
+            }
+        });
+        return fields.length > 0 ? fields : null;
+    }
+
+    collectGoodbyeFields() {
+        const fields = [];
+        const fieldItems = document.querySelectorAll('#goodbyeFieldsList .custom-field-item');
+        fieldItems.forEach(item => {
+            const name = item.querySelector('.field-name').value.trim();
+            const value = item.querySelector('.field-value').value.trim();
+            const inline = item.querySelector('.field-inline').checked;
+            
+            if (name && value) {
+                fields.push({ name, value, inline });
+            }
+        });
+        return fields.length > 0 ? fields : null;
+    }
+
+    createFieldItem(name = '', value = '', inline = false, container) {
+        const fieldItem = document.createElement('div');
+        fieldItem.className = 'custom-field-item';
+        fieldItem.innerHTML = `
+            <div class="field-input-group">
+                <label>Field Name</label>
+                <input type="text" class="field-input form-control field-name" placeholder="e.g., Server Rules" value="${name}">
+            </div>
+            <div class="field-input-group">
+                <label>Field Value</label>
+                <textarea class="field-input form-control field-value" placeholder="e.g., Please read #rules" rows="3">${value}</textarea>
+            </div>
+            <div class="field-toggle-wrapper">
+                <div class="toggle-label-text">Inline</div>
+                <div class="field-toggle-switch">
+                    <input type="checkbox" class="field-inline" ${inline ? 'checked' : ''}>
+                    <span class="field-toggle-slider"></span>
+                </div>
+            </div>
+            <div class="field-actions">
+                <button type="button" class="field-move-btn field-up" title="Move Up">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
+                <button type="button" class="field-remove-btn" title="Remove Field">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+
+        // Add event listeners
+        fieldItem.querySelector('.field-remove-btn').addEventListener('click', () => {
+            fieldItem.remove();
+            this.updateFieldMoveButtons(container);
+        });
+
+        fieldItem.querySelector('.field-up').addEventListener('click', () => {
+            const prev = fieldItem.previousElementSibling;
+            if (prev) {
+                container.insertBefore(fieldItem, prev);
+                this.updateFieldMoveButtons(container);
+            }
+        });
+
+        // Add toggle functionality
+        const toggleSlider = fieldItem.querySelector('.field-toggle-slider');
+        const toggleInput = fieldItem.querySelector('.field-inline');
+        
+        toggleSlider.addEventListener('click', () => {
+            toggleInput.checked = !toggleInput.checked;
+            toggleInput.dispatchEvent(new Event('change'));
+        });
+
+        return fieldItem;
+    }
+
+    updateFieldMoveButtons(container) {
+        const items = container.querySelectorAll('.custom-field-item');
+        items.forEach((item, index) => {
+            const upBtn = item.querySelector('.field-up');
+            upBtn.disabled = index === 0;
+        });
     }
 
     async saveServerLogsSettings(event) {
         event.preventDefault();
         
         if (!this.currentGuild) {
-            this.showError('Please select a server first.');
+            this.showError(this.getString('messages.please_select_server') || 'Please select a server first.');
             return;
         }
 
@@ -817,41 +1675,41 @@ class Dashboard {
             };
 
             await this.apiCall(`/guild/${this.currentGuild}/logs`, 'PUT', logsConfig);
-            this.showSuccess('Server logs settings saved successfully!');
+            this.showSuccess(this.getString('messages.logs_settings_saved') || 'Server logs settings saved successfully!');
             
         } catch (error) {
             console.error('Failed to save server logs settings:', error);
-            this.showError('Failed to save server logs settings. Please try again.');
+            this.showError(this.getString('messages.save_error') || 'Failed to save server logs settings. Please try again.');
         }
     }
 
     async testWelcomeMessage() {
         if (!this.currentGuild) {
-            this.showError('Please select a server first.');
+            this.showError(this.getString('messages.please_select_server') || 'Please select a server first.');
             return;
         }
 
         try {
             await this.apiCall(`/guild/${this.currentGuild}/welcome/test`, 'POST');
-            this.showSuccess('Test welcome message sent successfully!');
+            this.showSuccess(this.getString('messages.test_success') || 'Test welcome message sent successfully!');
         } catch (error) {
             console.error('Failed to send test welcome message:', error);
-            this.showError('Failed to send test welcome message. Please try again.');
+            this.showError(this.getString('messages.test_error') || 'Failed to send test welcome message. Please try again.');
         }
     }
 
     async testServerLog() {
         if (!this.currentGuild) {
-            this.showError('Please select a server first.');
+            this.showError(this.getString('messages.please_select_server') || 'Please select a server first.');
             return;
         }
 
         try {
             await this.apiCall(`/guild/${this.currentGuild}/logs/test`, 'POST');
-            this.showSuccess('Test server log sent successfully!');
+            this.showSuccess(this.getString('messages.test_success') || 'Test server log sent successfully!');
         } catch (error) {
             console.error('Failed to send test server log:', error);
-            this.showError('Failed to send test server log. Please try again.');
+            this.showError(this.getString('messages.test_error') || 'Failed to send test server log. Please try again.');
         }
     }
 
@@ -1210,6 +2068,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 100);
     
+    // Setup tab change listener for role menus
+    setTimeout(() => {
+        // Listen for tab changes to render role menus when tab becomes active
+        const roleMenusLink = document.querySelector('a[href="#role-menus"]');
+        if (roleMenusLink) {
+            roleMenusLink.addEventListener('click', () => {
+                console.log('🔄 Role menus tab clicked, checking for cached data');
+                setTimeout(() => {
+                    if (dashboard.cachedRoleMenus) {
+                        console.log('📋 Found cached role menus, rendering now');
+                        dashboard.renderRoleMenusNow(dashboard.cachedRoleMenus);
+                    }
+                }, 100); // Small delay to ensure tab is active
+            });
+            console.log('✅ Role menus tab listener added');
+        }
+        
+        // Also listen for Bootstrap tab events if available
+        const roleMenusTab = document.getElementById('role-menus');
+        if (roleMenusTab) {
+            roleMenusTab.addEventListener('shown.bs.tab', () => {
+                console.log('🔄 Role menus tab shown via Bootstrap event');
+                if (dashboard.cachedRoleMenus) {
+                    console.log('📋 Found cached role menus, rendering via Bootstrap event');
+                    dashboard.renderRoleMenusNow(dashboard.cachedRoleMenus);
+                }
+            });
+            console.log('✅ Bootstrap tab listener added');
+        }
+    }, 200);
+    
     // Make setupNav globally available for debugging
     window.setupNav = setupModernNavigation;
     
@@ -1245,6 +2134,60 @@ document.addEventListener('DOMContentLoaded', () => {
         testLogBtn.addEventListener('click', () => dashboard.testServerLog());
     }
     
+    // Setup reset XP button
+    const resetXPBtn = document.getElementById('resetXPBtn');
+    if (resetXPBtn) {
+        resetXPBtn.addEventListener('click', () => dashboard.resetServerXP());
+    }
+    
+    // Setup create role menu button
+    const createRoleMenuBtn = document.getElementById('createRoleMenuBtn');
+    if (createRoleMenuBtn) {
+        createRoleMenuBtn.addEventListener('click', () => dashboard.createRoleMenu());
+    }
+
+    // Add refresh button event listener
+    const refreshRoleMenusBtn = document.getElementById('refreshRoleMenusBtn');
+    if (refreshRoleMenusBtn) {
+        refreshRoleMenusBtn.addEventListener('click', async () => {
+            console.log('🔄 Manual refresh of role menus triggered');
+            
+            if (!dashboard.currentGuild) {
+                console.warn('No guild selected for refresh');
+                dashboard.showError('Please select a server first');
+                return;
+            }
+            
+            // Add loading state
+            const originalIcon = refreshRoleMenusBtn.querySelector('i');
+            const originalText = originalIcon ? '' : refreshRoleMenusBtn.textContent;
+            
+            if (originalIcon) {
+                originalIcon.className = 'fas fa-spinner fa-spin';
+            } else {
+                refreshRoleMenusBtn.textContent = 'Refreshing...';
+            }
+            refreshRoleMenusBtn.disabled = true;
+            
+            try {
+                console.log(`Refreshing role menus for guild: ${dashboard.currentGuild}`);
+                await dashboard.loadRoleMenus();
+                console.log('✅ Role menus refreshed successfully');
+            } catch (error) {
+                console.error('❌ Failed to refresh role menus:', error);
+                dashboard.showError('Failed to refresh role menus');
+            } finally {
+                // Restore original state
+                if (originalIcon) {
+                    originalIcon.className = 'fas fa-sync-alt';
+                } else {
+                    refreshRoleMenusBtn.textContent = originalText;
+                }
+                refreshRoleMenusBtn.disabled = false;
+            }
+        });
+    }
+    
     // Setup moderation action handler
     const executeModerationBtn = document.getElementById('executeModerationBtn');
     if (executeModerationBtn) {
@@ -1263,6 +2206,45 @@ document.addEventListener('DOMContentLoaded', () => {
                     timeoutDuration.style.display = 'none';
                 }
             }
+        });
+    }
+    
+    // Setup welcome fields toggle
+    const welcomeFieldsToggle = document.getElementById('welcomeFields');
+    const welcomeFieldsContainer = document.getElementById('welcomeFieldsContainer');
+    if (welcomeFieldsToggle && welcomeFieldsContainer) {
+        welcomeFieldsToggle.addEventListener('change', (e) => {
+            welcomeFieldsContainer.style.display = e.target.checked ? 'block' : 'none';
+        });
+    }
+    
+    // Setup goodbye fields toggle
+    const goodbyeFieldsToggle = document.getElementById('goodbyeFields');
+    const goodbyeFieldsContainer = document.getElementById('goodbyeFieldsContainer');
+    if (goodbyeFieldsToggle && goodbyeFieldsContainer) {
+        goodbyeFieldsToggle.addEventListener('change', (e) => {
+            goodbyeFieldsContainer.style.display = e.target.checked ? 'block' : 'none';
+        });
+    }
+
+    // Setup add field buttons
+    const addWelcomeFieldBtn = document.getElementById('addWelcomeField');
+    if (addWelcomeFieldBtn) {
+        addWelcomeFieldBtn.addEventListener('click', () => {
+            const welcomeFieldsList = document.getElementById('welcomeFieldsList');
+            const fieldItem = dashboard.createFieldItem('', '', false, welcomeFieldsList);
+            welcomeFieldsList.appendChild(fieldItem);
+            dashboard.updateFieldMoveButtons(welcomeFieldsList);
+        });
+    }
+
+    const addGoodbyeFieldBtn = document.getElementById('addGoodbyeField');
+    if (addGoodbyeFieldBtn) {
+        addGoodbyeFieldBtn.addEventListener('click', () => {
+            const goodbyeFieldsList = document.getElementById('goodbyeFieldsList');
+            const fieldItem = dashboard.createFieldItem('', '', false, goodbyeFieldsList);
+            goodbyeFieldsList.appendChild(fieldItem);
+            dashboard.updateFieldMoveButtons(goodbyeFieldsList);
         });
     }
 });

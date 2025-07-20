@@ -350,6 +350,39 @@ class Database:
             )
             """,
             """
+            CREATE TABLE IF NOT EXISTS role_menus (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id BIGINT NOT NULL,
+                channel_id BIGINT NOT NULL,
+                message_id BIGINT NULL,
+                title VARCHAR(256) NOT NULL,
+                description TEXT,
+                color VARCHAR(7) DEFAULT '#5865F2',
+                placeholder VARCHAR(150) DEFAULT 'Select a role...',
+                max_values INT DEFAULT 1,
+                min_values INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_guild_id (guild_id),
+                INDEX idx_message_id (message_id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS role_menu_options (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                menu_id INT NOT NULL,
+                role_id BIGINT NOT NULL,
+                label VARCHAR(80) NOT NULL,
+                description VARCHAR(100),
+                emoji VARCHAR(100),
+                position INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (menu_id) REFERENCES role_menus(id) ON DELETE CASCADE,
+                INDEX idx_menu_id (menu_id),
+                INDEX idx_role_id (role_id)
+            )
+            """,
+            """
             CREATE TABLE IF NOT EXISTS user_languages (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id BIGINT NOT NULL UNIQUE,

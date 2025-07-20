@@ -283,12 +283,20 @@ class XPSystem(commands.Cog):
             return False, 1
 
     def calculate_level(self, total_xp: int) -> int:
-        """Calculate level from total XP"""
-        return int((total_xp / 100)**0.5) + 1
+        """Calculate level from total XP - Smoother, slower progression"""
+        # New formula: More gradual level progression
+        # Level 1: 0 XP, Level 2: 100 XP, Level 3: 250 XP, Level 4: 450 XP, etc.
+        if total_xp < 100:
+            return 1
+        # Use a more gradual cubic root formula for smoother progression
+        return int((total_xp / 50) ** 0.4) + 1
         
     def calculate_xp_for_level(self, level: int) -> int:
         """Calculate XP needed for a specific level"""
-        return (level - 1)**2 * 100
+        if level <= 1:
+            return 0
+        # Reverse of the level calculation
+        return int(((level - 1) ** 2.5) * 50)
         
     def calculate_xp_needed_for_next_level(self, current_xp: int) -> int:
         """Calculate XP needed for the next level"""
@@ -310,14 +318,14 @@ class XPSystem(commands.Cog):
             return
 
         try:
-            xp = random.randint(3, 6)
+            xp = 7  # Fixed 7 XP per message
             leveled_up, level = await self.add_xp(user_id, guild_id, xp, source="text")
 
             if leveled_up:
                 await self.handle_level_up(message.guild, message.author, level)
 
             self.cooldown[key] = True
-            await asyncio.sleep(10)
+            await asyncio.sleep(5)  # 5 second cooldown
             if key in self.cooldown:  # Check if still exists before deleting
                 del self.cooldown[key]
         except Exception as e:
@@ -330,7 +338,31 @@ class XPSystem(commands.Cog):
         user_id = member.id
         guild_id = guild.id
         
-        config = await self.bot.db.query("SELECT xp_channel FROM xp_config WHERE guild_id = %s", (guild.id,), fetchone=True)
+        # Check both xp_config and guild_config for level up channel
+        xp_config = await self.bot.db.query("SELECT xp_channel FROM xp_config WHERE guild_id = %s", (guild.id,), fetchone=True)
+        guild_config = await self.bot.db.query("SELECT level_up_channel, level_up_message FROM guild_config WHERE guild_id = %s", (guild.id,), fetchone=True)
+        
+        # Determine the channel to use for level up announcements
+        level_up_channel = None
+        level_up_enabled = True
+        
+        if guild_config:
+            level_up_enabled = guild_config.get("level_up_message", True)
+            if guild_config.get("level_up_channel"):
+                channel_id = int(guild_config["level_up_channel"])
+                level_up_channel = self.bot.get_channel(channel_id)
+                print(f"🔍 DEBUG: Using level_up_channel from guild_config: {guild_config['level_up_channel']} (converted to {channel_id})")
+                print(f"🔍 DEBUG: Channel object: {level_up_channel}")
+        
+        if not level_up_channel and xp_config and xp_config.get("xp_channel"):
+            channel_id = int(xp_config["xp_channel"])
+            level_up_channel = self.bot.get_channel(channel_id)
+            print(f"🔍 DEBUG: Using xp_channel from xp_config: {xp_config['xp_channel']} (converted to {channel_id})")
+            print(f"🔍 DEBUG: Channel object: {level_up_channel}")
+        
+        print(f"🎉 DEBUG: Level up - {member.display_name} reached level {level} in {guild.name}")
+        print(f"🎉 DEBUG: Level up enabled: {level_up_enabled}, Channel: {level_up_channel}")
+        
         gained_roles = []
 
         # Attribution des rôles
@@ -345,24 +377,28 @@ class XPSystem(commands.Cog):
                 await member.add_roles(role)
                 gained_roles.append(role.mention)
 
-        # Annonce dans le salon XP s'il est configuré
-        if config:
-            channel = guild.get_channel(config["xp_channel"])
-            if channel:
-                embed = discord.Embed(
-                    title=_("xp_system.level_up.title", user_id, guild_id),
-                    description=_("xp_system.level_up.description", user_id, guild_id, user=member.mention, level=level),
-                    color=discord.Color.gold()
+        # Annonce dans le salon s'il est configuré ET si les messages de level up sont activés
+        if level_up_enabled and level_up_channel:
+            embed = discord.Embed(
+                title=_("xp_system.level_up.title", user_id, guild_id),
+                description=_("xp_system.level_up.description", user_id, guild_id, user=member.mention, level=level),
+                color=discord.Color.gold()
+            )
+            embed.set_thumbnail(url=member.display_avatar.url)
+            if gained_roles:
+                embed.add_field(
+                    name=_("xp_system.level_up.roles_gained", user_id, guild_id), 
+                    value=", ".join(gained_roles), 
+                    inline=False
                 )
-                embed.set_thumbnail(url=member.display_avatar.url)
-                if gained_roles:
-                    embed.add_field(
-                        name=_("xp_system.level_up.roles_gained", user_id, guild_id), 
-                        value=", ".join(gained_roles), 
-                        inline=False
-                    )
 
-                await channel.send(content=f"{member.mention}", embed=embed)
+            try:
+                await level_up_channel.send(content=f"{member.mention}", embed=embed)
+                print(f"✅ DEBUG: Level up message sent to {level_up_channel.name}")
+            except Exception as e:
+                print(f"❌ DEBUG: Failed to send level up message: {e}")
+        else:
+            print(f"⚠️ DEBUG: Level up message not sent - enabled: {level_up_enabled}, channel: {bool(level_up_channel)}")
 
 
     # Configuration command removed - use unified /config command instead
@@ -375,6 +411,103 @@ class XPSystem(commands.Cog):
     #     )
     #     view = ConfigLevelView(self.bot, ctx.guild.id)
     #     await ctx.send(embed=embed, view=view)
+
+    @app_commands.command(name="xp", description="View your level and XP progress")
+    @app_commands.describe(user="User to check XP for (optional)")
+    async def xp(self, interaction: discord.Interaction, user: discord.Member = None):
+        """Show user's XP, level, and progress with XP bar"""
+        target_user = user or interaction.user
+        user_id = target_user.id
+        guild_id = interaction.guild.id
+        
+        # Get user XP data from database
+        try:
+            sql = "SELECT * FROM xp_data WHERE user_id = %s AND guild_id = %s"
+            result = await self.bot.db.query(sql, (user_id, guild_id), fetchone=True)
+            
+            if not result:
+                # User has no XP data
+                no_xp_msg = _("commands.level.no_xp", user_id, guild_id)
+                embed = discord.Embed(
+                    title=_("commands.level.embed_title", user_id, guild_id).format(user=target_user.display_name),
+                    description=no_xp_msg,
+                    color=discord.Color.blue()
+                )
+                embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
+                await interaction.response.send_message(embed=embed)
+                return
+            
+            # Extract XP data
+            total_xp = result.get('xp', 0)
+            text_xp = result.get('text_xp', 0)
+            voice_xp = result.get('voice_xp', 0)
+            level = result.get('level', 1)
+            
+            # Calculate level and progress
+            calculated_level = self.calculate_level(total_xp)
+            current_level_xp = self.calculate_xp_for_level(calculated_level)
+            next_level_xp = self.calculate_xp_for_level(calculated_level + 1)
+            xp_needed = next_level_xp - total_xp
+            progress_xp = total_xp - current_level_xp
+            level_xp_range = next_level_xp - current_level_xp
+            
+            # Create progress bar
+            progress_percentage = progress_xp / level_xp_range if level_xp_range > 0 else 0
+            bar_length = 20
+            filled_length = int(bar_length * progress_percentage)
+            bar = "█" * filled_length + "░" * (bar_length - filled_length)
+            
+            # Create embed
+            embed = discord.Embed(
+                title=_("commands.level.embed_title", user_id, guild_id).format(user=target_user.display_name),
+                color=discord.Color.blue()
+            )
+            
+            # Add fields
+            embed.add_field(
+                name=_("commands.level.level_field", user_id, guild_id),
+                value=f"**{calculated_level}**",
+                inline=True
+            )
+            
+            embed.add_field(
+                name=_("commands.level.total_xp_field", user_id, guild_id),
+                value=f"**{total_xp:,}** XP",
+                inline=True
+            )
+            
+            embed.add_field(
+                name=_("commands.level.progress_field", user_id, guild_id),
+                value=f"**{progress_xp:,}** / **{level_xp_range:,}** XP\n`{bar}` {progress_percentage:.1%}",
+                inline=False
+            )
+            
+            embed.add_field(
+                name=_("commands.level.text_xp_field", user_id, guild_id),
+                value=f"**{text_xp:,}** XP",
+                inline=True
+            )
+            
+            embed.add_field(
+                name=_("commands.level.voice_xp_field", user_id, guild_id),
+                value=f"**{voice_xp:,}** XP",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="Next Level",
+                value=f"**{xp_needed:,}** XP needed",
+                inline=True
+            )
+            
+            embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
+            embed.set_footer(text=f"Level {calculated_level} • {total_xp:,} total XP")
+            
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            print(f"❌ Error in xp command: {e}")
+            await interaction.response.send_message("❌ An error occurred while fetching XP data.", ephemeral=True)
 
     @app_commands.command(name="leaderboard", description="Show XP leaderboard")
     @app_commands.describe(
