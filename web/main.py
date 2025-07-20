@@ -1,5 +1,5 @@
 """
-MaybeBot Web Dashboard - Main FastAPI Application
+Maybee Web Dashboard - Main FastAPI Application
 Professional web interface for bot configuration and management
 """
 
@@ -102,8 +102,8 @@ async def lifespan(app: FastAPI):
         await database.close()
 
 app = FastAPI(
-    title="MaybeBot Dashboard",
-    description="Professional web interface for MaybeBot configuration",
+    title="Maybee Dashboard",
+    description="Professional web interface for Maybee configuration",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -1902,7 +1902,7 @@ async def send_test_welcome_message(
                         "url": user_avatar_url
                     } if user_avatar_url else None,
                     "footer": {
-                        "text": "This is a test message from MaybeBot Dashboard"
+                        "text": "This is a test message from Maybee Dashboard"
                     },
                     "timestamp": datetime.utcnow().isoformat()
                 }]
@@ -2514,7 +2514,7 @@ async def perform_moderation_action(
                         "color": 0xff6b6b if action.action in ["kick", "ban"] else 0xffa500 if action.action == "timeout" else 0xffff00,
                         "timestamp": datetime.utcnow().isoformat(),
                         "footer": {
-                            "text": "MaybeBot Moderation System"
+                            "text": "Maybee Moderation System"
                         }
                     }
                     

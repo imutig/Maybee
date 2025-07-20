@@ -1,6 +1,6 @@
-# MaybeBot - Enhanced Discord Bot
+# Maybee - Enhanced Discord Bot
 
-🚀 **MaybeBot** is a comprehensive, high-performance Discord bot built with modern architecture featuring dependency injection, health monitoring, batch processing, and advanced performance optimizations. Developed with `discord.py` (v2) and MySQL for enterprise-grade reliability.
+🚀 **Maybee** is a comprehensive, high-performance Discord bot built with modern architecture featuring dependency injection, health monitoring, batch processing, and advanced performance optimizations. Developed with `discord.py` (v2) and MySQL for enterprise-grade reliability.
 
 ## 🏗️ Enhanced Architecture
 
@@ -167,8 +167,8 @@ DB_NAME=your_db_name
 ### 1. Clonage et dépendances
 
 ```bash
-git clone https://github.com/imutig/MaybeBot.git
-cd MaybeBot
+git clone https://github.com/imutig/Maybee.git
+cd Maybee
 pip install -r requirements.txt
 ```
 
@@ -455,7 +455,7 @@ Le bot nécessite les permissions suivantes:
 
 ### Support
 
-- **GitHub Issues**: [Signaler un bug](https://github.com/imutig/MaybeBot/issues)
+- **GitHub Issues**: [Signaler un bug](https://github.com/imutig/Maybee/issues)
 - **Discord**: Contactez iMutig#0000
 - **Documentation**: Lisez les commentaires dans le code
 - **Configuration**: Utilisez `/config` pour toutes les configurations
@@ -487,4 +487,4 @@ Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
 
 **Développé avec ❤️ par iMutig**
 
-*MaybeBot - Votre compagnon Discord tout-en-un*
+*Maybee - Votre compagnon Discord tout-en-un*

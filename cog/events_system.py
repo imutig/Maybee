@@ -1,5 +1,5 @@
 """
-Advanced Dynamic Events System for MaybeBot
+Advanced Dynamic Events System for Maybee
 Automatically creates engaging events and challenges for server members
 """
 

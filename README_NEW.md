@@ -1,4 +1,4 @@
-# 🐝 MaybeBot - Advanced Discord Bot with Web Dashboard
+# 🐝 Maybee - Advanced Discord Bot with Web Dashboard
 
 <div align="center">
 
@@ -15,7 +15,7 @@
 
 ## 🌟 Overview
 
-**MaybeBot** is a modern, feature-rich Discord bot designed for comprehensive server management with enterprise-grade reliability. Built with cutting-edge technologies and featuring a professional web dashboard, it offers both Discord commands and web-based configuration for ultimate flexibility.
+**Maybee** is a modern, feature-rich Discord bot designed for comprehensive server management with enterprise-grade reliability. Built with cutting-edge technologies and featuring a professional web dashboard, it offers both Discord commands and web-based configuration for ultimate flexibility.
 
 ### 🚀 Key Highlights
 
@@ -208,7 +208,7 @@ Access the same configuration options through the web dashboard:
 ## 🚀 Deployment
 
 ### 🔄 Dual Hosting Architecture
-MaybeBot uses a sophisticated dual-hosting setup for optimal performance:
+Maybee uses a sophisticated dual-hosting setup for optimal performance:
 
 **Discord Bot (BisectHosting):**
 - Runs the main Discord bot (`main.py`)

@@ -1,4 +1,4 @@
-// MaybeBot Dashboard JavaScript
+// Maybee Dashboard JavaScript
 class Dashboard {
     constructor() {
         this.currentGuild = null;

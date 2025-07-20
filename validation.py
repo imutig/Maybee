@@ -1,5 +1,5 @@
 """
-Input validation utilities for MaybeBot
+Input validation utilities for Maybee
 Provides common validation functions for user inputs
 """
 

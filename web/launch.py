@@ -1,5 +1,5 @@
 """
-Web Dashboard Launcher for MaybeBot
+Web Dashboard Launcher for Maybee
 Simple script to launch the web dashboard
 """
 
@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 
 def main():
-    print("🚀 MaybeBot Web Dashboard Launcher")
+    print("🚀 Maybee Web Dashboard Launcher")
     print("=" * 40)
     
     # Change to web directory

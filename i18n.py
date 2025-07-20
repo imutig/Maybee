@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Internationalization (i18n) system for MaybeBot
+Internationalization (i18n) system for Maybee
 Supports multiple languages with fallback to English
 """
 

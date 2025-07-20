@@ -1,5 +1,5 @@
 """
-Health Check and Monitoring System for MaybeBot
+Health Check and Monitoring System for Maybee
 Provides system health monitoring, metrics collection, and diagnostics
 """
 

@@ -1,4 +1,4 @@
--- Database schema for MaybeBot
+-- Database schema for Maybee
 -- Complete database schema with all tables required by the bot
 
 -- Welcome configuration table

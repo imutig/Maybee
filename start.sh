@@ -1,7 +1,7 @@
 #!/bin/bash
-# Railway startup script for MaybeBot Web Dashboard
+# Railway startup script for Maybee Web Dashboard
 
-echo "🚀 Starting MaybeBot Web Dashboard..."
+echo "🚀 Starting Maybee Web Dashboard..."
 echo "📁 Current directory: $(pwd)"
 echo "📂 Changing to web directory..."
 

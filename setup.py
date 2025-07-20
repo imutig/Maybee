@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MaybeBot Enhanced Setup Script
+Maybee Enhanced Setup Script
 Automates the installation and configuration process
 """
 
@@ -60,12 +60,12 @@ def check_database():
     """Check database requirements"""
     print("📋 Database Setup Checklist:")
     print("1. MySQL 5.7+ installed and running")
-    print("2. Database created (e.g., 'maybebot')")
+    print("2. Database created (e.g., 'maybee')")
     print("3. User with proper permissions")
     print("4. Import database_schema.sql")
     print("\nExample commands:")
-    print("mysql -u root -p -e 'CREATE DATABASE maybebot;'")
-    print("mysql -u root -p maybebot < database_schema.sql")
+    print("mysql -u root -p -e 'CREATE DATABASE maybee;'")
+    print("mysql -u root -p maybee < database_schema.sql")
     
     response = input("\nHave you completed the database setup? (y/N): ").lower()
     return response == 'y'
@@ -104,7 +104,7 @@ def run_migration():
 
 def main():
     """Main setup function"""
-    print("🚀 MaybeBot Enhanced Setup Script")
+    print("🚀 Maybee Enhanced Setup Script")
     print("=" * 50)
     
     steps = [

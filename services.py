@@ -1,5 +1,5 @@
 """
-Service Container and Dependency Injection for MaybeBot
+Service Container and Dependency Injection for Maybee
 Provides centralized service management and dependency injection
 """
 

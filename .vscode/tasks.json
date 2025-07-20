@@ -2,7 +2,7 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Run MaybeBot",
+			"label": "Run Maybee",
 			"type": "shell",
 			"command": "C:/Users/jawad/AppData/Local/Microsoft/WindowsApps/python3.11.exe",
 			"args": [

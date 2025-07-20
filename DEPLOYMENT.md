@@ -1,4 +1,4 @@
-# MaybeBot Deployment Guide
+# Maybee Deployment Guide
 
 ## 🚀 Dual Deployment Strategy
 
@@ -6,7 +6,7 @@ This repository contains both the Discord bot and web dashboard, deployed separa
 
 ### 📦 Repository Structure
 ```
-MaybeBot Official/
+Maybee Official/
 ├── main.py              # Discord bot entry point
 ├── requirements.txt     # Bot dependencies
 ├── cog/                 # Shared bot modules

@@ -1,6 +1,6 @@
-# MaybeBot Web Dashboard
+# Maybee Web Dashboard
 
-A professional web interface for configuring and managing your MaybeBot Discord server.
+A professional web interface for configuring and managing your Maybee Discord server.
 
 ## 🌟 Features
 
@@ -174,7 +174,7 @@ gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 
 ## 📄 License
 
-This web dashboard is part of MaybeBot and follows the same license terms.
+This web dashboard is part of Maybee and follows the same license terms.
 
 ## 🤝 Contributing
 
