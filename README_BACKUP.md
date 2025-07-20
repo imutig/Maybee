@@ -2,11 +2,6 @@
 
 <div align="center">
 
-[![GitHub release](https://img.shields.io/github/release/imutig/Maybee.svg?style=for-the-badge)](https://github.com/imutig/Maybee/releases)
-[![GitHub stars](https://img.shields.io/github/stars/imutig/Maybee.svg?style=for-the-badge)](https://github.com/imutig/Maybee/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/imutig/Maybee.svg?style=for-the-badge)](https://github.com/imutig/Maybee/issues)
-[![License](https://img.shields.io/github/license/imutig/Maybee.svg?style=for-the-badge)](LICENSE)
-
 [![Discord](https://img.shields.io/badge/Discord-Bot-7289da?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Web%20Dashboard-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
