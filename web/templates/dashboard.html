@@ -99,6 +99,13 @@
                     </div>
                     <span class="nav-text" data-translate="navigation.server_logs">Server Logs</span>
                 </a>
+                
+                <a class="nav-item" href="#tickets" data-translate="navigation.ticket_system">
+                    <div class="nav-icon">
+                        <i class="fas fa-ticket-alt"></i>
+                    </div>
+                    <span class="nav-text" data-translate="navigation.ticket_system">Ticket System</span>
+                </a>
             </nav>
         </aside>
 
@@ -240,15 +247,6 @@
                                                     <span class="toggle-text" data-translate="xp_system.enable_xp">Enable XP System</span>
                                                 </label>
                                             </div>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="form-label" data-translate="xp_system.xp_multiplier">XP Multiplier</label>
-                                            <div class="input-group">
-                                                <span class="input-prefix">×</span>
-                                                <input type="number" id="xpMultiplier" class="form-input" min="0.1" max="10" step="0.1" value="1.0">
-                                            </div>
-                                            <div class="form-hint" data-translate="xp_system.xp_multiplier_description">Adjust how much XP users earn per message</div>
                                         </div>
 
                                         <div class="form-group">
@@ -532,6 +530,38 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- Auto-Role Settings -->
+                                    <div class="settings-section">
+                                        <h4 class="section-title">Auto-Role Assignment</h4>
+                                        
+                                        <div class="form-group">
+                                            <div class="toggle-switch">
+                                                <input type="checkbox" id="autoRoleEnabled" class="toggle-input">
+                                                <label for="autoRoleEnabled" class="toggle-label">
+                                                    <span class="toggle-text">Enable Auto-Role Assignment</span>
+                                                </label>
+                                            </div>
+                                            <div class="form-hint">Automatically assign roles to new members when they join</div>
+                                        </div>
+
+                                        <div class="form-group" id="autoRoleContainer" style="display: none;">
+                                            <label class="form-label">Roles to Assign</label>
+                                            <div class="multi-select-container">
+                                                <div class="selected-roles" id="selectedRoles">
+                                                    <!-- Selected roles will appear here -->
+                                                </div>
+                                                <select id="roleSelect" class="form-select" multiple>
+                                                    <option value="">Select roles...</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-hint">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Selected roles will be automatically assigned to new members. 
+                                                The bot must have permission to assign these roles and they must be below the bot's highest role.
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <div class="form-actions">
@@ -796,8 +826,269 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Ticket System -->
+                <div class="tab-pane fade" id="tickets">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-ticket-alt me-2"></i>
+                                Ticket System Configuration
+                            </h3>
+                        </div>
+                        <div class="card-content">
+                            <!-- System Toggle -->
+                            <div class="settings-section">
+                                <h4 class="section-title">General Settings</h4>
+                                
+                                <div class="form-group">
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="ticketSystemEnabled" class="toggle-input">
+                                        <label for="ticketSystemEnabled" class="toggle-label">
+                                            <span class="toggle-text">Enable Ticket System</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ticket Panels -->
+                            <div class="settings-section" id="ticketPanelsSection" style="display: none;">
+                                <div class="section-header">
+                                    <h4 class="section-title">Ticket Panels</h4>
+                                    <button type="button" class="btn-primary" onclick="dashboard.createTicketPanel()">
+                                        <i class="fas fa-plus me-2"></i>
+                                        Create Panel
+                                    </button>
+                                </div>
+                                
+                                <div class="panels-list" id="ticketPanelsList">
+                                    <!-- Panels will be loaded here -->
+                                </div>
+                                
+                                <!-- No panels message -->
+                                <div class="empty-state" id="ticketPanelsEmpty" style="display: none;">
+                                    <div class="empty-icon">
+                                        <i class="fas fa-ticket-alt"></i>
+                                    </div>
+                                    <h4>No Ticket Panels</h4>
+                                    <p>Create your first ticket panel to get started</p>
+                                    <button type="button" class="btn-primary" onclick="dashboard.createTicketPanel()">
+                                        <i class="fas fa-plus me-2"></i>
+                                        Create First Panel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
+    </div>
+
+    <!-- Ticket Panel Modal -->
+    <div class="modal fade" id="ticketPanelModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ticketPanelModalTitle">Create Ticket Panel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="ticketPanelForm">
+                        <input type="hidden" id="ticketPanelId">
+                        
+                        <!-- Basic Panel Settings -->
+                        <div class="form-group">
+                            <label class="form-label">Panel Name</label>
+                            <input type="text" id="ticketPanelName" class="form-input" required>
+                            <div class="form-hint">Internal name for this ticket panel</div>
+                        </div>
+
+                        <!-- Embed Customization -->
+                        <div class="settings-section">
+                            <h5 class="section-title">Embed Message</h5>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Title</label>
+                                <input type="text" id="ticketEmbedTitle" class="form-input" value="🎫 Support Tickets">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Description</label>
+                                <textarea id="ticketEmbedDescription" class="form-textarea" rows="3">Click a button below to create a support ticket</textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Color</label>
+                                <input type="color" id="ticketEmbedColor" class="form-input" value="#5865F2">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Thumbnail URL (optional)</label>
+                                <input type="url" id="ticketEmbedThumbnail" class="form-input" placeholder="https://example.com/image.png">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Footer Text (optional)</label>
+                                <input type="text" id="ticketEmbedFooter" class="form-input" placeholder="Support Team">
+                            </div>
+                        </div>
+
+                        <!-- Buttons Configuration -->
+                        <div class="settings-section">
+                            <div class="section-header">
+                                <h5 class="section-title">Ticket Buttons</h5>
+                                <button type="button" class="btn-outline" onclick="dashboard.addTicketButton()">
+                                    <i class="fas fa-plus me-2"></i>
+                                    Add Button
+                                </button>
+                            </div>
+                            
+                            <div class="buttons-list" id="ticketButtonsList">
+                                <!-- Buttons will be added here -->
+                            </div>
+                            
+                            <div class="form-hint">Create multiple buttons for different ticket categories</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn-primary" onclick="dashboard.saveTicketPanel()">
+                        <i class="fas fa-save me-2"></i>
+                        Save Panel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket Button Template -->
+    <template id="ticketButtonTemplate">
+        <div class="button-config-item">
+            <div class="button-header">
+                <h6 class="button-title">Ticket Button</h6>
+                <button type="button" class="btn-sm btn-danger" onclick="dashboard.removeTicketButton(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            
+            <div class="button-settings">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Button Label</label>
+                        <input type="text" class="form-input button-label" placeholder="Support Ticket" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Emoji (optional)</label>
+                        <input type="text" class="form-input button-emoji" placeholder="🎫">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Button Style</label>
+                        <select class="form-select button-style">
+                            <option value="primary">Primary (Blue)</option>
+                            <option value="secondary">Secondary (Gray)</option>
+                            <option value="success">Success (Green)</option>
+                            <option value="danger">Danger (Red)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select class="form-select button-category">
+                            <option value="">Select category...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Ticket Name Format</label>
+                    <input type="text" class="form-input button-name-format" value="ticket-{username}" placeholder="ticket-{username}">
+                    <div class="form-hint">Use {username}, {userid}, {category} as placeholders</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Ping Roles (optional)</label>
+                    <div class="ping-roles-container">
+                        <select class="form-select ping-roles-select" multiple>
+                            <!-- Roles will be loaded here -->
+                        </select>
+                    </div>
+                    <div class="form-hint">Roles to ping when a ticket is created</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Initial Message (optional)</label>
+                    <textarea class="form-textarea button-initial-message" rows="2" placeholder="Thank you for creating a ticket! Our team will be with you shortly."></textarea>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Ticket Panel Item Template -->
+    <template id="ticketPanelItemTemplate">
+        <div class="panel-item">
+            <div class="panel-header">
+                <div class="panel-info">
+                    <h5 class="panel-name"></h5>
+                    <p class="panel-details"></p>
+                </div>
+                <div class="panel-actions">
+                    <button type="button" class="btn-sm btn-outline" onclick="dashboard.editTicketPanel(this)">
+                        <i class="fas fa-edit"></i>
+                        Edit
+                    </button>
+                    <button type="button" class="btn-sm btn-primary" onclick="dashboard.deployTicketPanel(this)">
+                        <i class="fas fa-paper-plane"></i>
+                        Deploy
+                    </button>
+                    <button type="button" class="btn-sm btn-danger" onclick="dashboard.deleteTicketPanel(this)">
+                        <i class="fas fa-trash"></i>
+                        Delete
+                    </button>
+                </div>
+            </div>
+            
+            <div class="panel-preview">
+                <div class="embed-preview">
+                    <div class="embed-title"></div>
+                    <div class="embed-description"></div>
+                    <div class="embed-buttons"></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Deploy Panel Modal -->
+    <div class="modal fade" id="deployPanelModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Deploy Ticket Panel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Select Channel</label>
+                        <select id="deployChannelSelect" class="form-select">
+                            <option value="">Select a channel...</option>
+                        </select>
+                        <div class="form-hint">Choose where to send the ticket panel message</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn-primary" onclick="dashboard.confirmDeployPanel()">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        Deploy Panel
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Footer -->

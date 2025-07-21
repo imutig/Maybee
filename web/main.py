@@ -96,6 +96,7 @@ async def lifespan(app: FastAPI):
     await create_user_languages_table()
     await create_welcome_config_table()
     await create_role_menu_tables()  # Add role menu tables
+    await create_ticket_tables()  # Add ticket system tables
     yield
     # Shutdown
     if database:
@@ -226,6 +227,8 @@ class WelcomeSettings(BaseModel):
     goodbye_title: str = "👋 Departure"
     goodbye_message: str = "Goodbye {user}, we'll miss you!"
     goodbye_fields: Optional[List[dict]] = None
+    auto_role_enabled: bool = False
+    auto_role_ids: Optional[List[str]] = None
 
 class ServerLogsSettings(BaseModel):
     enabled: bool = False
@@ -246,9 +249,41 @@ class ServerLogsSettings(BaseModel):
 class ModerationAction(BaseModel):
     action: str  # "warn", "timeout", "kick", "ban"
     user_id: str
+
+# Ticket System Models
+class TicketButton(BaseModel):
+    id: Optional[int] = None
+    button_label: str
+    button_emoji: Optional[str] = None
+    button_style: str = "primary"  # primary, secondary, success, danger
+    category_id: Optional[str] = None
+    ticket_name_format: str = "ticket-{username}"
+    ping_roles: Optional[List[str]] = None
+    initial_message: Optional[str] = None
+    button_order: int = 0
+
+class TicketPanel(BaseModel):
+    id: Optional[int] = None
+    panel_name: str
+    channel_id: Optional[str] = None
+    message_id: Optional[str] = None
+    embed_title: str = "🎫 Support Tickets"
+    embed_description: str = "Click a button below to create a support ticket"
+    embed_color: str = "#5865F2"
+    embed_thumbnail: Optional[str] = None
+    embed_image: Optional[str] = None
+    embed_footer: Optional[str] = None
+    buttons: Optional[List[TicketButton]] = None
+
+class TicketConfig(BaseModel):
+    enabled: bool = False
+    panels: Optional[List[TicketPanel]] = None
     reason: str = "No reason provided"
     duration: Optional[int] = None  # For timeout (in minutes)
     channel_id: Optional[str] = None  # Channel to send moderation messages to
+
+class DeployRequest(BaseModel):
+    channel_id: str
 
 class LanguagePreference(BaseModel):
     language: str  # Language code (e.g., "en", "fr")
@@ -343,6 +378,7 @@ async def init_database():
     # Bind helper methods to database object
     database.fetch_one = fetch_one
     database.fetch_all = fetch_all
+    # Note: execute_and_get_id is already available on the database object
 
 async def create_guild_config_table():
     """Create the guild_config table if it doesn't exist"""
@@ -357,6 +393,8 @@ async def create_guild_config_table():
         welcome_enabled BOOLEAN DEFAULT FALSE,
         welcome_channel VARCHAR(20) NULL,
         welcome_message VARCHAR(500) DEFAULT 'Welcome {user} to {server}!',
+        auto_role_enabled BOOLEAN DEFAULT FALSE,
+        auto_role_ids JSON NULL,
         logs_enabled BOOLEAN DEFAULT FALSE,
         logs_channel VARCHAR(20) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -444,6 +482,8 @@ async def create_welcome_config_table():
         goodbye_channel VARCHAR(20) NULL,
         goodbye_message VARCHAR(500) DEFAULT 'Goodbye {user}, we will miss you!',
         goodbye_fields JSON NULL,
+        auto_role_enabled BOOLEAN DEFAULT FALSE,
+        auto_role_ids JSON NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
@@ -455,6 +495,7 @@ async def create_welcome_config_table():
         
         # Check if new columns exist, add them if they don't
         await migrate_welcome_config_table()
+        await migrate_auto_role_columns()
         
         return True
     except Exception as e:
@@ -509,6 +550,87 @@ async def create_role_menu_tables():
         print(f"❌ Error creating role menu tables: {e}")
         return False
 
+async def create_ticket_tables():
+    """Create ticket system tables if they don't exist"""
+    ticket_config_table = """
+    CREATE TABLE IF NOT EXISTS ticket_config (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        guild_id VARCHAR(20) NOT NULL UNIQUE,
+        enabled BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_guild_id (guild_id)
+    )
+    """
+    
+    ticket_panels_table = """
+    CREATE TABLE IF NOT EXISTS ticket_panels (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        guild_id VARCHAR(20) NOT NULL,
+        panel_name VARCHAR(100) NOT NULL,
+        channel_id VARCHAR(20),
+        message_id VARCHAR(20),
+        embed_title VARCHAR(256),
+        embed_description TEXT,
+        embed_color VARCHAR(7) DEFAULT '#5865F2',
+        embed_thumbnail VARCHAR(512),
+        embed_image VARCHAR(512),
+        embed_footer TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_guild_id (guild_id),
+        INDEX idx_channel_message (channel_id, message_id)
+    )
+    """
+    
+    ticket_buttons_table = """
+    CREATE TABLE IF NOT EXISTS ticket_buttons (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        panel_id INT NOT NULL,
+        button_label VARCHAR(80) NOT NULL,
+        button_emoji VARCHAR(100),
+        button_style ENUM('primary', 'secondary', 'success', 'danger') DEFAULT 'primary',
+        category_id VARCHAR(20),
+        ticket_name_format VARCHAR(100) DEFAULT 'ticket-{username}',
+        ping_roles JSON,
+        initial_message TEXT,
+        button_order INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (panel_id) REFERENCES ticket_panels(id) ON DELETE CASCADE,
+        INDEX idx_panel_id (panel_id)
+    )
+    """
+    
+    active_tickets_table = """
+    CREATE TABLE IF NOT EXISTS active_tickets (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        guild_id VARCHAR(20) NOT NULL,
+        channel_id VARCHAR(20) NOT NULL UNIQUE,
+        user_id VARCHAR(20) NOT NULL,
+        button_id INT,
+        panel_id INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        closed_at TIMESTAMP NULL,
+        closed_by VARCHAR(20),
+        FOREIGN KEY (button_id) REFERENCES ticket_buttons(id) ON DELETE SET NULL,
+        FOREIGN KEY (panel_id) REFERENCES ticket_panels(id) ON DELETE SET NULL,
+        INDEX idx_guild_id (guild_id),
+        INDEX idx_user_id (user_id),
+        INDEX idx_channel_id (channel_id)
+    )
+    """
+    
+    try:
+        await database.execute(ticket_config_table)
+        await database.execute(ticket_panels_table)
+        await database.execute(ticket_buttons_table)
+        await database.execute(active_tickets_table)
+        print("✅ Ticket system tables created/verified")
+        return True
+    except Exception as e:
+        print(f"❌ Error creating ticket system tables: {e}")
+        return False
+
 async def migrate_welcome_config_table():
     """Add missing columns to existing welcome_config table"""
     try:
@@ -552,6 +674,88 @@ async def migrate_welcome_config_table():
             
     except Exception as e:
         print(f"⚠️ Migration error (this may be normal if columns already exist): {e}")
+
+async def migrate_auto_role_columns():
+    """Add auto-role columns to welcome_config and guild_config tables"""
+    try:
+        # Check if auto_role_enabled column exists in welcome_config
+        check_query = """
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'welcome_config' 
+        AND COLUMN_NAME = 'auto_role_enabled'
+        """
+        
+        result = await database.fetch_one(check_query)
+        
+        if not result:
+            print("🔧 Adding auto_role_enabled column to welcome_config table...")
+            await database.execute("""
+                ALTER TABLE welcome_config 
+                ADD COLUMN auto_role_enabled BOOLEAN DEFAULT FALSE AFTER goodbye_fields
+            """)
+            print("✅ Added auto_role_enabled column")
+        
+        # Check if auto_role_ids column exists in welcome_config
+        check_query2 = """
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'welcome_config' 
+        AND COLUMN_NAME = 'auto_role_ids'
+        """
+        
+        result2 = await database.fetch_one(check_query2)
+        
+        if not result2:
+            print("🔧 Adding auto_role_ids column to welcome_config table...")
+            await database.execute("""
+                ALTER TABLE welcome_config 
+                ADD COLUMN auto_role_ids JSON NULL AFTER auto_role_enabled
+            """)
+            print("✅ Added auto_role_ids column")
+            
+        # Check if auto_role_enabled column exists in guild_config
+        check_query3 = """
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'guild_config' 
+        AND COLUMN_NAME = 'auto_role_enabled'
+        """
+        
+        result3 = await database.fetch_one(check_query3)
+        
+        if not result3:
+            print("🔧 Adding auto_role_enabled column to guild_config table...")
+            await database.execute("""
+                ALTER TABLE guild_config 
+                ADD COLUMN auto_role_enabled BOOLEAN DEFAULT FALSE AFTER welcome_message
+            """)
+            print("✅ Added auto_role_enabled column to guild_config")
+        
+        # Check if auto_role_ids column exists in guild_config
+        check_query4 = """
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'guild_config' 
+        AND COLUMN_NAME = 'auto_role_ids'
+        """
+        
+        result4 = await database.fetch_one(check_query4)
+        
+        if not result4:
+            print("🔧 Adding auto_role_ids column to guild_config table...")
+            await database.execute("""
+                ALTER TABLE guild_config 
+                ADD COLUMN auto_role_ids JSON NULL AFTER auto_role_enabled
+            """)
+            print("✅ Added auto_role_ids column to guild_config")
+            
+    except Exception as e:
+        print(f"⚠️ Auto-role migration error (this may be normal if columns already exist): {e}")
 
 # Routes
 @app.get("/", response_class=HTMLResponse)
@@ -961,6 +1165,142 @@ async def get_guild_channels(guild_id: str, current_user: str = Depends(get_curr
             {"id": "1234567890123456793", "name": "xp-tracking"},
             {"id": "1234567890123456794", "name": "chat"}
         ]
+
+@app.get("/api/guild/{guild_id}/categories")
+async def get_guild_categories(guild_id: str, current_user: str = Depends(get_current_user)):
+    """Get guild categories for ticket configuration"""
+    try:
+        print(f"Fetching categories for guild {guild_id}")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get bot token
+        bot_token = DISCORD_BOT_TOKEN
+        if not bot_token:
+            print("❌ No bot token available")
+            raise HTTPException(status_code=500, detail="Bot token not configured")
+        
+        # Clean the token
+        bot_token = bot_token.strip()
+        if '=' in bot_token and 'DISCORD_TOKEN=' in bot_token:
+            bot_token = bot_token.split('=', 1)[1]
+        
+        # Try to get Discord guild channels via bot token
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"https://discord.com/api/guilds/{guild_id}/channels",
+                headers={"Authorization": f"Bot {bot_token}"}
+            )
+            
+            print(f"Discord API response status: {response.status_code}")
+            if response.status_code == 200:
+                channels = response.json()
+                print(f"Total channels found: {len(channels)}")
+                # Filter to category channels only (type 4)
+                categories = [
+                    {"id": ch["id"], "name": ch["name"]} 
+                    for ch in channels 
+                    if ch["type"] == 4  # Category channel
+                ]
+                print(f"Categories found: {len(categories)}")
+                return categories
+            else:
+                print(f"Discord API error: {response.text}")
+                # Fallback to mock categories if API fails
+                return [
+                    {"id": "1234567890123456795", "name": "Support"},
+                    {"id": "1234567890123456796", "name": "Tickets"},
+                    {"id": "1234567890123456797", "name": "Admin"}
+                ]
+                
+    except Exception as e:
+        print(f"Error fetching categories: {e}")
+        # Return mock categories as fallback
+        return [
+            {"id": "1234567890123456795", "name": "Support"},
+            {"id": "1234567890123456796", "name": "Tickets"},
+            {"id": "1234567890123456797", "name": "Admin"}
+        ]
+
+@app.get("/api/guild/{guild_id}/roles")
+async def get_guild_roles(guild_id: str, current_user: str = Depends(get_current_user)):
+    """Get guild roles for configuration"""
+    try:
+        print(f"Fetching roles for guild {guild_id}")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get bot token
+        bot_token = DISCORD_BOT_TOKEN
+        if not bot_token:
+            print("❌ No bot token available")
+            raise HTTPException(status_code=500, detail="Bot token not configured")
+        
+        # Clean the token
+        bot_token = bot_token.strip()
+        if '=' in bot_token and 'DISCORD_TOKEN=' in bot_token:
+            bot_token = bot_token.split('=', 1)[1]
+        
+        # Try to get Discord guild roles via bot token
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"https://discord.com/api/guilds/{guild_id}/roles",
+                headers={"Authorization": f"Bot {bot_token}"}
+            )
+            
+            print(f"Discord API response status: {response.status_code}")
+            if response.status_code != 200:
+                print(f"Discord API error: {response.text}")
+            
+            if response.status_code == 200:
+                roles = response.json()
+                print(f"Total roles found: {len(roles)}")
+                
+                # Filter and format roles (exclude @everyone, sort by position)
+                filtered_roles = [
+                    {
+                        "id": role["id"], 
+                        "name": role["name"],
+                        "color": role["color"],
+                        "position": role["position"],
+                        "managed": role["managed"]
+                    } 
+                    for role in roles 
+                    if role["name"] != "@everyone"
+                ]
+                
+                # Sort by position (higher position = higher in hierarchy)
+                filtered_roles.sort(key=lambda x: x["position"], reverse=True)
+                
+                print(f"Filtered roles found: {len(filtered_roles)}")
+                return {"roles": filtered_roles}
+            else:
+                # Fallback to mock roles if API fails
+                print("Using fallback mock roles due to API error")
+                return {
+                    "roles": [
+                        {"id": "1234567890123456801", "name": "Admin", "color": 16711680, "position": 10, "managed": False},
+                        {"id": "1234567890123456802", "name": "Moderator", "color": 3447003, "position": 9, "managed": False},
+                        {"id": "1234567890123456803", "name": "Member", "color": 0, "position": 1, "managed": False},
+                        {"id": "1234567890123456804", "name": "New Member", "color": 65280, "position": 0, "managed": False}
+                    ]
+                }
+                
+    except Exception as e:
+        print(f"Error fetching roles: {e}")
+        # Return mock roles as fallback
+        return {
+            "roles": [
+                {"id": "1234567890123456801", "name": "Admin", "color": 16711680, "position": 10, "managed": False},
+                {"id": "1234567890123456802", "name": "Moderator", "color": 3447003, "position": 9, "managed": False},
+                {"id": "1234567890123456803", "name": "Member", "color": 0, "position": 1, "managed": False},
+                {"id": "1234567890123456804", "name": "New Member", "color": 65280, "position": 0, "managed": False}
+            ]
+        }
 
 @app.get("/api/guild/{guild_id}/xp")
 async def get_xp_config(guild_id: str, current_user: str = Depends(get_current_user)):
@@ -1676,7 +2016,9 @@ async def get_welcome_config(
                 "goodbye_channel": str(welcome_config["goodbye_channel"]) if welcome_config["goodbye_channel"] else None,
                 "goodbye_title": welcome_config.get("goodbye_title", "👋 Departure"),
                 "goodbye_message": welcome_config["goodbye_message"] or "Goodbye {user}, we'll miss you!",
-                "goodbye_fields": json.loads(welcome_config["goodbye_fields"]) if welcome_config["goodbye_fields"] else None
+                "goodbye_fields": json.loads(welcome_config["goodbye_fields"]) if welcome_config["goodbye_fields"] else None,
+                "auto_role_enabled": welcome_config.get("auto_role_enabled", False),
+                "auto_role_ids": json.loads(welcome_config["auto_role_ids"]) if welcome_config.get("auto_role_ids") else []
             }
         elif guild_config and guild_config.get("welcome_enabled") and guild_config.get("welcome_channel"):
             # If no welcome_config but guild_config has welcome settings, use those
@@ -1690,7 +2032,9 @@ async def get_welcome_config(
                 "goodbye_channel": None,
                 "goodbye_title": "👋 Departure",
                 "goodbye_message": "Goodbye {user}, we'll miss you!",
-                "goodbye_fields": None
+                "goodbye_fields": None,
+                "auto_role_enabled": guild_config.get("auto_role_enabled", False),
+                "auto_role_ids": json.loads(guild_config["auto_role_ids"]) if guild_config.get("auto_role_ids") else []
             }
         else:
             return {
@@ -1703,7 +2047,9 @@ async def get_welcome_config(
                 "goodbye_channel": None,
                 "goodbye_title": "👋 Departure",
                 "goodbye_message": "Goodbye {user}, we'll miss you!",
-                "goodbye_fields": None
+                "goodbye_fields": None,
+                "auto_role_enabled": False,
+                "auto_role_ids": []
             }
     
     except Exception as e:
@@ -1719,7 +2065,7 @@ async def update_welcome_config(
     """Update welcome configuration for a guild"""
     try:
         print(f"Received welcome config update for guild {guild_id}")
-        print(f"Config data: welcome_enabled={config.welcome_enabled} goodbye_enabled={config.goodbye_enabled} welcome_channel='{config.welcome_channel}' welcome_title='{config.welcome_title}' welcome_message='{config.welcome_message}' goodbye_channel='{config.goodbye_channel}' goodbye_title='{config.goodbye_title}' goodbye_message='{config.goodbye_message}'")
+        print(f"Config data: welcome_enabled={config.welcome_enabled} goodbye_enabled={config.goodbye_enabled} welcome_channel='{config.welcome_channel}' welcome_title='{config.welcome_title}' welcome_message='{config.welcome_message}' goodbye_channel='{config.goodbye_channel}' goodbye_title='{config.goodbye_title}' goodbye_message='{config.goodbye_message}' auto_role_enabled={config.auto_role_enabled} auto_role_ids={config.auto_role_ids}")
         
         # Verify user has access
         if not await verify_guild_access(guild_id, current_user):
@@ -1729,8 +2075,8 @@ async def update_welcome_config(
             # Insert or update welcome config
             await database.execute(
                 """INSERT INTO welcome_config 
-                   (guild_id, welcome_channel, welcome_title, welcome_message, welcome_fields, goodbye_channel, goodbye_title, goodbye_message, goodbye_fields, updated_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) AS new_values
+                   (guild_id, welcome_channel, welcome_title, welcome_message, welcome_fields, goodbye_channel, goodbye_title, goodbye_message, goodbye_fields, auto_role_enabled, auto_role_ids, updated_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) AS new_values
                    ON DUPLICATE KEY UPDATE
                    welcome_channel = new_values.welcome_channel,
                    welcome_title = new_values.welcome_title,
@@ -1740,6 +2086,8 @@ async def update_welcome_config(
                    goodbye_title = new_values.goodbye_title,
                    goodbye_message = new_values.goodbye_message,
                    goodbye_fields = new_values.goodbye_fields,
+                   auto_role_enabled = new_values.auto_role_enabled,
+                   auto_role_ids = new_values.auto_role_ids,
                    updated_at = new_values.updated_at""",
                 (guild_id, 
                  int(config.welcome_channel) if config.welcome_channel else None,
@@ -1750,6 +2098,8 @@ async def update_welcome_config(
                  config.goodbye_title,
                  config.goodbye_message,
                  json.dumps(config.goodbye_fields) if config.goodbye_fields else None,
+                 config.auto_role_enabled,
+                 json.dumps(config.auto_role_ids) if config.auto_role_ids else None,
                  datetime.utcnow())
             )
         else:
@@ -1762,16 +2112,21 @@ async def update_welcome_config(
         # Update general config
         await database.execute(
             """INSERT INTO guild_config 
-               (guild_id, welcome_enabled, welcome_channel, welcome_message, updated_at)
-               VALUES (%s, %s, %s, %s, %s) AS new_values
+               (guild_id, welcome_enabled, welcome_channel, welcome_message, auto_role_enabled, auto_role_ids, updated_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s) AS new_values
                ON DUPLICATE KEY UPDATE
                welcome_enabled = new_values.welcome_enabled,
                welcome_channel = new_values.welcome_channel,
                welcome_message = new_values.welcome_message,
+               auto_role_enabled = new_values.auto_role_enabled,
+               auto_role_ids = new_values.auto_role_ids,
                updated_at = new_values.updated_at""",
             (guild_id, config.welcome_enabled, 
              int(config.welcome_channel) if config.welcome_channel else None,
-             config.welcome_message, datetime.utcnow())
+             config.welcome_message, 
+             config.auto_role_enabled,
+             json.dumps(config.auto_role_ids) if config.auto_role_ids else None,
+             datetime.utcnow())
         )
         
         return {"message": "Welcome configuration updated successfully"}
@@ -1987,6 +2342,468 @@ async def send_test_welcome_message(
         print(f"❌ Test welcome error: {e}")
         import traceback
         print(f"❌ Test welcome traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Ticket System API Endpoints
+@app.get("/api/guild/{guild_id}/tickets")
+async def get_ticket_config(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get ticket system configuration for a guild"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get ticket config
+        ticket_config = await database.fetch_one(
+            "SELECT * FROM ticket_config WHERE guild_id = %s",
+            (guild_id,)
+        )
+        
+        # Get ticket panels
+        panels = await database.fetch_all(
+            "SELECT * FROM ticket_panels WHERE guild_id = %s ORDER BY id",
+            (guild_id,)
+        )
+        
+        panels_with_buttons = []
+        for panel in panels:
+            # Get buttons for each panel
+            buttons = await database.fetch_all(
+                "SELECT * FROM ticket_buttons WHERE panel_id = %s ORDER BY button_order, id",
+                (panel["id"],)
+            )
+            
+            # Convert buttons to dict format
+            buttons_list = []
+            for button in buttons:
+                buttons_list.append({
+                    "id": button["id"],
+                    "button_label": button["button_label"],
+                    "button_emoji": button["button_emoji"],
+                    "button_style": button["button_style"],
+                    "category_id": button["category_id"],
+                    "ticket_name_format": button["ticket_name_format"],
+                    "ping_roles": json.loads(button["ping_roles"]) if button["ping_roles"] else [],
+                    "initial_message": button["initial_message"],
+                    "button_order": button["button_order"]
+                })
+            
+            panels_with_buttons.append({
+                "id": panel["id"],
+                "panel_name": panel["panel_name"],
+                "channel_id": panel["channel_id"],
+                "message_id": panel["message_id"],
+                "embed_title": panel["embed_title"],
+                "embed_description": panel["embed_description"],
+                "embed_color": panel["embed_color"],
+                "embed_thumbnail": panel["embed_thumbnail"],
+                "embed_image": panel["embed_image"],
+                "embed_footer": panel["embed_footer"],
+                "buttons": buttons_list
+            })
+        
+        return {
+            "enabled": ticket_config["enabled"] if ticket_config else False,
+            "panels": panels_with_buttons
+        }
+        
+    except Exception as e:
+        print(f"Ticket config get error: {e}")
+        # Return default config instead of error
+        return {
+            "enabled": False,
+            "panels": []
+        }
+
+@app.put("/api/guild/{guild_id}/tickets")
+async def update_ticket_config(
+    guild_id: str,
+    config: TicketConfig,
+    current_user: str = Depends(get_current_user)
+):
+    """Update ticket system configuration for a guild"""
+    try:
+        print(f"Received ticket config update for guild {guild_id}")
+        print(f"Config data: enabled={config.enabled}")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Update or create ticket config
+        await database.execute(
+            """INSERT INTO ticket_config (guild_id, enabled, updated_at) 
+               VALUES (%s, %s, %s)
+               ON DUPLICATE KEY UPDATE 
+               enabled = VALUES(enabled),
+               updated_at = VALUES(updated_at)""",
+            (guild_id, config.enabled, datetime.utcnow())
+        )
+        
+        return {"message": "Ticket configuration updated successfully"}
+        
+    except Exception as e:
+        print(f"Ticket config update error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guild/{guild_id}/tickets/panels")
+async def get_ticket_panels(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get all ticket panels for a guild"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get ticket panels with buttons
+        panels = await database.fetch_all(
+            "SELECT * FROM ticket_panels WHERE guild_id = %s ORDER BY id",
+            (guild_id,)
+        )
+        
+        panels_with_buttons = []
+        for panel in panels:
+            buttons = await database.fetch_all(
+                "SELECT * FROM ticket_buttons WHERE panel_id = %s ORDER BY button_order, id",
+                (panel["id"],)
+            )
+            
+            buttons_list = []
+            for button in buttons:
+                buttons_list.append({
+                    "id": button["id"],
+                    "button_label": button["button_label"],
+                    "button_emoji": button["button_emoji"],
+                    "button_style": button["button_style"],
+                    "category_id": button["category_id"],
+                    "ticket_name_format": button["ticket_name_format"],
+                    "ping_roles": json.loads(button["ping_roles"]) if button["ping_roles"] else [],
+                    "initial_message": button["initial_message"],
+                    "button_order": button["button_order"]
+                })
+            
+            panels_with_buttons.append({
+                "id": panel["id"],
+                "panel_name": panel["panel_name"],
+                "channel_id": panel["channel_id"],
+                "message_id": panel["message_id"],
+                "embed_title": panel["embed_title"],
+                "embed_description": panel["embed_description"],
+                "embed_color": panel["embed_color"],
+                "embed_thumbnail": panel["embed_thumbnail"],
+                "embed_image": panel["embed_image"],
+                "embed_footer": panel["embed_footer"],
+                "buttons": buttons_list
+            })
+        
+        return {"panels": panels_with_buttons}
+        
+    except Exception as e:
+        print(f"Get ticket panels error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/guild/{guild_id}/tickets/panels")
+async def create_ticket_panel(
+    guild_id: str,
+    panel: TicketPanel,
+    current_user: str = Depends(get_current_user)
+):
+    """Create a new ticket panel"""
+    try:
+        print(f"Creating ticket panel for guild {guild_id}: {panel.panel_name}")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Create panel
+        panel_id = await database.execute_and_get_id(
+            """INSERT INTO ticket_panels 
+               (guild_id, panel_name, embed_title, embed_description, embed_color, 
+                embed_thumbnail, embed_image, embed_footer, created_at, updated_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (guild_id, panel.panel_name, panel.embed_title, panel.embed_description,
+             panel.embed_color, panel.embed_thumbnail, panel.embed_image, 
+             panel.embed_footer, datetime.utcnow(), datetime.utcnow())
+        )
+        
+        # Create buttons if provided
+        if panel.buttons:
+            for button in panel.buttons:
+                await database.execute(
+                    """INSERT INTO ticket_buttons 
+                       (panel_id, button_label, button_emoji, button_style, category_id,
+                        ticket_name_format, ping_roles, initial_message, button_order)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (panel_id, button.button_label, button.button_emoji, button.button_style,
+                     button.category_id, button.ticket_name_format, 
+                     json.dumps(button.ping_roles) if button.ping_roles else None,
+                     button.initial_message, button.button_order)
+                )
+        
+        return {"message": "Ticket panel created successfully", "panel_id": panel_id}
+        
+    except Exception as e:
+        print(f"Create ticket panel error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/guild/{guild_id}/tickets/panels/{panel_id}")
+async def update_ticket_panel(
+    guild_id: str,
+    panel_id: int,
+    panel: TicketPanel,
+    current_user: str = Depends(get_current_user)
+):
+    """Update an existing ticket panel"""
+    try:
+        print(f"Updating ticket panel {panel_id} for guild {guild_id}")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Verify panel belongs to guild
+        existing_panel = await database.fetch_one(
+            "SELECT * FROM ticket_panels WHERE id = %s AND guild_id = %s",
+            (panel_id, guild_id)
+        )
+        
+        if not existing_panel:
+            raise HTTPException(status_code=404, detail="Panel not found")
+        
+        # Update panel
+        await database.execute(
+            """UPDATE ticket_panels SET 
+               panel_name = %s, embed_title = %s, embed_description = %s,
+               embed_color = %s, embed_thumbnail = %s, embed_image = %s,
+               embed_footer = %s, updated_at = %s
+               WHERE id = %s AND guild_id = %s""",
+            (panel.panel_name, panel.embed_title, panel.embed_description,
+             panel.embed_color, panel.embed_thumbnail, panel.embed_image,
+             panel.embed_footer, datetime.utcnow(), panel_id, guild_id)
+        )
+        
+        # Delete existing buttons
+        await database.execute(
+            "DELETE FROM ticket_buttons WHERE panel_id = %s",
+            (panel_id,)
+        )
+        
+        # Create new buttons
+        if panel.buttons:
+            for button in panel.buttons:
+                await database.execute(
+                    """INSERT INTO ticket_buttons 
+                       (panel_id, button_label, button_emoji, button_style, category_id,
+                        ticket_name_format, ping_roles, initial_message, button_order)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (panel_id, button.button_label, button.button_emoji, button.button_style,
+                     button.category_id, button.ticket_name_format,
+                     json.dumps(button.ping_roles) if button.ping_roles else None,
+                     button.initial_message, button.button_order)
+                )
+        
+        return {"message": "Ticket panel updated successfully"}
+        
+    except Exception as e:
+        print(f"Update ticket panel error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/guild/{guild_id}/tickets/panels/{panel_id}")
+async def delete_ticket_panel(
+    guild_id: str,
+    panel_id: int,
+    current_user: str = Depends(get_current_user)
+):
+    """Delete a ticket panel"""
+    try:
+        print(f"Deleting ticket panel {panel_id} for guild {guild_id}")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Verify panel belongs to guild
+        existing_panel = await database.fetch_one(
+            "SELECT * FROM ticket_panels WHERE id = %s AND guild_id = %s",
+            (panel_id, guild_id)
+        )
+        
+        if not existing_panel:
+            raise HTTPException(status_code=404, detail="Panel not found")
+        
+        # Delete panel (buttons will be deleted by CASCADE)
+        await database.execute(
+            "DELETE FROM ticket_panels WHERE id = %s AND guild_id = %s",
+            (panel_id, guild_id)
+        )
+        
+        return {"message": "Ticket panel deleted successfully"}
+        
+    except Exception as e:
+        print(f"Delete ticket panel error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+def get_discord_button_style(style_name: str) -> int:
+    """Convert button style name to Discord button style integer"""
+    style_map = {
+        "primary": 1,    # Blue
+        "secondary": 2,  # Grey  
+        "success": 3,    # Green
+        "danger": 4      # Red
+    }
+    return style_map.get(style_name.lower(), 2)  # Default to secondary
+
+@app.post("/api/guild/{guild_id}/tickets/panels/{panel_id}/deploy")
+async def deploy_ticket_panel(
+    guild_id: str,
+    panel_id: int,
+    deploy_request: DeployRequest,
+    current_user: str = Depends(get_current_user)
+):
+    """Deploy a ticket panel to a Discord channel"""
+    try:
+        print(f"Deploying ticket panel {panel_id} to channel {deploy_request.channel_id} for guild {guild_id}")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get panel data
+        panel = await database.fetch_one(
+            "SELECT * FROM ticket_panels WHERE id = %s AND guild_id = %s",
+            (panel_id, guild_id)
+        )
+        
+        if not panel:
+            raise HTTPException(status_code=404, detail="Panel not found")
+        
+        # Get panel buttons
+        buttons = await database.fetch_all(
+            "SELECT * FROM ticket_buttons WHERE panel_id = %s ORDER BY button_order, id",
+            (panel_id,)
+        )
+        
+        # Create Discord embed
+        embed = {
+            "title": panel["embed_title"] or "Support Tickets",
+            "description": panel["embed_description"] or "Click a button below to create a ticket",
+            "color": int(panel["embed_color"].replace("#", ""), 16) if panel["embed_color"] else 0x5865F2
+        }
+        
+        # Add footer if present
+        if panel["embed_footer"]:
+            embed["footer"] = {"text": panel["embed_footer"]}
+        
+        # Add thumbnail if present
+        if panel["embed_thumbnail"]:
+            embed["thumbnail"] = {"url": panel["embed_thumbnail"]}
+        
+        # Add image if present
+        if panel["embed_image"]:
+            embed["image"] = {"url": panel["embed_image"]}
+        
+        # Create Discord buttons/components
+        components = []
+        if buttons:
+            action_row = {
+                "type": 1,  # Action Row
+                "components": []
+            }
+            
+            for button in buttons:
+                # Validate and fix button data
+                button_label = button["button_label"]
+                if not button_label or not button_label.strip():
+                    print(f"Warning: Button {button['id']} has empty label, using default")
+                    button_label = "Create Ticket"  # Default label
+                else:
+                    button_label = button_label.strip()
+                
+                discord_button = {
+                    "type": 2,  # Button
+                    "style": get_discord_button_style(button["button_style"]),
+                    "label": button_label,
+                    "custom_id": f"ticket_button_{button['id']}"
+                }
+                
+                # Add emoji if present
+                if button["button_emoji"]:
+                    # Handle both unicode and custom emojis
+                    if button["button_emoji"].startswith("<"):
+                        # Custom emoji format: <:name:id>
+                        emoji_parts = button["button_emoji"].strip("<>").split(":")
+                        if len(emoji_parts) >= 3:
+                            discord_button["emoji"] = {
+                                "name": emoji_parts[1],
+                                "id": emoji_parts[2],
+                                "animated": button["button_emoji"].startswith("<a:")
+                            }
+                    else:
+                        # Unicode emoji
+                        discord_button["emoji"] = {"name": button["button_emoji"]}
+                
+                action_row["components"].append(discord_button)
+            
+            # Only add action row if it has components
+            if action_row["components"]:
+                components.append(action_row)
+        
+        # Debug: Print the components being sent
+        print(f"Debug: Sending components to Discord: {components}")
+        
+        # Send message to Discord channel
+        bot_token = DISCORD_BOT_TOKEN
+        if not bot_token:
+            raise HTTPException(status_code=500, detail="Bot token not configured")
+        
+        # Clean the token
+        bot_token = bot_token.strip()
+        if '=' in bot_token and 'DISCORD_TOKEN=' in bot_token:
+            bot_token = bot_token.split('=', 1)[1]
+        
+        message_payload = {
+            "embeds": [embed]
+        }
+        
+        if components:
+            message_payload["components"] = components
+        
+        # Debug: Print the full payload
+        print(f"Debug: Full message payload: {message_payload}")
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"https://discord.com/api/channels/{deploy_request.channel_id}/messages",
+                headers={
+                    "Authorization": f"Bot {bot_token}",
+                    "Content-Type": "application/json"
+                },
+                json=message_payload
+            )
+            
+            if response.status_code not in [200, 201]:
+                print(f"Discord API error: {response.status_code} - {response.text}")
+                raise HTTPException(status_code=500, detail=f"Failed to send message to Discord: {response.text}")
+            
+            message_data = response.json()
+            message_id = message_data["id"]
+            
+            # Update panel with channel_id and message_id
+            await database.execute(
+                "UPDATE ticket_panels SET channel_id = %s, message_id = %s, updated_at = %s WHERE id = %s",
+                (deploy_request.channel_id, message_id, datetime.utcnow(), panel_id)
+            )
+        
+        return {"message": "Ticket panel deployed successfully"}
+        
+    except Exception as e:
+        print(f"Deploy ticket panel error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Server Logs API Endpoints

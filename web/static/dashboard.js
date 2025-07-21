@@ -449,7 +449,6 @@ class Dashboard {
             
             // Update XP settings form with enhanced fields
             document.getElementById('xpEnabled').checked = config.xp_enabled !== false;
-            document.getElementById('xpMultiplier').value = config.xp_multiplier || 1.0;
             document.getElementById('levelUpMessage').checked = config.level_up_message !== false;
             
             // Set XP channel
@@ -516,6 +515,59 @@ class Dashboard {
         }
     }
 
+    async loadGuildRoles() {
+        if (!this.currentGuild) return;
+
+        try {
+            console.log('Loading roles for guild:', this.currentGuild);
+            const response = await this.apiCall(`/guild/${this.currentGuild}/roles`);
+            this.roles = response.roles || [];
+            console.log('Loaded roles:', this.roles);
+            
+            // Update role selector for auto-role assignment
+            const roleSelect = document.getElementById('roleSelect');
+            if (roleSelect) {
+                const currentValue = roleSelect.value;
+                
+                // Clear existing options except the first one
+                while (roleSelect.children.length > 1) {
+                    roleSelect.removeChild(roleSelect.lastChild);
+                }
+                
+                // Add role options (exclude @everyone and bot roles)
+                if (this.roles && this.roles.length > 0) {
+                    this.roles.forEach(role => {
+                        if (role.name !== '@everyone' && !role.managed) {  // Skip @everyone and bot roles
+                            const option = document.createElement('option');
+                            option.value = role.id;
+                            option.textContent = role.name;
+                            roleSelect.appendChild(option);
+                        }
+                    });
+                } else {
+                    console.warn('No roles loaded for guild:', this.currentGuild);
+                }
+            }
+            
+        } catch (error) {
+            console.error('Failed to load guild roles:', error);
+            this.roles = [];
+        }
+    }
+
+    async loadGuildCategories() {
+        if (!this.currentGuild) return;
+
+        try {
+            console.log('Loading categories for guild:', this.currentGuild);
+            this.categories = await this.apiCall(`/guild/${this.currentGuild}/categories`);
+            console.log('Loaded categories:', this.categories);
+        } catch (error) {
+            console.error('Failed to load guild categories:', error);
+            this.categories = [];
+        }
+    }
+
     async saveXPSettings(event) {
         event.preventDefault();
         
@@ -530,8 +582,7 @@ class Dashboard {
                 enabled: true,  // Default to enabled
                 xp_channel: document.getElementById('xpChannel').value || null,
                 level_up_message: true,  // Default to enabled  
-                level_up_channel: document.getElementById('levelUpChannel').value || null,
-                multiplier: parseFloat(document.getElementById('xpMultiplier').value) || 1.0
+                level_up_channel: document.getElementById('levelUpChannel').value || null
             };
 
             await this.apiCall(`/guild/${this.currentGuild}/xp`, 'PUT', xpConfig);
@@ -1543,7 +1594,9 @@ class Dashboard {
                 goodbye_channel: document.getElementById('goodbyeChannel').value || null,
                 goodbye_title: document.getElementById('goodbyeTitle').value || '👋 Departure',
                 goodbye_message: document.getElementById('goodbyeMessage').value || 'Goodbye {user}, thanks for being part of {server}!',
-                goodbye_fields: goodbyeFields
+                goodbye_fields: goodbyeFields,
+                auto_role_enabled: document.getElementById('autoRoleEnabled').checked,
+                auto_role_ids: this.getSelectedAutoRoles()
             };
 
             await this.apiCall(`/guild/${this.currentGuild}/welcome`, 'PUT', welcomeConfig);
@@ -1788,6 +1841,7 @@ class Dashboard {
     async loadWelcomeSettings() {
         await this.loadWelcomeConfig();
         await this.loadGuildChannels();
+        await this.loadGuildRoles(); // Add this line
         this.populateWelcomeSettings();
     }
 
@@ -1808,9 +1862,533 @@ class Dashboard {
         console.log('Populating moderation settings...');
     }
 
+    getSelectedAutoRoles() {
+        const selectedRoles = [];
+        const roleElements = document.querySelectorAll('#selectedRoles .role-tag');
+        roleElements.forEach(element => {
+            const roleId = element.dataset.roleId;
+            if (roleId) {
+                selectedRoles.push(roleId);
+            }
+        });
+        return selectedRoles;
+    }
+
+    initAutoRoleSelector() {
+        const autoRoleEnabled = document.getElementById('autoRoleEnabled');
+        const autoRoleContainer = document.getElementById('autoRoleContainer');
+        const roleSelect = document.getElementById('roleSelect');
+        const selectedRoles = document.getElementById('selectedRoles');
+
+        // Toggle auto-role container visibility
+        autoRoleEnabled.addEventListener('change', () => {
+            autoRoleContainer.style.display = autoRoleEnabled.checked ? 'block' : 'none';
+        });
+
+        // Handle role selection
+        roleSelect.addEventListener('change', (e) => {
+            const selectedOptions = Array.from(e.target.selectedOptions);
+            selectedOptions.forEach(option => {
+                if (option.value && !this.isRoleAlreadySelected(option.value)) {
+                    this.addSelectedRole(option.value, option.textContent);
+                }
+            });
+            // Clear selections after adding
+            e.target.selectedIndex = -1;
+        });
+    }
+
+    isRoleAlreadySelected(roleId) {
+        return document.querySelector(`#selectedRoles .role-tag[data-role-id="${roleId}"]`) !== null;
+    }
+
+    addSelectedRole(roleId, roleName) {
+        const selectedRoles = document.getElementById('selectedRoles');
+        const roleTag = document.createElement('div');
+        roleTag.className = 'role-tag new-role';
+        roleTag.dataset.roleId = roleId;
+        roleTag.innerHTML = `
+            <span class="role-name">${this.escapeHtml(roleName)}</span>
+            <button type="button" class="remove-role" onclick="dashboard.removeSelectedRole('${roleId}')">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        selectedRoles.appendChild(roleTag);
+    }
+
+    removeSelectedRole(roleId) {
+        const roleTag = document.querySelector(`#selectedRoles .role-tag[data-role-id="${roleId}"]`);
+        if (roleTag) {
+            roleTag.remove();
+        }
+    }
+
+    populateAutoRoleSettings(config) {
+        const autoRoleEnabled = document.getElementById('autoRoleEnabled');
+        const autoRoleContainer = document.getElementById('autoRoleContainer');
+        const selectedRoles = document.getElementById('selectedRoles');
+        
+        // Set auto-role enabled state
+        autoRoleEnabled.checked = config.auto_role_enabled || false;
+        autoRoleContainer.style.display = autoRoleEnabled.checked ? 'block' : 'none';
+        
+        // Clear existing selected roles
+        selectedRoles.innerHTML = '';
+        
+        // Populate selected roles
+        if (config.auto_role_ids && Array.isArray(config.auto_role_ids)) {
+            config.auto_role_ids.forEach(roleId => {
+                // Find role name from guild roles
+                const role = this.findRoleInGuild(roleId);
+                if (role) {
+                    this.addSelectedRole(roleId, role.name);
+                }
+            });
+        }
+    }
+
+    findRoleInGuild(roleId) {
+        if (this.roles && Array.isArray(this.roles)) {
+            return this.roles.find(role => role.id === roleId);
+        }
+        return { name: `Role ${roleId}` }; // Fallback
+    }
+
+    async loadWelcomeConfig() {
+        if (!this.currentGuild) return;
+
+        try {
+            console.log('Loading welcome config for guild:', this.currentGuild);
+            this.welcomeConfig = await this.apiCall(`/guild/${this.currentGuild}/welcome`);
+            console.log('Loaded welcome config:', this.welcomeConfig);
+        } catch (error) {
+            console.error('Failed to load welcome config:', error);
+            this.welcomeConfig = {};
+        }
+    }
+
     populateWelcomeSettings() {
         // Populate welcome settings form
         console.log('Populating welcome settings...');
+        
+        if (!this.welcomeConfig) {
+            console.warn('No welcome config loaded');
+            return;
+        }
+
+        // Populate basic welcome settings
+        const welcomeEnabled = document.getElementById('welcomeEnabled');
+        const welcomeChannel = document.getElementById('welcomeChannel');
+        const welcomeTitle = document.getElementById('welcomeTitle');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+
+        if (welcomeEnabled) welcomeEnabled.checked = this.welcomeConfig.welcome_enabled || false;
+        if (welcomeChannel) welcomeChannel.value = this.welcomeConfig.welcome_channel || '';
+        if (welcomeTitle) welcomeTitle.value = this.welcomeConfig.welcome_title || '👋 New member!';
+        if (welcomeMessage) welcomeMessage.value = this.welcomeConfig.welcome_message || 'Welcome {user} to {server}!';
+
+        // Populate goodbye settings
+        const goodbyeEnabled = document.getElementById('goodbyeEnabled');
+        const goodbyeChannel = document.getElementById('goodbyeChannel');
+        const goodbyeTitle = document.getElementById('goodbyeTitle');
+        const goodbyeMessage = document.getElementById('goodbyeMessage');
+
+        if (goodbyeEnabled) goodbyeEnabled.checked = this.welcomeConfig.goodbye_enabled || false;
+        if (goodbyeChannel) goodbyeChannel.value = this.welcomeConfig.goodbye_channel || '';
+        if (goodbyeTitle) goodbyeTitle.value = this.welcomeConfig.goodbye_title || '👋 Departure';
+        if (goodbyeMessage) goodbyeMessage.value = this.welcomeConfig.goodbye_message || 'Goodbye {user}, thanks for being part of {server}!';
+
+        // Populate auto-role settings
+        this.populateAutoRoleSettings(this.welcomeConfig);
+        
+        // Initialize auto-role selector
+        this.initAutoRoleSelector();
+    }
+
+    // Ticket System Methods
+    async loadTicketSettings() {
+        await this.loadTicketConfig();
+        await this.loadGuildChannels();
+        await this.loadGuildRoles();
+        await this.loadGuildCategories();
+        this.populateTicketSettings();
+    }
+
+    async loadTicketConfig() {
+        if (!this.currentGuild) return;
+
+        try {
+            console.log('Loading ticket config for guild:', this.currentGuild);
+            this.ticketConfig = await this.apiCall(`/guild/${this.currentGuild}/tickets`);
+            console.log('Loaded ticket config:', this.ticketConfig);
+        } catch (error) {
+            console.error('Failed to load ticket config:', error);
+            this.ticketConfig = { enabled: false, panels: [] };
+        }
+    }
+
+    populateTicketSettings() {
+        console.log('Populating ticket settings...');
+        
+        if (!this.ticketConfig) {
+            console.warn('No ticket config loaded');
+            return;
+        }
+
+        // Set system enabled state
+        const ticketSystemEnabled = document.getElementById('ticketSystemEnabled');
+        const ticketPanelsSection = document.getElementById('ticketPanelsSection');
+        
+        if (ticketSystemEnabled) {
+            ticketSystemEnabled.checked = this.ticketConfig.enabled || false;
+            if (ticketPanelsSection) {
+                ticketPanelsSection.style.display = this.ticketConfig.enabled ? 'block' : 'none';
+            }
+        }
+
+        // Populate panels
+        this.populateTicketPanels();
+        
+        // Initialize ticket system toggle
+        this.initTicketSystemToggle();
+    }
+
+    populateTicketPanels() {
+        const panelsList = document.getElementById('ticketPanelsList');
+        const panelsEmpty = document.getElementById('ticketPanelsEmpty');
+        
+        if (!panelsList) return;
+
+        panelsList.innerHTML = '';
+        
+        if (!this.ticketConfig.panels || this.ticketConfig.panels.length === 0) {
+            if (panelsEmpty) panelsEmpty.style.display = 'block';
+            return;
+        }
+
+        if (panelsEmpty) panelsEmpty.style.display = 'none';
+
+        this.ticketConfig.panels.forEach(panel => {
+            const panelElement = this.createTicketPanelElement(panel);
+            panelsList.appendChild(panelElement);
+        });
+    }
+
+    createTicketPanelElement(panel) {
+        const template = document.getElementById('ticketPanelItemTemplate');
+        const element = template.content.cloneNode(true);
+        
+        // Set panel data
+        element.querySelector('.panel-name').textContent = panel.panel_name;
+        element.querySelector('.panel-details').textContent = 
+            `${panel.buttons ? panel.buttons.length : 0} buttons • ${panel.channel_id ? 'Deployed' : 'Not deployed'}`;
+        
+        // Set embed preview
+        element.querySelector('.embed-title').textContent = panel.embed_title;
+        element.querySelector('.embed-description').textContent = panel.embed_description;
+        
+        // Create button previews
+        const buttonsContainer = element.querySelector('.embed-buttons');
+        if (panel.buttons && panel.buttons.length > 0) {
+            panel.buttons.forEach(button => {
+                const buttonElement = document.createElement('span');
+                buttonElement.className = `btn-preview btn-${button.button_style}`;
+                buttonElement.textContent = `${button.button_emoji || ''} ${button.button_label}`.trim();
+                buttonsContainer.appendChild(buttonElement);
+            });
+        }
+        
+        // Store panel data
+        const panelItem = element.querySelector('.panel-item');
+        panelItem.dataset.panelId = panel.id;
+        panelItem.dataset.panelData = JSON.stringify(panel);
+        
+        return element;
+    }
+
+    initTicketSystemToggle() {
+        const ticketSystemEnabled = document.getElementById('ticketSystemEnabled');
+        const ticketPanelsSection = document.getElementById('ticketPanelsSection');
+        
+        if (ticketSystemEnabled && ticketPanelsSection) {
+            ticketSystemEnabled.addEventListener('change', (e) => {
+                ticketPanelsSection.style.display = e.target.checked ? 'block' : 'none';
+                this.saveTicketSystemEnabled(e.target.checked);
+            });
+        }
+    }
+
+    async saveTicketSystemEnabled(enabled) {
+        try {
+            await this.apiCall(`/guild/${this.currentGuild}/tickets`, 'PUT', {
+                enabled: enabled,
+                panels: this.ticketConfig.panels || []
+            });
+            
+            this.ticketConfig.enabled = enabled;
+            this.showSuccess('Ticket system settings saved!');
+        } catch (error) {
+            console.error('Failed to save ticket system settings:', error);
+            this.showError('Failed to save ticket system settings');
+        }
+    }
+
+    createTicketPanel() {
+        // Reset form
+        document.getElementById('ticketPanelForm').reset();
+        document.getElementById('ticketPanelId').value = '';
+        document.getElementById('ticketPanelModalTitle').textContent = 'Create Ticket Panel';
+        
+        // Clear buttons list
+        document.getElementById('ticketButtonsList').innerHTML = '';
+        
+        // Add first button by default
+        this.addTicketButton();
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('ticketPanelModal'));
+        modal.show();
+    }
+
+    editTicketPanel(button) {
+        const panelItem = button.closest('.panel-item');
+        const panelData = JSON.parse(panelItem.dataset.panelData);
+        
+        // Populate form
+        document.getElementById('ticketPanelId').value = panelData.id;
+        document.getElementById('ticketPanelName').value = panelData.panel_name;
+        document.getElementById('ticketEmbedTitle').value = panelData.embed_title;
+        document.getElementById('ticketEmbedDescription').value = panelData.embed_description;
+        document.getElementById('ticketEmbedColor').value = panelData.embed_color;
+        document.getElementById('ticketEmbedThumbnail').value = panelData.embed_thumbnail || '';
+        document.getElementById('ticketEmbedFooter').value = panelData.embed_footer || '';
+        
+        document.getElementById('ticketPanelModalTitle').textContent = 'Edit Ticket Panel';
+        
+        // Clear and populate buttons
+        const buttonsList = document.getElementById('ticketButtonsList');
+        buttonsList.innerHTML = '';
+        
+        if (panelData.buttons && panelData.buttons.length > 0) {
+            panelData.buttons.forEach(buttonData => {
+                this.addTicketButton(buttonData);
+            });
+        } else {
+            this.addTicketButton();
+        }
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('ticketPanelModal'));
+        modal.show();
+    }
+
+    addTicketButton(buttonData = null) {
+        const template = document.getElementById('ticketButtonTemplate');
+        const buttonElement = template.content.cloneNode(true);
+        
+        // Populate categories
+        const categorySelect = buttonElement.querySelector('.button-category');
+        if (this.categories && this.categories.length > 0) {
+            this.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                categorySelect.appendChild(option);
+            });
+        }
+        
+        // Populate roles for ping selection
+        const rolesSelect = buttonElement.querySelector('.ping-roles-select');
+        if (this.roles && this.roles.length > 0) {
+            this.roles.forEach(role => {
+                if (role.name !== '@everyone' && !role.managed) {
+                    const option = document.createElement('option');
+                    option.value = role.id;
+                    option.textContent = role.name;
+                    rolesSelect.appendChild(option);
+                }
+            });
+        }
+        
+        // If editing, populate with existing data
+        if (buttonData) {
+            buttonElement.querySelector('.button-label').value = buttonData.button_label;
+            buttonElement.querySelector('.button-emoji').value = buttonData.button_emoji || '';
+            buttonElement.querySelector('.button-style').value = buttonData.button_style;
+            buttonElement.querySelector('.button-category').value = buttonData.category_id || '';
+            buttonElement.querySelector('.button-name-format').value = buttonData.ticket_name_format;
+            buttonElement.querySelector('.button-initial-message').value = buttonData.initial_message || '';
+            
+            // Set selected roles
+            if (buttonData.ping_roles && buttonData.ping_roles.length > 0) {
+                const options = rolesSelect.options;
+                for (let i = 0; i < options.length; i++) {
+                    if (buttonData.ping_roles.includes(options[i].value)) {
+                        options[i].selected = true;
+                    }
+                }
+            }
+        }
+        
+        document.getElementById('ticketButtonsList').appendChild(buttonElement);
+    }
+
+    removeTicketButton(button) {
+        const buttonItem = button.closest('.button-config-item');
+        buttonItem.remove();
+    }
+
+    async saveTicketPanel() {
+        try {
+            // Collect form data
+            const panelId = document.getElementById('ticketPanelId').value;
+            const panelData = {
+                panel_name: document.getElementById('ticketPanelName').value,
+                embed_title: document.getElementById('ticketEmbedTitle').value,
+                embed_description: document.getElementById('ticketEmbedDescription').value,
+                embed_color: document.getElementById('ticketEmbedColor').value,
+                embed_thumbnail: document.getElementById('ticketEmbedThumbnail').value || null,
+                embed_footer: document.getElementById('ticketEmbedFooter').value || null,
+                buttons: []
+            };
+            
+            // Collect button data
+            const buttonElements = document.querySelectorAll('#ticketButtonsList .button-config-item');
+            buttonElements.forEach((buttonElement, index) => {
+                const pingRoles = Array.from(buttonElement.querySelector('.ping-roles-select').selectedOptions)
+                    .map(option => option.value);
+                
+                panelData.buttons.push({
+                    button_label: buttonElement.querySelector('.button-label').value,
+                    button_emoji: buttonElement.querySelector('.button-emoji').value || null,
+                    button_style: buttonElement.querySelector('.button-style').value,
+                    category_id: buttonElement.querySelector('.button-category').value || null,
+                    ticket_name_format: buttonElement.querySelector('.button-name-format').value,
+                    ping_roles: pingRoles,
+                    initial_message: buttonElement.querySelector('.button-initial-message').value || null,
+                    button_order: index
+                });
+            });
+            
+            // Validate required fields
+            if (!panelData.panel_name.trim()) {
+                this.showError('Panel name is required');
+                return;
+            }
+            
+            if (panelData.buttons.length === 0) {
+                this.showError('At least one button is required');
+                return;
+            }
+            
+            // Save panel
+            let response;
+            if (panelId) {
+                // Update existing panel
+                response = await this.apiCall(`/guild/${this.currentGuild}/tickets/panels/${panelId}`, 'PUT', panelData);
+            } else {
+                // Create new panel
+                response = await this.apiCall(`/guild/${this.currentGuild}/tickets/panels`, 'POST', panelData);
+            }
+            
+            this.showSuccess('Ticket panel saved successfully!');
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('ticketPanelModal'));
+            modal.hide();
+            
+            // Reload ticket settings
+            await this.loadTicketConfig();
+            this.populateTicketPanels();
+            
+        } catch (error) {
+            console.error('Failed to save ticket panel:', error);
+            this.showError('Failed to save ticket panel');
+        }
+    }
+
+    async deleteTicketPanel(button) {
+        const panelItem = button.closest('.panel-item');
+        const panelData = JSON.parse(panelItem.dataset.panelData);
+        
+        if (!confirm(`Are you sure you want to delete the "${panelData.panel_name}" panel?`)) {
+            return;
+        }
+        
+        try {
+            await this.apiCall(`/guild/${this.currentGuild}/tickets/panels/${panelData.id}`, 'DELETE');
+            this.showSuccess('Ticket panel deleted successfully!');
+            
+            // Reload ticket settings
+            await this.loadTicketConfig();
+            this.populateTicketPanels();
+            
+        } catch (error) {
+            console.error('Failed to delete ticket panel:', error);
+            this.showError('Failed to delete ticket panel');
+        }
+    }
+
+    deployTicketPanel(button) {
+        const panelItem = button.closest('.panel-item');
+        const panelData = JSON.parse(panelItem.dataset.panelData);
+        
+        // Store panel ID for deployment
+        document.getElementById('deployPanelModal').dataset.panelId = panelData.id;
+        
+        // Populate channel selector
+        const channelSelect = document.getElementById('deployChannelSelect');
+        channelSelect.innerHTML = '<option value="">Select a channel...</option>';
+        
+        if (this.channels && this.channels.length > 0) {
+            this.channels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel.id;
+                option.textContent = `# ${channel.name}`;
+                channelSelect.appendChild(option);
+            });
+        }
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('deployPanelModal'));
+        modal.show();
+    }
+
+    async confirmDeployPanel() {
+        const modal = document.getElementById('deployPanelModal');
+        const panelId = modal.dataset.panelId;
+        const channelId = document.getElementById('deployChannelSelect').value;
+        
+        if (!channelId) {
+            this.showError('Please select a channel');
+            return;
+        }
+        
+        try {
+            await this.apiCall(`/guild/${this.currentGuild}/tickets/panels/${panelId}/deploy`, 'POST', {
+                channel_id: channelId
+            });
+            
+            this.showSuccess('Ticket panel deployed successfully!');
+            
+            // Close modal
+            const modalInstance = bootstrap.Modal.getInstance(modal);
+            modalInstance.hide();
+            
+            // Reload ticket settings
+            await this.loadTicketConfig();
+            this.populateTicketPanels();
+            
+        } catch (error) {
+            console.error('Failed to deploy ticket panel:', error);
+            this.showError('Failed to deploy ticket panel');
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     populateLogsSettings() {
@@ -1922,6 +2500,21 @@ function setupModernNavigation() {
                     opacity: targetPane.style.opacity,
                     classes: targetPane.className
                 });
+                
+                // Load section-specific data
+                if (targetId === 'welcome' && window.dashboard) {
+                    console.log('🚀 Loading welcome settings...');
+                    window.dashboard.loadWelcomeSettings().catch(error => {
+                        console.error('Failed to load welcome settings:', error);
+                    });
+                }
+                
+                if (targetId === 'tickets' && window.dashboard) {
+                    console.log('🚀 Loading ticket settings...');
+                    window.dashboard.loadTicketSettings().catch(error => {
+                        console.error('Failed to load ticket settings:', error);
+                    });
+                }
                 
                 // Double-check visibility
                 setTimeout(() => {

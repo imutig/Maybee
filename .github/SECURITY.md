@@ -18,7 +18,7 @@ We take security vulnerabilities seriously. If you discover a security vulnerabi
 
 Instead, please report them privately by:
 
-1. **Email**: Send details to [your-email@example.com]
+1. **Email**: Send details to [fallenmutig@gmail.com]
 2. **Subject**: `[SECURITY] Maybee Vulnerability Report`
 3. **Include**:
    - Description of the vulnerability

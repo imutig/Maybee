@@ -822,57 +822,6 @@ class XPSystem(commands.Cog):
 
         
     # Removed redundant /level command - now using enhanced /xp command from enhanced_xp.py
-
-    @app_commands.command(name="xpmultiplier", description="Set XP multiplier for events")
-    @app_commands.describe(
-        multiplier="The multiplier value (e.g., 2.0 for double XP)",
-        duration="Duration in minutes (optional, permanent if not specified)",
-        event_type="Type of event (text, voice, or both)"
-    )
-    @app_commands.choices(event_type=[
-        app_commands.Choice(name="Text XP", value="text"),
-        app_commands.Choice(name="Voice XP", value="voice"),
-        app_commands.Choice(name="Both", value="both")
-    ])
-    async def set_xp_multiplier(self, interaction: discord.Interaction, multiplier: float, 
-                               event_type: str, duration: Optional[int] = None):
-        """Set XP multiplier for events"""
-        user_id = interaction.user.id
-        guild_id = interaction.guild.id
-        
-        # Check permissions
-        if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message(
-                _("errors.admin_only", user_id, guild_id),
-                ephemeral=True
-            )
-            return
-            
-        # Validate multiplier
-        if multiplier < 0.1 or multiplier > 10.0:
-            await interaction.response.send_message(
-                _("xp_system.multiplier.invalid_range", user_id, guild_id),
-                ephemeral=True
-            )
-            return
-            
-        # Set multiplier
-        duration_text = f" for {duration} minutes" if duration else " (permanent)"
-        if event_type == "both":
-            self.xp_multiplier.set_multiplier(guild_id, "text", multiplier, duration)
-            self.xp_multiplier.set_multiplier(guild_id, "voice", multiplier, duration)
-            print(f"🔧 XP Multiplier set: {multiplier}x for TEXT and VOICE in guild {guild_id} by {interaction.user.display_name} (ID: {user_id}){duration_text}")
-        else:
-            self.xp_multiplier.set_multiplier(guild_id, event_type, multiplier, duration)
-            print(f"🔧 XP Multiplier set: {multiplier}x for {event_type.upper()} in guild {guild_id} by {interaction.user.display_name} (ID: {user_id}){duration_text}")
-            
-        # Create response message
-        await interaction.response.send_message(
-            _("xp_system.multiplier.success", user_id, guild_id, 
-              multiplier=multiplier, event_type=event_type, duration=duration_text),
-            ephemeral=True
-        )
-
     # Removed redundant /xpstats command - now using enhanced /xp command with detailed:True from enhanced_xp.py
 
 async def setup(bot):

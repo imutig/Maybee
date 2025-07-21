@@ -98,44 +98,5 @@ class Confession(commands.Cog):
     #         ephemeral=True
     #     )
 
-    @app_commands.command(name="confessionstats", description="Afficher les statistiques des confessions")
-    async def confessionstats(self, interaction: discord.Interaction):
-        from i18n import _
-        
-        user_id = interaction.user.id
-        guild_id = interaction.guild.id
-        
-        if not interaction.user.guild_permissions.manage_messages:
-            await interaction.response.send_message(
-                _("errors.no_permission", user_id, guild_id), 
-                ephemeral=True
-            )
-            return
-
-        # Get total confessions count
-        total_result = await self.db.query(
-            "SELECT COUNT(*) as total FROM confessions WHERE guild_id = %s",
-            (guild_id,),
-            fetchone=True
-        )
-        total_confessions = total_result['total'] if total_result else 0
-
-        # Get confessions from last 7 days
-        recent_result = await self.db.query(
-            "SELECT COUNT(*) as recent FROM confessions WHERE guild_id = %s AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)",
-            (guild_id,),
-            fetchone=True
-        )
-        recent_confessions = recent_result['recent'] if recent_result else 0
-
-        embed = discord.Embed(
-            title=_("confession_system.stats.title", user_id, guild_id),
-            color=discord.Color.blue()
-        )
-        embed.add_field(name=_("confession_system.stats.total_field", user_id, guild_id), value=str(total_confessions), inline=True)
-        embed.add_field(name=_("confession_system.stats.recent_field", user_id, guild_id), value=str(recent_confessions), inline=True)
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
 async def setup(bot):
     await bot.add_cog(Confession(bot))

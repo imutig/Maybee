@@ -144,20 +144,6 @@
         "exclusion": "Exclusion"
       }
     },
-    "meeting": {
-      "description": "Create a meeting reminder",
-      "meeting_param": "Who is concerned by the meeting?",
-      "par_param": "Who organizes the meeting?",
-      "lieu_param": "Voice channel where the meeting will take place",
-      "note_param": "Optional note for the meeting",
-      "no_note": "No note specified.",
-      "embed_title": "📢 New meeting scheduled!",
-      "participants_field": "👥 Participants",
-      "organized_by_field": "🧑‍💼 Organized by",
-      "location_field": "📍 Location",
-      "note_field": "📝 Note",
-      "footer": "Requested by {user}"
-    },
     "sync": {
       "description": "Synchronize slash commands for this server (Admin only)",
       "success": "✅ {count} commands synchronized for this server!",
@@ -430,22 +416,6 @@
       "category_set": "✅ Ticket category set to {category}!",
       "support_role_set": "✅ Support role set to {role}!",
       "disabled": "✅ Ticket system disabled!"
-    }
-  },
-  "meeting_system": {
-    "command": {
-      "description": "Create a meeting reminder",
-      "meeting_param": "Who is concerned by the meeting? (mention as many people as necessary)",
-      "by_param": "Who is organizing the meeting? (mention as many people as necessary)",
-      "place_param": "Voice channel where the meeting will take place",
-      "note_param": "Optional note for the meeting",
-      "default_note": "No specific note.",
-      "embed_title": "📢 New meeting planned!",
-      "participants_field": "👥 Participants",
-      "organizer_field": "🧑‍💼 Organized by",
-      "place_field": "📍 Place",
-      "note_field": "📝 Note",
-      "footer": "Requested by {user}"
     }
   },
   "career_system": {

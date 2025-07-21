@@ -100,8 +100,81 @@ class Welcome(commands.Cog):
         config = await self.get_welcome_config(guild_id)
         print(f"🔍 DEBUG: Welcome config for guild {guild_id}: {config}")
         
+        # Handle auto-role assignment first
+        await self.handle_auto_roles(member, config)
+        
+        # Then handle welcome message
+        await self.send_welcome_message(member, config)
+
+    async def handle_auto_roles(self, member, config):
+        """Handle automatic role assignment for new members"""
+        try:
+            auto_role_enabled = config.get("auto_role_enabled", False)
+            auto_role_ids = config.get("auto_role_ids")
+            
+            print(f"🔧 DEBUG: Auto-role enabled: {auto_role_enabled}")
+            print(f"🔧 DEBUG: Auto-role IDs: {auto_role_ids}")
+            
+            if not auto_role_enabled or not auto_role_ids:
+                print(f"⚠️ DEBUG: Auto-role disabled or no roles configured")
+                return
+            
+            # Parse role IDs if they're stored as JSON string
+            if isinstance(auto_role_ids, str):
+                import json
+                try:
+                    auto_role_ids = json.loads(auto_role_ids)
+                except json.JSONDecodeError:
+                    print(f"❌ DEBUG: Failed to parse auto_role_ids JSON: {auto_role_ids}")
+                    return
+            
+            if not isinstance(auto_role_ids, list):
+                print(f"❌ DEBUG: auto_role_ids is not a list: {type(auto_role_ids)}")
+                return
+            
+            # Assign roles to the new member
+            roles_assigned = []
+            roles_failed = []
+            
+            for role_id in auto_role_ids:
+                try:
+                    role = member.guild.get_role(int(role_id))
+                    if role:
+                        # Check if bot has permission to assign this role
+                        if role.position < member.guild.me.top_role.position:
+                            await member.add_roles(role, reason="Auto-role assignment on member join")
+                            roles_assigned.append(role.name)
+                            print(f"✅ DEBUG: Assigned role {role.name} to {member.display_name}")
+                        else:
+                            roles_failed.append(f"{role.name} (insufficient permissions)")
+                            print(f"❌ DEBUG: Cannot assign role {role.name} - insufficient permissions")
+                    else:
+                        roles_failed.append(f"Role ID {role_id} (not found)")
+                        print(f"❌ DEBUG: Role with ID {role_id} not found")
+                except Exception as e:
+                    roles_failed.append(f"Role ID {role_id} (error: {str(e)})")
+                    print(f"❌ DEBUG: Error assigning role {role_id}: {e}")
+            
+            if roles_assigned:
+                print(f"🎉 DEBUG: Successfully assigned {len(roles_assigned)} roles to {member.display_name}: {', '.join(roles_assigned)}")
+            
+            if roles_failed:
+                print(f"⚠️ DEBUG: Failed to assign {len(roles_failed)} roles to {member.display_name}: {', '.join(roles_failed)}")
+                
+        except Exception as e:
+            print(f"❌ DEBUG: Error in auto-role assignment for {member.display_name}: {e}")
+
+    async def send_welcome_message(self, member, config):
+        """Send welcome message to the configured channel"""
         channel_id = config.get("welcome_channel")
         print(f"📢 DEBUG: Welcome channel ID: {channel_id}")
+        
+    async def send_welcome_message(self, member, config):
+        """Send welcome message to the configured channel"""
+        channel_id = config.get("welcome_channel")
+        print(f"📢 DEBUG: Welcome channel ID: {channel_id}")
+        
+        guild_id = member.guild.id
         
         # Use configured message or default translation
         message = config.get("welcome_message")

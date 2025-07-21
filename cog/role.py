@@ -205,48 +205,6 @@ class RoleRequest(commands.Cog):
     #     await interaction.response.send_message(
     #         f"Canal des demandes de rôles configuré sur {channel.mention}!", ephemeral=True)
 
-    @app_commands.command(name="rolestats", description="Afficher les statistiques des demandes de rôles")
-    async def rolestats(self, interaction: discord.Interaction):
-        from i18n import _
-        user_id = interaction.user.id
-        guild_id = interaction.guild.id if interaction.guild else None
-        
-        if not interaction.user.guild_permissions.manage_roles:
-            await interaction.response.send_message(
-                _("errors.no_permission", user_id, guild_id), ephemeral=True)
-            return
-
-        # Get statistics
-        stats = await self.db.query(
-            "SELECT status, COUNT(*) as count FROM role_requests WHERE guild_id = %s GROUP BY status",
-            (guild_id,),
-            fetchall=True
-        )
-
-        embed = discord.Embed(
-            title=_("role_requests.stats_title", user_id, guild_id),
-            color=discord.Color.blue()
-        )
-        
-        if stats:
-            status_mapping = {
-                "pending": ("⏳", _("role_requests.status_pending", user_id, guild_id)),
-                "approved": ("✅", _("role_requests.status_approved", user_id, guild_id)),
-                "denied": ("❌", _("role_requests.status_denied", user_id, guild_id))
-            }
-            
-            for stat in stats:
-                emoji, status_name = status_mapping.get(stat['status'], ("📋", stat['status']))
-                embed.add_field(
-                    name=f"{emoji} {status_name}",
-                    value=str(stat['count']),
-                    inline=True
-                )
-        else:
-            embed.description = _("role_requests.no_requests", user_id, guild_id)
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
     @commands.Cog.listener()
     async def on_ready(self):
         """Restore role request views on bot startup"""

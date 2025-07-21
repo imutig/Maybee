@@ -225,6 +225,44 @@ class Database:
         
         return None
     
+    async def execute_and_get_id(self, query, params=None):
+        """Execute INSERT query and return the auto-increment ID"""
+        if not self.pool:
+            await self.connect()
+        
+        # Create a clean, readable log message
+        query_type = self._get_query_type(query)
+        clean_query = self._clean_query_for_log(query)
+        
+        # Log with clean formatting
+        print(f"🔄 {query_type}: {clean_query}")
+        if params:
+            print(f"   📝 Values: {self._format_params(params)}")
+        
+        for attempt in range(self.max_retries):
+            try:
+                async with self.pool.acquire() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute(query, params)
+                        insert_id = cur.lastrowid
+                        affected = cur.rowcount
+                        if affected > 0:
+                            print(f"   ✅ {affected} row(s) affected, ID: {insert_id}")
+                        else:
+                            print(f"   ℹ️  No rows affected")
+                        return insert_id
+            except aiomysql.Error as e:
+                print(f"❌ Database error (attempt {attempt + 1}): {e}")
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay)
+                else:
+                    raise
+            except Exception as e:
+                print(f"❌ Unexpected error: {e}")
+                raise
+        
+        return None
+    
     async def health_check(self):
         """Check database connection health"""
         try:

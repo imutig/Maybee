@@ -144,20 +144,6 @@
         "exclusion": "Exclusion"
       }
     },
-    "meeting": {
-      "description": "Créer un rappel de meeting",
-      "meeting_param": "Qui est concerné par le meeting ?",
-      "par_param": "Qui organise le meeting ?",
-      "lieu_param": "Salon vocal où se déroulera le meeting",
-      "note_param": "Note optionnelle pour le meeting",
-      "no_note": "Aucune note spécifiée.",
-      "embed_title": "📢 Nouveau meeting planifié !",
-      "participants_field": "👥 Participants",
-      "organized_by_field": "🧑‍💼 Organisé par",
-      "location_field": "📍 Lieu",
-      "note_field": "📝 Note",
-      "footer": "Demandé par {user}"
-    },
     "sync": {
       "description": "Synchroniser les commandes slash pour ce serveur (Admin uniquement)",
       "success": "✅ {count} commandes synchronisées pour ce serveur!",
@@ -467,22 +453,6 @@
     "category_set": "✅ Catégorie de tickets définie sur {category} !",
     "support_role_set": "✅ Rôle de support défini sur {role} !",
     "disabled": "✅ Système de tickets désactivé !"
-  },
-  "meeting_system": {
-    "command": {
-      "description": "Créer un rappel de meeting",
-      "meeting_param": "Qui est concerné par le meeting ? (mentionnez autant de monde que nécessaire)",
-      "by_param": "Qui organise le meeting ? (mentionnez autant de monde que nécessaire)",
-      "place_param": "Salon vocal où se déroulera le meeting",
-      "note_param": "Note optionnelle pour le meeting",
-      "default_note": "Aucune note spécifiée.",
-      "embed_title": "📢 Nouveau meeting planifié !",
-      "participants_field": "👥 Participants",
-      "organizer_field": "🧑‍💼 Organisé par",
-      "place_field": "📍 Lieu",
-      "note_field": "📝 Note",
-      "footer": "Demandé par {user}"
-    }
   },
   "career_system": {
     "command": {
@@ -794,22 +764,6 @@
         "xp_rate_placeholder": "Entrez un nombre (ex: 1.5 pour 150% de taux)"
       }
     },
-    "meeting_system": {
-      "command": {
-        "description": "Créer un rappel de meeting",
-        "meeting_param": "Qui est concerné par le meeting ? (mentionnez autant de monde que nécessaire)",
-        "by_param": "Qui organise le meeting ? (mentionnez autant de monde que nécessaire)",
-        "place_param": "Salon vocal où se déroulera le meeting",
-        "note_param": "Note optionnelle pour le meeting",
-        "default_note": "Aucune note spécifiée.",
-        "embed_title": "📢 Nouveau meeting planifié !",
-        "participants_field": "👥 Participants",
-        "organizer_field": "🧑‍💼 Organisé par",
-        "place_field": "📍 Lieu",
-        "note_field": "📝 Note",
-        "footer": "Demandé par {user}"
-      }
-    },
     "career_system": {
       "command": {
         "description": "Ajoute une décision de carrière pour un membre",
@@ -976,22 +930,6 @@
         },
         "close": {
           "closing": "Fermeture dans 5 secondes..."
-        }
-      },
-      "meeting_system": {
-        "command": {
-          "description": "Créer un rappel de meeting",
-          "meeting_param": "Qui est concerné par le meeting ? (mentionnez autant de monde que nécessaire)",
-          "by_param": "Qui organise le meeting ? (mentionnez autant de monde que nécessaire)",
-          "place_param": "Salon vocal où se déroulera le meeting",
-          "note_param": "Note optionnelle pour le meeting",
-          "default_note": "Aucune note spécifiée.",
-          "embed_title": "📢 Nouveau meeting planifié !",
-          "participants_field": "👥 Participants",
-          "organizer_field": "🧑‍💼 Organisé par",
-          "place_field": "📍 Lieu",
-          "note_field": "📝 Note",
-          "footer": "Demandé par {user}"
         }
       },
       "career_system": {
