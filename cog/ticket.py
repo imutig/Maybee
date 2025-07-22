@@ -251,32 +251,6 @@ class Ticket(commands.Cog):
             print(f"Error during ticket cleanup: {e}")
             await interaction.followup.send(f"❌ Error during cleanup: {str(e)}", ephemeral=True)
 
-    @app_commands.command(name="setup_ticket",
-                          description="Configure the ticket system.")
-    async def setup_ticket(self, interaction: discord.Interaction):
-        guild = interaction.guild
-        category = await guild.create_category("Tickets")
-        ticket_channel = await guild.create_text_channel(
-            "general-tickets",
-            category=category
-        )
-        await interaction.response.send_message(
-            f"✅ Ticket system configured in {category.name}!",
-            ephemeral=True)
-
-    @app_commands.command(name="setup_ticket_panel",
-                          description="Create ticket panel")
-    async def setup_ticket_panel(self, interaction: discord.Interaction):
-        user_id = interaction.user.id
-        guild_id = interaction.guild.id if interaction.guild else None
-        
-        embed = discord.Embed(
-            title=_("ticket_system.panel.title", user_id, guild_id),
-            description=_("ticket_system.panel.panel_description", user_id, guild_id),
-            color=discord.Color.green())
-        view = TicketPanelView()
-        await interaction.response.send_message(embed=embed, view=view)
-
 
 class TicketCreateButton(discord.ui.Button):
 

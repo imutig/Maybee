@@ -2,13 +2,20 @@
 class Dashboard {
     constructor() {
         this.currentGuild = null;
+        this.dataLoaded = {};
+        this.channels = null;
+        this.roles = null;
+        this.categories = null;
+        this.members = null;
+        this.pendingRequests = new Map(); // Track pending API requests to prevent duplicates
         this.user = null;
         this.guilds = [];
-        this.channels = [];
-        this.members = []; // Store guild members for name resolution
         this.currentLanguage = 'en';
         this.availableLanguages = [];
         this.strings = {};
+        this.guildStats = null;
+        this.guildConfig = null;
+        this.cachedRoleMenus = null;
         this.init();
     }
 
@@ -72,6 +79,15 @@ class Dashboard {
     }
 
     async apiCall(endpoint, method = 'GET', data = null) {
+        // Create request key for deduplication
+        const requestKey = `${method}:${endpoint}:${JSON.stringify(data)}`;
+        
+        // If same request is already pending, wait for it
+        if (this.pendingRequests.has(requestKey)) {
+            console.log(`⏳ Waiting for pending request: ${requestKey}`);
+            return await this.pendingRequests.get(requestKey);
+        }
+        
         const token = this.getCookie('access_token');
         const options = {
             method,
@@ -88,19 +104,32 @@ class Dashboard {
             options.body = JSON.stringify(data);
         }
 
-        const response = await fetch(`/api${endpoint}`, options);
-        
-        if (!response.ok) {
-            if (response.status === 401) {
-                // Clear invalid token and redirect to login
-                document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                window.location.href = '/';
-                return;
-            }
-            throw new Error(`API call failed: ${response.statusText}`);
-        }
+        // Create the request promise and store it
+        const requestPromise = (async () => {
+            try {
+                const response = await fetch(`/api${endpoint}`, options);
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        // Clear invalid token and redirect to login
+                        document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                        window.location.href = '/';
+                        return;
+                    }
+                    throw new Error(`API call failed: ${response.statusText}`);
+                }
 
-        return await response.json();
+                return await response.json();
+            } finally {
+                // Remove from pending requests when done
+                this.pendingRequests.delete(requestKey);
+            }
+        })();
+        
+        // Store the promise for deduplication
+        this.pendingRequests.set(requestKey, requestPromise);
+        
+        return await requestPromise;
     }
 
     async loadUser() {
@@ -330,23 +359,182 @@ class Dashboard {
             return;
         }
 
+        // If switching to a different guild, clear all cached data
+        if (this.currentGuild && this.currentGuild !== guildId) {
+            console.log('🔄 Switching guilds - clearing cached data');
+            this.channels = null;
+            this.roles = null;
+            this.categories = null;
+            this.members = null;
+            this.guildStats = null;
+            this.guildConfig = null;
+            this.pendingRequests.clear(); // Clear pending requests
+        }
+
         this.currentGuild = guildId;
         
         try {
-            // Load guild data - load members first so names are available for stats
-            await this.loadGuildConfig();
-            await this.loadGuildChannels();
+            // Use bulk endpoint to load essential data in one request
+            console.log('� Loading essential guild data via bulk endpoint...');
+            const bulkData = await this.apiCall(`/guild/${this.currentGuild}/bulk`);
+            
+            // Cache the loaded data
+            this.guildConfig = bulkData.config;
+            this.channels = bulkData.channels;
+            this.guildStats = bulkData.stats;
+            
+            // Update config form
+            this.updateConfigForm(bulkData.config);
+            
+            // Update channel selectors
+            this.updateChannelSelectors(bulkData.channels);
+            
+            // Load members data to properly display user names in stats
+            console.log('🔄 Loading members data for user display names...');
             await this.loadGuildMembers();
-            await this.loadGuildStats(); // Move this after members are loaded
-            await this.loadModerationHistory();
-            await this.loadWelcomeConfig();
-            await this.loadServerLogsConfig();
-            await this.loadRoleMenus();
+            
+            console.log('👥 Members loaded, now updating stats display...');
+            console.log('📊 Stats data to display:', bulkData.stats);
+            
+            // Update stats display with proper user names
+            await this.updateStatsDisplayAsync(bulkData.stats);
+            
+            console.log('✅ Stats display updated successfully');
+            
+            // Mark essential data as loaded
+            this.dataLoaded = {
+                channels: true,
+                config: true,
+                stats: true,
+                roles: false,
+                categories: false,
+                members: true,
+                moderation: false,
+                welcome: false,
+                logs: false,
+                roleMenus: false,
+                tickets: false
+            };
+            
+            console.log('✅ Essential guild data loaded via bulk endpoint - other sections will load when accessed');
             
         } catch (error) {
             console.error('Failed to load guild data:', error);
             this.showError(this.getString('messages.server_data_error') || 'Failed to load server data.');
         }
+    }
+
+    updateConfigForm(config) {
+        // Update XP settings form
+        document.getElementById('xpEnabled').checked = config.xp_enabled !== false;
+        document.getElementById('levelUpMessage').checked = config.level_up_message !== false;
+        
+        if (config.xp_channel) {
+            document.getElementById('xpChannel').value = config.xp_channel;
+        }
+        if (config.level_up_channel) {
+            document.getElementById('levelUpChannel').value = config.level_up_channel;
+        }
+    }
+
+    updateStatsDisplay(stats) {
+        // Update overview cards
+        document.getElementById('totalMembers').textContent = stats.total_members?.toLocaleString() || '0';
+        document.getElementById('totalXP').textContent = stats.total_xp?.toLocaleString() || '0';
+        document.getElementById('avgLevel').textContent = stats.average_level || '0';
+        document.getElementById('recentActivity').textContent = stats.recent_activity?.toLocaleString() || '0';
+        
+        // Update top users table with just user IDs (fallback)
+        const topUsersTable = document.getElementById('topUsersTable');
+        if (stats.top_users && stats.top_users.length > 0) {
+            topUsersTable.innerHTML = '';
+            stats.top_users.forEach((user, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><span class="badge bg-primary">#${index + 1}</span></td>
+                    <td>${this.getString('overview.user_id')}: ${user.user_id}</td>
+                    <td><span class="badge bg-success">Level ${user.level}</span></td>
+                    <td>${user.xp?.toLocaleString() || '0'} XP</td>
+                `;
+                topUsersTable.appendChild(row);
+            });
+        } else {
+            topUsersTable.innerHTML = `<tr><td colspan="4" class="text-center text-muted">${this.getString('overview.no_data')}</td></tr>`;
+        }
+    }
+
+    async updateStatsDisplayAsync(stats) {
+        console.log('🎯 updateStatsDisplayAsync called with:', stats);
+        
+        try {
+            // Update overview cards
+            console.log('📊 Updating overview cards...');
+            document.getElementById('totalMembers').textContent = stats.total_members?.toLocaleString() || '0';
+            document.getElementById('totalXP').textContent = stats.total_xp?.toLocaleString() || '0';
+            document.getElementById('avgLevel').textContent = stats.average_level || '0';
+            document.getElementById('recentActivity').textContent = stats.recent_activity?.toLocaleString() || '0';
+            console.log('✅ Overview cards updated');
+            
+            // Update top users table with proper display names
+            const topUsersTable = document.getElementById('topUsersTable');
+            console.log('👤 Top users table element:', topUsersTable ? 'Found' : 'NOT FOUND');
+            
+            if (stats.top_users && stats.top_users.length > 0) {
+                console.log('🔄 Processing top users with member data:', stats.top_users);
+                topUsersTable.innerHTML = '';
+                for (const [index, user] of stats.top_users.entries()) {
+                    console.log(`Processing user ${index + 1}:`, user);
+                    const row = document.createElement('tr');
+                    const displayName = await this.getUserDisplayNameAsync(user.user_id);
+                    console.log(`User ${index + 1}: ID=${user.user_id}, Name=${displayName}`);
+                    row.innerHTML = `
+                        <td><span class="badge bg-primary">#${index + 1}</span></td>
+                        <td>${displayName}</td>
+                        <td><span class="badge bg-success">Level ${user.level}</span></td>
+                        <td>${user.xp?.toLocaleString() || '0'} XP</td>
+                    `;
+                    topUsersTable.appendChild(row);
+                }
+                console.log('✅ Top users table updated successfully');
+            } else {
+                console.log('📭 No top users data, showing empty state');
+                topUsersTable.innerHTML = `<tr><td colspan="4" class="text-center text-muted">${this.getString('overview.no_data')}</td></tr>`;
+            }
+        } catch (error) {
+            console.error('❌ Error in updateStatsDisplayAsync:', error);
+            throw error;
+        }
+    }
+
+    updateChannelSelectors(channels) {
+        const channelSelectors = ['xpChannel', 'levelUpChannel', 'welcomeChannel', 'goodbyeChannel', 'serverLogsChannel', 'moderationChannel'];
+        
+        channelSelectors.forEach(selectorId => {
+            const selector = document.getElementById(selectorId);
+            if (!selector) return;
+            
+            const currentValue = selector.value;
+            
+            // Clear existing options except the first one
+            while (selector.children.length > 1) {
+                selector.removeChild(selector.lastChild);
+            }
+            
+            // Add channel options
+            if (channels && channels.length > 0) {
+                channels.forEach(channel => {
+                    const option = document.createElement('option');
+                    option.value = channel.id;
+                    option.textContent = `#${channel.name}`;
+                    selector.appendChild(option);
+                });
+            }
+            
+            // Restore previous value if it exists
+            if (currentValue) {
+                selector.value = currentValue;
+            }
+        });
     }
 
     // Helper function to get user display name from user ID
@@ -402,10 +590,20 @@ class Dashboard {
     }
 
     async loadGuildStats() {
+        // Return cached data if available and not stale
+        if (this.guildStats && this.dataLoaded?.stats) {
+            console.log('✅ Using cached guild stats');
+            return;
+        }
+        
         if (!this.currentGuild) return;
 
         try {
+            console.log('🔄 Loading guild stats...');
             const stats = await this.apiCall(`/guild/${this.currentGuild}/stats`);
+            this.guildStats = stats; // Cache the stats
+            
+            if (this.dataLoaded) this.dataLoaded.stats = true;
             
             // Update overview cards
             document.getElementById('totalMembers').textContent = stats.total_members?.toLocaleString() || '0';
@@ -442,28 +640,23 @@ class Dashboard {
     }
 
     async loadGuildConfig() {
+        // Return cached data if available
+        if (this.guildConfig && this.dataLoaded?.config) {
+            console.log('✅ Using cached guild config');
+            this.updateConfigForm(this.guildConfig);
+            return;
+        }
+        
         if (!this.currentGuild) return;
 
         try {
+            console.log('🔄 Loading guild config...');
             const config = await this.apiCall(`/guild/${this.currentGuild}/config`);
+            this.guildConfig = config;
             
-            // Update XP settings form with enhanced fields
-            document.getElementById('xpEnabled').checked = config.xp_enabled !== false;
-            document.getElementById('levelUpMessage').checked = config.level_up_message !== false;
+            if (this.dataLoaded) this.dataLoaded.config = true;
             
-            // Set XP channel
-            if (config.xp_channel) {
-                document.getElementById('xpChannel').value = config.xp_channel;
-            } else {
-                document.getElementById('xpChannel').value = '';
-            }
-            
-            // Set level up channel
-            if (config.level_up_channel) {
-                document.getElementById('levelUpChannel').value = config.level_up_channel;
-            } else {
-                document.getElementById('levelUpChannel').value = '';
-            }
+            this.updateConfigForm(config);
             
         } catch (error) {
             console.error('Failed to load guild config:', error);
@@ -471,12 +664,20 @@ class Dashboard {
     }
 
     async loadGuildChannels() {
+        // Return cached data if available and not stale
+        if (this.channels && this.dataLoaded?.channels) {
+            console.log('✅ Using cached channels data');
+            return;
+        }
+        
         if (!this.currentGuild) return;
 
         try {
             console.log('Loading channels for guild:', this.currentGuild);
             this.channels = await this.apiCall(`/guild/${this.currentGuild}/channels`);
             console.log('Loaded channels:', this.channels);
+            
+            if (this.dataLoaded) this.dataLoaded.channels = true;
             
             // Update channel selectors for XP, welcome, server logs, and moderation
             const channelSelectors = ['xpChannel', 'levelUpChannel', 'welcomeChannel', 'goodbyeChannel', 'serverLogsChannel', 'moderationChannel'];
@@ -682,10 +883,23 @@ class Dashboard {
             const response = await this.apiCall(`/guild/${this.currentGuild}/role-menus`);
             console.log(`✅ API call successful, received ${response.menus?.length || 0} role menus`);
             this.displayRoleMenus(response.menus || []);
+            
+            if (this.dataLoaded) this.dataLoaded.roleMenus = true;
         } catch (error) {
             console.error('❌ Failed to load role menus:', error);
             this.showError('Failed to load role menus. Please try again.');
         }
+    }
+
+    async loadRoleMenuData() {
+        // Check if already loaded
+        if (this.dataLoaded?.roleMenus) {
+            console.log('✅ Role menu data already loaded');
+            return;
+        }
+        
+        console.log('🔄 Loading role menu data...');
+        await this.loadRoleMenus();
     }
 
     displayRoleMenus(menus) {
@@ -1283,11 +1497,20 @@ class Dashboard {
     }
 
     async loadGuildMembers() {
+        // Return cached data if available and not stale
+        if (this.members && this.dataLoaded?.members) {
+            console.log('✅ Using cached guild members');
+            return;
+        }
+        
         if (!this.currentGuild) return;
 
         try {
+            console.log('🔄 Loading guild members...');
             const response = await this.apiCall(`/guild/${this.currentGuild}/members`);
             this.members = response.members || []; // Store members for later use
+            
+            if (this.dataLoaded) this.dataLoaded.members = true;
             
             console.log('Loaded guild members:', this.members.length);
             if (this.members.length > 0) {
@@ -1296,31 +1519,36 @@ class Dashboard {
             }
             
             const memberSelect = document.getElementById('memberSelect');
-            memberSelect.innerHTML = `<option value="">${this.getString('moderation.choose_member')}</option>`;
-            
-            if (this.members.length > 0) {
-                this.members.forEach(member => {
+            if (memberSelect) {
+                memberSelect.innerHTML = `<option value="">${this.getString('moderation.choose_member')}</option>`;
+                
+                if (this.members.length > 0) {
+                    this.members.forEach(member => {
+                        const option = document.createElement('option');
+                        option.value = member.id;
+                        option.textContent = member.display_name || member.username;
+                        memberSelect.appendChild(option);
+                    });
+                } else {
                     const option = document.createElement('option');
-                    option.value = member.id;
-                    option.textContent = member.display_name || member.username;
+                    option.value = '';
+                    option.textContent = this.getString('moderation.no_members') || 'No members available - Enable GUILD_MEMBERS intent in Discord Developer Portal';
+                    option.disabled = true;
                     memberSelect.appendChild(option);
-                });
-            } else {
-                const option = document.createElement('option');
-                option.value = '';
-                option.textContent = this.getString('moderation.no_members') || 'No members available - Enable GUILD_MEMBERS intent in Discord Developer Portal';
-                option.disabled = true;
-                memberSelect.appendChild(option);
+                }
             }
             
         } catch (error) {
             console.error('Failed to load guild members:', error);
+            this.members = []; // Set empty array on error
+            
+            if (this.dataLoaded) this.dataLoaded.members = false; // Mark as failed to load
+            
             const memberSelect = document.getElementById('memberSelect');
-            memberSelect.innerHTML = `<option value="">${this.getString('errors.load_error')}</option>`;
+            if (memberSelect) {
+                memberSelect.innerHTML = `<option value="">${this.getString('errors.load_error')}</option>`;
+            }
         }
-        
-        // Refresh displays that depend on member names
-        await this.refreshUserDisplays();
     }
 
     // Refresh displays that show user names after members are loaded
@@ -1832,23 +2060,79 @@ class Dashboard {
     }
 
     async loadModerationData() {
-        await this.loadGuildMembers();
-        await this.loadGuildChannels();
-        await this.loadModerationHistory();
+        // Check if already loaded
+        if (this.dataLoaded?.moderation) {
+            console.log('✅ Moderation data already loaded');
+            return;
+        }
+        
+        console.log('🔄 Loading moderation data...');
+        
+        // Load in parallel for better performance
+        await Promise.all([
+            this.loadGuildMembers(),
+            this.loadGuildChannels(),
+            this.loadModerationHistory()
+        ]);
+        
         this.populateModerationSettings();
+        
+        // Mark as loaded
+        if (this.dataLoaded) {
+            this.dataLoaded.moderation = true;
+            this.dataLoaded.members = true;
+            this.dataLoaded.channels = true;
+        }
     }
 
     async loadWelcomeSettings() {
-        await this.loadWelcomeConfig();
-        await this.loadGuildChannels();
-        await this.loadGuildRoles(); // Add this line
+        // Check if already loaded
+        if (this.dataLoaded?.welcome) {
+            console.log('✅ Welcome data already loaded');
+            return;
+        }
+        
+        console.log('🔄 Loading welcome data...');
+        
+        // Load in parallel for better performance
+        await Promise.all([
+            this.loadWelcomeConfig(),
+            this.loadGuildChannels(),
+            this.loadGuildRoles()
+        ]);
+        
         this.populateWelcomeSettings();
+        
+        // Mark as loaded
+        if (this.dataLoaded) {
+            this.dataLoaded.welcome = true;
+            this.dataLoaded.channels = true;
+            this.dataLoaded.roles = true;
+        }
     }
 
     async loadLogsSettings() {
-        await this.loadServerLogsConfig();
-        await this.loadGuildChannels();
+        // Check if already loaded
+        if (this.dataLoaded?.logs) {
+            console.log('✅ Logs data already loaded');
+            return;
+        }
+        
+        console.log('🔄 Loading logs data...');
+        
+        // Load in parallel for better performance
+        await Promise.all([
+            this.loadServerLogsConfig(),
+            this.loadGuildChannels()
+        ]);
+        
         this.populateLogsSettings();
+        
+        // Mark as loaded
+        if (this.dataLoaded) {
+            this.dataLoaded.logs = true;
+            this.dataLoaded.channels = true;
+        }
     }
 
     populateXPSettings() {
@@ -2007,11 +2291,59 @@ class Dashboard {
 
     // Ticket System Methods
     async loadTicketSettings() {
-        await this.loadTicketConfig();
-        await this.loadGuildChannels();
-        await this.loadGuildRoles();
-        await this.loadGuildCategories();
-        this.populateTicketSettings();
+        // Check if already loaded
+        if (this.dataLoaded?.tickets) {
+            console.log('✅ Ticket data already loaded');
+            return;
+        }
+        
+        console.log('🔄 Loading ticket data...');
+        
+        // Show loading state
+        const ticketTab = document.getElementById('ticket-system');
+        if (ticketTab) {
+            const loadingHTML = `
+                <div class="loading-state" style="text-align: center; padding: 2rem;">
+                    <i class="fas fa-spinner fa-spin fa-2x" style="color: #5865F2;"></i>
+                    <p style="margin-top: 1rem; color: #666;">Loading ticket system...</p>
+                </div>
+            `;
+            ticketTab.innerHTML = loadingHTML;
+        }
+
+        try {
+            // Load all data in parallel instead of sequentially
+            const [ticketConfig, channels, roles, categories] = await Promise.all([
+                this.loadTicketConfig(),
+                this.loadGuildChannels(),
+                this.loadGuildRoles(),
+                this.loadGuildCategories()
+            ]);
+            
+            this.populateTicketSettings();
+            
+            // Mark as loaded
+            if (this.dataLoaded) {
+                this.dataLoaded.tickets = true;
+                this.dataLoaded.channels = true;
+                this.dataLoaded.roles = true;
+                this.dataLoaded.categories = true;
+            }
+            
+        } catch (error) {
+            console.error('Failed to load ticket settings:', error);
+            if (ticketTab) {
+                ticketTab.innerHTML = `
+                    <div class="error-state" style="text-align: center; padding: 2rem;">
+                        <i class="fas fa-exclamation-triangle fa-2x" style="color: #dc3545;"></i>
+                        <p style="margin-top: 1rem; color: #dc3545;">Failed to load ticket system</p>
+                        <button onclick="dashboard.loadTicketSettings()" class="btn btn-primary" style="margin-top: 1rem;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
     }
 
     async loadTicketConfig() {

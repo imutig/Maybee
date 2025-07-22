@@ -375,9 +375,18 @@ async def init_database():
     async def fetch_all(query, params=None):
         return await database.query(query, params, fetchall=True)
     
+    async def fetch_val(query, params=None):
+        """Fetch a single value from a query"""
+        result = await database.query(query, params, fetchone=True)
+        if result:
+            # Return the first value of the first row
+            return list(result.values())[0] if isinstance(result, dict) else result[0]
+        return None
+    
     # Bind helper methods to database object
     database.fetch_one = fetch_one
     database.fetch_all = fetch_all
+    database.fetch_val = fetch_val
     # Note: execute_and_get_id is already available on the database object
 
 async def create_guild_config_table():
@@ -1049,11 +1058,31 @@ async def get_guild_stats(guild_id: str, current_user: str = Depends(get_current
         stats = {}
         
         # Total members with XP
-        member_count = await database.fetch_one(
+        xp_member_count = await database.fetch_one(
             "SELECT COUNT(*) as count FROM xp_data WHERE guild_id = %s",
             (guild_id,)
         )
-        stats["total_members"] = member_count["count"] if member_count else 0
+        xp_members = xp_member_count["count"] if xp_member_count else 0
+        
+        # Try to get total server members from Discord API (fallback to XP members)
+        try:
+            bot_token = DISCORD_BOT_TOKEN.strip() if DISCORD_BOT_TOKEN else None
+            if bot_token:
+                headers = {"Authorization": f"Bot {bot_token}"}
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    # Get actual members list to count real members (more accurate than guild.member_count)
+                    response = await client.get(f"https://discord.com/api/v10/guilds/{guild_id}/members?limit=1000", headers=headers)
+                    if response.status_code == 200:
+                        members = response.json()
+                        # Filter out bots to get real member count
+                        real_members = [m for m in members if not m.get("user", {}).get("bot", False)]
+                        stats["total_members"] = len(real_members)
+                    else:
+                        stats["total_members"] = xp_members
+            else:
+                stats["total_members"] = xp_members
+        except Exception:
+            stats["total_members"] = xp_members
         
         # Total XP given
         total_xp = await database.fetch_one(
@@ -1071,11 +1100,22 @@ async def get_guild_stats(guild_id: str, current_user: str = Depends(get_current
         
         # Activity last 7 days
         week_ago = datetime.utcnow() - timedelta(days=7)
-        recent_activity = await database.fetch_one(
-            "SELECT COUNT(*) as count FROM xp_history WHERE guild_id = %s AND timestamp >= %s",
-            (guild_id, week_ago)
-        )
-        stats["recent_activity"] = recent_activity["count"] if recent_activity else 0
+        try:
+            recent_activity = await database.fetch_one(
+                "SELECT COUNT(*) as count FROM xp_history WHERE guild_id = %s AND timestamp >= %s",
+                (guild_id, week_ago)
+            )
+            if recent_activity and recent_activity["count"] is not None:
+                stats["recent_activity"] = recent_activity["count"]
+            else:
+                # Fallback: check recent updates in xp_data table
+                fallback_activity = await database.fetch_one(
+                    "SELECT COUNT(*) as count FROM xp_data WHERE guild_id = %s AND updated_at >= %s",
+                    (guild_id, week_ago)
+                )
+                stats["recent_activity"] = fallback_activity["count"] if fallback_activity else 0
+        except Exception:
+            stats["recent_activity"] = 0
         
         # Top 5 users
         top_users = await database.fetch_all(
@@ -1093,6 +1133,154 @@ async def get_guild_stats(guild_id: str, current_user: str = Depends(get_current
         return stats
         
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guild/{guild_id}/bulk")
+async def get_guild_bulk_data(guild_id: str, current_user: str = Depends(get_current_user)):
+    """Get multiple guild data in one request to reduce API calls"""
+    try:
+        # Verify user has access to this guild (cached)
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        print(f"🔄 Loading bulk data for guild {guild_id}")
+        
+        # Load all data in parallel
+        async def get_config():
+            try:
+                config_data = await database.fetch_one("SELECT * FROM guild_config WHERE guild_id = %s", (guild_id,))
+                xp_config_data = await database.fetch_one("SELECT * FROM xp_config WHERE guild_id = %s", (guild_id,))
+                default_config = {
+                    "guild_id": guild_id,
+                    "xp_enabled": True,
+                    "xp_multiplier": 1.0,
+                    "level_up_message": True,
+                    "level_up_channel": None,
+                    "xp_channel": None
+                }
+                if config_data:
+                    default_config.update(dict(config_data))
+                if xp_config_data:
+                    default_config["xp_channel"] = str(xp_config_data[1]) if xp_config_data[1] else None
+                return default_config
+            except Exception as e:
+                print(f"Bulk config error: {e}")
+                return {"guild_id": guild_id, "xp_enabled": True}
+        
+        async def get_channels():
+            try:
+                bot_token = DISCORD_BOT_TOKEN.strip()
+                headers = {"Authorization": f"Bot {bot_token}"}
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(f"https://discord.com/api/v10/guilds/{guild_id}/channels", headers=headers)
+                    if response.status_code == 200:
+                        channels = response.json()
+                        text_channels = [{"id": ch["id"], "name": ch["name"]} for ch in channels if ch["type"] == 0]
+                        return text_channels
+                return []
+            except Exception as e:
+                print(f"Bulk channels error: {e}")
+                return []
+        
+        async def get_stats():
+            try:
+                print(f"🔍 Getting stats for guild_id: {guild_id}")
+                
+                # Get XP-active members count (users who have earned XP)
+                xp_members = await database.fetch_val("SELECT COUNT(DISTINCT user_id) FROM xp_data WHERE guild_id = %s", (guild_id,))
+                print(f"📊 XP-active members query result: {xp_members}")
+                
+                # Try to get total server members from Discord API (fallback to XP members if API fails)
+                try:
+                    bot_token = DISCORD_BOT_TOKEN.strip()
+                    headers = {"Authorization": f"Bot {bot_token}"}
+                    async with httpx.AsyncClient(timeout=8.0) as client:
+                        # Get actual members list to count real members (more accurate than guild.member_count)
+                        response = await client.get(f"https://discord.com/api/v10/guilds/{guild_id}/members?limit=1000", headers=headers)
+                        if response.status_code == 200:
+                            members = response.json()
+                            # Filter out bots to get real member count
+                            real_members = [m for m in members if not m.get("user", {}).get("bot", False)]
+                            total_members = len(real_members)
+                            print(f"📊 Total server members from Discord members API: {total_members} (fetched {len(members)} total, {len(real_members)} non-bot)")
+                        else:
+                            total_members = xp_members
+                            print(f"📊 Discord members API failed, using XP members: {total_members}")
+                except Exception as api_error:
+                    total_members = xp_members
+                    print(f"📊 Discord API failed, using XP members: {total_members} - Error: {api_error}")
+                
+                total_xp = await database.fetch_val("SELECT COALESCE(SUM(xp), 0) FROM xp_data WHERE guild_id = %s", (guild_id,))
+                print(f"📊 Total XP query result: {total_xp}")
+                
+                avg_level = await database.fetch_val("SELECT COALESCE(AVG(level), 0) FROM xp_data WHERE guild_id = %s", (guild_id,))
+                print(f"📊 Average level query result: {avg_level}")
+                
+                # Check for recent activity in xp_history table first, fallback to xp_data updates
+                week_ago = datetime.utcnow() - timedelta(days=7)
+                try:
+                    recent_activity = await database.fetch_val(
+                        "SELECT COUNT(*) FROM xp_history WHERE guild_id = %s AND timestamp >= %s", 
+                        (guild_id, week_ago)
+                    )
+                    if recent_activity is None:
+                        # Fallback: check recent updates in xp_data table
+                        recent_activity = await database.fetch_val(
+                            "SELECT COUNT(*) FROM xp_data WHERE guild_id = %s AND updated_at >= %s", 
+                            (guild_id, week_ago)
+                        )
+                        print(f"📊 Recent activity (from xp_data updates): {recent_activity}")
+                    else:
+                        print(f"📊 Recent activity (from xp_history): {recent_activity}")
+                except Exception as activity_error:
+                    recent_activity = 0
+                    print(f"📊 Recent activity query failed: {activity_error}")
+                
+                top_users = await database.fetch_all("SELECT user_id, xp, level FROM xp_data WHERE guild_id = %s ORDER BY xp DESC LIMIT 5", (guild_id,))
+                print(f"📊 Top users query result: {top_users}")
+                
+                # Debug info
+                total_rows = await database.fetch_val("SELECT COUNT(*) FROM xp_data")
+                print(f"📊 Total rows in xp_data table: {total_rows}")
+                guild_rows = await database.fetch_val("SELECT COUNT(*) FROM xp_data WHERE guild_id = %s", (guild_id,))
+                print(f"📊 XP data rows for guild {guild_id}: {guild_rows}")
+                
+                return {
+                    "total_members": total_members or 0,
+                    "total_xp": total_xp or 0,
+                    "average_level": round(avg_level, 1) if avg_level else 0,
+                    "recent_activity": recent_activity or 0,
+                    "top_users": [dict(user) for user in (top_users or [])]
+                }
+            except Exception as e:
+                print(f"Bulk stats error: {e}")
+                return {"total_members": 0, "total_xp": 0, "average_level": 0, "recent_activity": 0, "top_users": []}
+        
+        # Execute all requests in parallel
+        config_task = get_config()
+        channels_task = get_channels()
+        stats_task = get_stats()
+        
+        config, channels, stats = await asyncio.gather(config_task, channels_task, stats_task, return_exceptions=True)
+        
+        # Handle any exceptions
+        if isinstance(config, Exception):
+            config = {"guild_id": guild_id, "xp_enabled": True}
+        if isinstance(channels, Exception):
+            channels = []
+        if isinstance(stats, Exception):
+            stats = {"total_members": 0, "total_xp": 0, "average_level": 0, "recent_activity": 0, "top_users": []}
+        
+        print(f"✅ Bulk data loaded: {len(channels)} channels, {stats['total_members']} members")
+        
+        return {
+            "config": config,
+            "channels": channels,
+            "stats": stats
+        }
+        
+    except Exception as e:
+        print(f"Bulk data error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/guild/{guild_id}/channels")
@@ -1911,11 +2099,27 @@ async def language_test_page(request: Request):
     """Language test page - for testing language functionality"""
     return templates.TemplateResponse("language-test.html", {"request": request})
 
+# Add caching for guild access verification
+guild_access_cache = {}
+guild_access_cache_ttl = 300  # 5 minutes cache
+
 async def verify_guild_access(guild_id: str, current_user: str) -> bool:
-    """Verify user has access to a guild through Discord API or bot presence"""
+    """Verify user has access to a guild through Discord API or bot presence with caching"""
     try:
-        print(f"🔍 Verifying guild access for guild {guild_id}")
+        # Create cache key
         payload = jwt.decode(current_user, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        cache_key = f"{user_id}:{guild_id}"
+        
+        # Check cache first
+        current_time = datetime.now().timestamp()
+        if cache_key in guild_access_cache:
+            cached_result, cache_time = guild_access_cache[cache_key]
+            if current_time - cache_time < guild_access_cache_ttl:
+                print(f"✅ Using cached guild access for {guild_id}")
+                return cached_result
+        
+        print(f"🔍 Verifying guild access for guild {guild_id}")
         discord_token = payload.get("discord_token")
         print(f"🔍 Discord token available: {bool(discord_token)}")
         
@@ -1933,6 +2137,9 @@ async def verify_guild_access(guild_id: str, current_user: str) -> bool:
         
         result = has_user_access or has_bot_access
         print(f"🔍 Final access result: {result}")
+        
+        # Cache the result
+        guild_access_cache[cache_key] = (result, current_time)
         
         return result
     except Exception as e:
