@@ -286,6 +286,26 @@
                                             </button>
                                         </div>
                                     </div>
+
+                                    <!-- Level Roles Settings -->
+                                    <div class="settings-section">
+                                        <h4 class="section-title">
+                                            <i class="fas fa-medal me-2"></i>
+                                            Level Roles
+                                        </h4>
+                                        <div class="form-hint mb-3">Configure roles that are automatically assigned when users reach specific levels. Users will only receive the HIGHEST level role they qualify for. Use the sync button to update all existing users retroactively.</div>
+                                        
+                                        <div id="levelRolesList" class="level-roles-list">
+                                            <!-- Level roles will be populated here -->
+                                        </div>
+
+                                        <div class="form-group">
+                                            <button type="button" class="btn-secondary" id="addLevelRoleBtn">
+                                                <i class="fas fa-plus"></i>
+                                                Add Level Role
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <div class="form-actions">
@@ -1115,6 +1135,6 @@
         window.currentLang = "{{ current_lang }}";
         window.supportedLanguages = {{ supported_languages | tojson }};
     </script>
-    <script src="/static/dashboard.js"></script>
+    <script src="/static/dashboard.js?v={{ timestamp }}"></script>
 </body>
 </html>

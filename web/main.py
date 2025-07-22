@@ -97,6 +97,7 @@ async def lifespan(app: FastAPI):
     await create_welcome_config_table()
     await create_role_menu_tables()  # Add role menu tables
     await create_ticket_tables()  # Add ticket system tables
+    await create_level_roles_table()  # Add level roles table
     yield
     # Shutdown
     if database:
@@ -249,6 +250,9 @@ class ServerLogsSettings(BaseModel):
 class ModerationAction(BaseModel):
     action: str  # "warn", "timeout", "kick", "ban"
     user_id: str
+    reason: Optional[str] = "No reason provided"
+    duration: Optional[int] = None  # For timeout duration in minutes
+    channel_id: Optional[str] = None  # For sending log messages
 
 # Ticket System Models
 class TicketButton(BaseModel):
@@ -638,6 +642,29 @@ async def create_ticket_tables():
         return True
     except Exception as e:
         print(f"❌ Error creating ticket system tables: {e}")
+        return False
+
+async def create_level_roles_table():
+    """Create level_roles table if it doesn't exist"""
+    level_roles_table = """
+    CREATE TABLE IF NOT EXISTS level_roles (
+        guild_id BIGINT NOT NULL,
+        level INT NOT NULL,
+        role_id BIGINT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (guild_id, level),
+        INDEX idx_guild_level (guild_id, level),
+        INDEX idx_role (role_id)
+    )
+    """
+    
+    try:
+        await database.execute(level_roles_table)
+        print("✅ Level roles table created/verified")
+        return True
+    except Exception as e:
+        print(f"❌ Error creating level_roles table: {e}")
         return False
 
 async def migrate_welcome_config_table():
@@ -1127,10 +1154,15 @@ async def get_guild_stats(guild_id: str, current_user: str = Depends(get_current
         if top_users:
             for user in top_users:
                 user_dict = dict(user)
+                original_id = user_dict["user_id"]
                 user_dict["user_id"] = str(user_dict["user_id"])  # Convert to string for JavaScript
+                print(f"🔍 User ID conversion: {original_id} -> {user_dict['user_id']} (type: {type(user_dict['user_id'])})")
                 stats["top_users"].append(user_dict)
         
-        return stats
+        print(f"🔍 Final top_users before JSON response: {stats['top_users']}")
+        import json
+        from fastapi import Response
+        return Response(content=json.dumps(stats, default=str, ensure_ascii=False), media_type="application/json")
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1239,6 +1271,14 @@ async def get_guild_bulk_data(guild_id: str, current_user: str = Depends(get_cur
                 top_users = await database.fetch_all("SELECT user_id, xp, level FROM xp_data WHERE guild_id = %s ORDER BY xp DESC LIMIT 5", (guild_id,))
                 print(f"📊 Top users query result: {top_users}")
                 
+                # Convert top_users to ensure user_id is string for JavaScript compatibility
+                top_users_list = []
+                for user in (top_users or []):
+                    user_dict = dict(user)
+                    user_dict["user_id"] = str(user_dict["user_id"])  # Force conversion to string
+                    top_users_list.append(user_dict)
+                print(f"📊 Top users converted to strings: {top_users_list}")
+                
                 # Debug info
                 total_rows = await database.fetch_val("SELECT COUNT(*) FROM xp_data")
                 print(f"📊 Total rows in xp_data table: {total_rows}")
@@ -1250,18 +1290,36 @@ async def get_guild_bulk_data(guild_id: str, current_user: str = Depends(get_cur
                     "total_xp": total_xp or 0,
                     "average_level": round(avg_level, 1) if avg_level else 0,
                     "recent_activity": recent_activity or 0,
-                    "top_users": [dict(user) for user in (top_users or [])]
+                    "top_users": top_users_list
                 }
             except Exception as e:
                 print(f"Bulk stats error: {e}")
                 return {"total_members": 0, "total_xp": 0, "average_level": 0, "recent_activity": 0, "top_users": []}
         
+        async def get_level_roles():
+            try:
+                level_roles = await database.fetch_all(
+                    "SELECT guild_id, level, role_id FROM level_roles WHERE guild_id = %s ORDER BY level ASC",
+                    (guild_id,)
+                )
+                # Convert role_id to string for JavaScript compatibility
+                result = []
+                for lr in (level_roles or []):
+                    lr_dict = dict(lr)
+                    lr_dict["role_id"] = str(lr_dict["role_id"])
+                    result.append(lr_dict)
+                return result
+            except Exception as e:
+                print(f"Bulk level roles error: {e}")
+                return []
+        
         # Execute all requests in parallel
         config_task = get_config()
         channels_task = get_channels()
         stats_task = get_stats()
+        level_roles_task = get_level_roles()
         
-        config, channels, stats = await asyncio.gather(config_task, channels_task, stats_task, return_exceptions=True)
+        config, channels, stats, level_roles = await asyncio.gather(config_task, channels_task, stats_task, level_roles_task, return_exceptions=True)
         
         # Handle any exceptions
         if isinstance(config, Exception):
@@ -1270,13 +1328,16 @@ async def get_guild_bulk_data(guild_id: str, current_user: str = Depends(get_cur
             channels = []
         if isinstance(stats, Exception):
             stats = {"total_members": 0, "total_xp": 0, "average_level": 0, "recent_activity": 0, "top_users": []}
+        if isinstance(level_roles, Exception):
+            level_roles = []
         
-        print(f"✅ Bulk data loaded: {len(channels)} channels, {stats['total_members']} members")
+        print(f"✅ Bulk data loaded: {len(channels)} channels, {stats['total_members']} members, {len(level_roles)} level roles")
         
         return {
             "config": config,
             "channels": channels,
-            "stats": stats
+            "stats": stats,
+            "level_roles": level_roles
         }
         
     except Exception as e:
@@ -1731,6 +1792,224 @@ async def reset_server_xp(
         print(f"Reset XP traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Level Roles API Endpoints
+@app.get("/api/guild/{guild_id}/level-roles")
+async def get_level_roles(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get all level roles for a guild"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get level roles from database
+        level_roles = await database.fetch_all(
+            "SELECT guild_id, level, role_id FROM level_roles WHERE guild_id = %s ORDER BY level ASC",
+            (guild_id,)
+        )
+        
+        return {"level_roles": level_roles}
+        
+    except Exception as e:
+        print(f"Get level roles error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/guild/{guild_id}/level-roles")
+async def create_level_role(
+    guild_id: str,
+    request: dict,
+    current_user: str = Depends(get_current_user)
+):
+    """Create a new level role"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        level = int(request.get("level"))
+        role_id = int(request.get("role_id"))
+        
+        if level < 1:
+            raise HTTPException(status_code=400, detail="Level must be 1 or higher")
+        
+        # Insert or update level role
+        await database.execute(
+            """INSERT INTO level_roles (guild_id, level, role_id)
+               VALUES (%s, %s, %s)
+               ON DUPLICATE KEY UPDATE role_id = VALUES(role_id)""",
+            (guild_id, level, role_id)
+        )
+        
+        return {"success": True, "message": "Level role created successfully"}
+        
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid level or role_id format")
+    except Exception as e:
+        print(f"Create level role error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/guild/{guild_id}/level-roles/{level}")
+async def update_level_role(
+    guild_id: str,
+    level: int,
+    request: dict,
+    current_user: str = Depends(get_current_user)
+):
+    """Update an existing level role"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        new_level = int(request.get("level"))
+        role_id = int(request.get("role_id"))
+        
+        if new_level < 1:
+            raise HTTPException(status_code=400, detail="Level must be 1 or higher")
+        
+        # Check if level role exists
+        existing = await database.fetch_one(
+            "SELECT level FROM level_roles WHERE guild_id = %s AND level = %s",
+            (guild_id, level)
+        )
+        
+        if not existing:
+            raise HTTPException(status_code=404, detail="Level role not found")
+        
+        # Delete old entry and create new one if level changed
+        if new_level != level:
+            await database.execute(
+                "DELETE FROM level_roles WHERE guild_id = %s AND level = %s",
+                (guild_id, level)
+            )
+            await database.execute(
+                """INSERT INTO level_roles (guild_id, level, role_id)
+                   VALUES (%s, %s, %s)
+                   ON DUPLICATE KEY UPDATE role_id = VALUES(role_id)""",
+                (guild_id, new_level, role_id)
+            )
+        else:
+            # Just update the role_id
+            await database.execute(
+                "UPDATE level_roles SET role_id = %s WHERE guild_id = %s AND level = %s",
+                (role_id, guild_id, level)
+            )
+        
+        return {"success": True, "message": "Level role updated successfully"}
+        
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid level or role_id format")
+    except Exception as e:
+        print(f"Update level role error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/guild/{guild_id}/level-roles/{level}")
+async def delete_level_role(
+    guild_id: str,
+    level: int,
+    current_user: str = Depends(get_current_user)
+):
+    """Delete a level role"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Check if level role exists
+        existing = await database.fetch_one(
+            "SELECT level FROM level_roles WHERE guild_id = %s AND level = %s",
+            (guild_id, level)
+        )
+        
+        if not existing:
+            raise HTTPException(status_code=404, detail="Level role not found")
+        
+        # Delete level role
+        await database.execute(
+            "DELETE FROM level_roles WHERE guild_id = %s AND level = %s",
+            (guild_id, level)
+        )
+        
+        return {"success": True, "message": "Level role deleted successfully"}
+        
+    except Exception as e:
+        print(f"Delete level role error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/guild/{guild_id}/level-roles/sync")
+async def sync_level_roles(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Sync level roles for all users (retroactive assignment with highest role only)"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get all level roles for this guild
+        level_roles = await database.fetch_all(
+            "SELECT level, role_id FROM level_roles WHERE guild_id = %s ORDER BY level DESC",
+            (guild_id,)
+        )
+        
+        if not level_roles:
+            return {"success": True, "message": "No level roles configured", "updated_users": 0}
+        
+        # Get all users with XP in this guild
+        users = await database.fetch_all(
+            "SELECT user_id, level FROM xp_data WHERE guild_id = %s AND level > 0",
+            (guild_id,)
+        )
+        
+        if not users:
+            return {"success": True, "message": "No users with XP found", "updated_users": 0}
+        
+        # For now, return information about what would be synced
+        # The actual sync should be done using the Discord bot command /synclevelroles
+        user_updates = {}
+        for user_row in users:
+            user_id = user_row["user_id"]
+            user_level = user_row["level"]
+            
+            # Find the highest level role this user should have
+            highest_role_level = 0
+            highest_role_id = None
+            
+            for role_row in level_roles:
+                role_level = role_row["level"]
+                role_id = role_row["role_id"]
+                
+                if user_level >= role_level and role_level > highest_role_level:
+                    highest_role_level = role_level
+                    highest_role_id = role_id
+            
+            if highest_role_id:
+                user_updates[str(user_id)] = {
+                    "current_level": user_level,
+                    "highest_role_level": highest_role_level,
+                    "highest_role_id": highest_role_id
+                }
+        
+        return {
+            "success": True,
+            "message": f"Sync analysis completed. Use Discord command '/synclevelroles confirm:CONFIRM' to perform the actual sync.",
+            "analysis": {
+                "total_users": len(users),
+                "users_to_update": len(user_updates),
+                "level_roles_configured": len(level_roles)
+            },
+            "note": "To perform the actual role sync, use the Discord slash command '/synclevelroles confirm:CONFIRM' in your server."
+        }
+        
+    except Exception as e:
+        print(f"Sync level roles analysis error: {e}")
+        import traceback
+        print(f"Sync traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Role Menu Endpoints
 @app.get("/api/guild/{guild_id}/role-menus")
 async def get_role_menus(
@@ -2026,6 +2305,9 @@ async def get_guild_roles(
             
             if response.status_code == 200:
                 roles = response.json()
+                # Convert role IDs to strings for JavaScript compatibility
+                for role in roles:
+                    role["id"] = str(role["id"])
                 # Sort roles by position (higher position = higher in hierarchy)
                 roles.sort(key=lambda r: r.get('position', 0), reverse=True)
                 return {"roles": roles}
@@ -2081,11 +2363,13 @@ async def dashboard(request: Request):
     lang_data = load_language_file(lang)
     
     # Create response with language data
+    import time
     response = templates.TemplateResponse("dashboard.html", {
         "request": request,
         "lang_data": lang_data,
         "current_lang": lang,
-        "supported_languages": SUPPORTED_LANGUAGES
+        "supported_languages": SUPPORTED_LANGUAGES,
+        "timestamp": int(time.time())  # Add timestamp for cache busting
     })
     
     # Set language cookie if it was changed via query parameter
@@ -3251,7 +3535,7 @@ async def get_guild_members(
                 for member in members:
                     if not member["user"].get("bot", False):
                         member_list.append({
-                            "id": member["user"]["id"],
+                            "id": str(member["user"]["id"]),  # Convert to string for JavaScript compatibility
                             "username": member["user"]["username"],
                             "display_name": member.get("nick", member["user"]["username"]),
                             "avatar": member["user"].get("avatar"),
@@ -3580,6 +3864,8 @@ async def get_guild_moderation_history(
 ):
     """Get recent moderation history for the guild"""
     try:
+        print(f"🔍 Getting moderation history for guild {guild_id}")
+        
         # Verify user has access
         if not await verify_guild_access(guild_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this guild")
@@ -3589,12 +3875,14 @@ async def get_guild_moderation_history(
             "SELECT user_id, moderator_id, reason, timestamp, 'warning' as action_type FROM warnings WHERE guild_id = %s ORDER BY timestamp DESC LIMIT 10",
             (guild_id,)
         )
+        print(f"📝 Found {len(warnings) if warnings else 0} warnings in database")
         
         # Get recent timeouts
         timeouts = await database.fetch_all(
             "SELECT user_id, moderator_id, duration, reason, timestamp, 'timeout' as action_type FROM timeouts WHERE guild_id = %s ORDER BY timestamp DESC LIMIT 10",
             (guild_id,)
         )
+        print(f"📝 Found {len(timeouts) if timeouts else 0} timeouts in database")
         
         # Combine and sort by timestamp
         history = []
@@ -3620,6 +3908,7 @@ async def get_guild_moderation_history(
         # Sort by timestamp (most recent first)
         history.sort(key=lambda x: x["created_at"], reverse=True)
         
+        print(f"📝 Returning {len(history)} total moderation actions")
         return {"history": history[:10]}  # Return top 10 most recent
     
     except Exception as e:

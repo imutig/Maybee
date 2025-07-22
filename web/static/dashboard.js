@@ -382,12 +382,16 @@ class Dashboard {
             this.guildConfig = bulkData.config;
             this.channels = bulkData.channels;
             this.guildStats = bulkData.stats;
+            this.levelRoles = bulkData.level_roles || [];
             
             // Update config form
             this.updateConfigForm(bulkData.config);
             
             // Update channel selectors
             this.updateChannelSelectors(bulkData.channels);
+            
+            // Update level roles display
+            await this.updateLevelRolesDisplay();
             
             // Load members data to properly display user names in stats
             console.log('🔄 Loading members data for user display names...');
@@ -406,6 +410,7 @@ class Dashboard {
                 channels: true,
                 config: true,
                 stats: true,
+                level_roles: true,
                 roles: false,
                 categories: false,
                 members: true,
@@ -484,9 +489,13 @@ class Dashboard {
                 topUsersTable.innerHTML = '';
                 for (const [index, user] of stats.top_users.entries()) {
                     console.log(`Processing user ${index + 1}:`, user);
+                    console.log(`🔍 user.user_id:`, user.user_id, 'type:', typeof user.user_id);
                     const row = document.createElement('tr');
-                    const displayName = await this.getUserDisplayNameAsync(user.user_id);
-                    console.log(`User ${index + 1}: ID=${user.user_id}, Name=${displayName}`);
+                    // Ensure user_id stays as string
+                    const userId = String(user.user_id);
+                    console.log(`🔍 After String conversion:`, userId, 'type:', typeof userId);
+                    const displayName = await this.getUserDisplayNameAsync(userId);
+                    console.log(`User ${index + 1}: ID=${userId}, Name=${displayName}`);
                     row.innerHTML = `
                         <td><span class="badge bg-primary">#${index + 1}</span></td>
                         <td>${displayName}</td>
@@ -537,6 +546,303 @@ class Dashboard {
         });
     }
 
+    // Level Roles Management
+    async updateLevelRolesDisplay() {
+        console.log('🎖️ Updating level roles display with:', this.levelRoles);
+        
+        const levelRolesList = document.getElementById('levelRolesList');
+        if (!levelRolesList) return;
+        
+        // Load roles if not already loaded
+        if (!this.roles) {
+            console.log('🔄 Loading roles for level roles display...');
+            await this.loadGuildRoles();
+        }
+        
+        levelRolesList.innerHTML = '';
+        
+        if (!this.levelRoles || this.levelRoles.length === 0) {
+            levelRolesList.innerHTML = `
+                <div class="level-role-empty">
+                    <i class="fas fa-medal"></i>
+                    <p>No level roles configured yet. Click "Add Level Role" to get started!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        this.levelRoles.forEach(levelRole => {
+            this.addLevelRoleItem(levelRole);
+        });
+    }
+
+    addLevelRoleItem(levelRole = null) {
+        const levelRolesList = document.getElementById('levelRolesList');
+        const levelRoleId = levelRole ? levelRole.level : `new-${Date.now()}`;
+        const isNew = !levelRole;
+        
+        const levelRoleItem = document.createElement('div');
+        levelRoleItem.className = 'level-role-item';
+        levelRoleItem.setAttribute('data-level-role-id', levelRoleId);
+        
+        if (isNew) {
+            // Edit mode for new level role
+            levelRoleItem.innerHTML = `
+                <div class="level-role-grid">
+                    <input type="number" class="level-role-level" 
+                           placeholder="Level" min="1" value="">
+                    <select class="level-role-role">
+                        <option value="">Select a role...</option>
+                    </select>
+                </div>
+                <div class="level-role-actions">
+                    <button class="level-role-btn save" onclick="dashboard.saveLevelRole('${levelRoleId}')">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="level-role-btn delete" onclick="dashboard.handleRemoveLevelRole('${levelRoleId}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            // Populate roles dropdown
+            const roleSelect = levelRoleItem.querySelector('.level-role-role');
+            this.loadRolesForLevelRole(roleSelect);
+        } else {
+            // Display mode for existing level role
+            const roleName = this.getRoleName(levelRole.role_id);
+            levelRoleItem.innerHTML = `
+                <div class="level-role-display">
+                    <div class="level-role-badge">
+                        <i class="fas fa-star"></i>
+                        ${levelRole.level}
+                    </div>
+                    <div class="level-role-name">${roleName}</div>
+                </div>
+                <div class="level-role-actions">
+                    <button class="level-role-btn" onclick="dashboard.editLevelRole('${levelRoleId}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="level-role-btn delete" onclick="dashboard.deleteLevelRole('${levelRoleId}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+        }
+        
+        levelRolesList.appendChild(levelRoleItem);
+        
+        // Clear empty state if it exists
+        const emptyState = levelRolesList.querySelector('.level-role-empty');
+        if (emptyState) {
+            emptyState.remove();
+        }
+    }
+
+    async loadRolesForLevelRole(roleSelect, selectedRoleId = null) {
+        if (!this.currentGuild) {
+            console.log('❌ No current guild for level role loading');
+            return;
+        }
+
+        try {
+            console.log(`📡 Fetching roles for level role dropdown in guild ${this.currentGuild}`);
+            const response = await this.apiCall(`/guild/${this.currentGuild}/roles`);
+            const roles = response.roles || [];
+            console.log(`✅ Received ${roles.length} roles for level role dropdown`);
+            
+            roleSelect.innerHTML = '<option value="">Select a role...</option>';
+            
+            roles.forEach(role => {
+                if (role.name !== '@everyone' && !role.managed) {  // Skip @everyone and bot roles
+                    const option = document.createElement('option');
+                    option.value = role.id;
+                    option.textContent = role.name;
+                    
+                    if (selectedRoleId && String(role.id) === String(selectedRoleId)) {
+                        option.selected = true;
+                        console.log(`✅ Pre-selected role: ${role.name} (${role.id})`);
+                    }
+                    roleSelect.appendChild(option);
+                }
+            });
+            console.log(`✅ Added roles to level role dropdown`);
+        } catch (error) {
+            console.error(`❌ Failed to load roles for level role dropdown:`, error);
+            roleSelect.innerHTML = '<option value="">Error loading roles...</option>';
+        }
+    }
+
+    getRoleName(roleId) {
+        if (!this.roles) return `Role ID: ${roleId}`;
+        const role = this.roles.find(r => r.id === roleId);
+        if (role) {
+            return `${role.name} <small class="text-muted">(${roleId})</small>`;
+        }
+        return `Role ID: ${roleId}`;
+    }
+
+    async saveLevelRole(levelRoleId) {
+        const levelRoleItem = document.querySelector(`[data-level-role-id="${levelRoleId}"]`);
+        const levelInput = levelRoleItem.querySelector('.level-role-level');
+        const roleSelect = levelRoleItem.querySelector('.level-role-role');
+        
+        const level = parseInt(levelInput.value);
+        const roleId = roleSelect.value;
+        
+        if (!level || level < 1) {
+            this.showError('Level must be 1 or higher');
+            return;
+        }
+        
+        if (!roleId) {
+            this.showError('Please select a role');
+            return;
+        }
+        
+        try {
+            const isNew = levelRoleId.startsWith('new-');
+            
+            if (isNew) {
+                // Create new level role
+                await this.apiCall(`/guild/${this.currentGuild}/level-roles`, 'POST', {
+                    level: level,
+                    role_id: roleId
+                });
+                this.showSuccess('Level role created successfully!');
+            } else {
+                // Update existing level role - find the original level
+                const originalLevelRole = this.levelRoles.find(lr => lr.level == levelRoleId || lr.guild_id + '_' + lr.level == levelRoleId);
+                const originalLevel = originalLevelRole ? originalLevelRole.level : levelRoleId;
+                
+                await this.apiCall(`/guild/${this.currentGuild}/level-roles/${originalLevel}`, 'PUT', {
+                    level: level,
+                    role_id: roleId
+                });
+                this.showSuccess('Level role updated successfully!');
+            }
+            
+            // Reload level roles
+            await this.loadLevelRoles();
+            
+        } catch (error) {
+            console.error('Failed to save level role:', error);
+            this.showError('Failed to save level role: ' + (error.detail || error.message || 'Unknown error'));
+        }
+    }
+
+    editLevelRole(levelRoleId) {
+        const levelRole = this.levelRoles.find(lr => lr.level == levelRoleId);
+        if (!levelRole) return;
+        
+        const levelRoleItem = document.querySelector(`[data-level-role-id="${levelRoleId}"]`);
+        
+        // Switch to edit mode
+        levelRoleItem.innerHTML = `
+            <div class="level-role-grid">
+                <input type="number" class="level-role-level" 
+                       placeholder="Level" min="1" value="${levelRole.level}">
+                <select class="level-role-role">
+                    <option value="">Select a role...</option>
+                </select>
+            </div>
+            <div class="level-role-actions">
+                <button class="level-role-btn save" onclick="dashboard.saveLevelRole('${levelRoleId}')">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="level-role-btn delete" onclick="dashboard.cancelEditLevelRole('${levelRoleId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        // Populate roles dropdown
+        const roleSelect = levelRoleItem.querySelector('.level-role-role');
+        this.loadRolesForLevelRole(roleSelect, levelRole.role_id);
+    }
+
+    cancelEditLevelRole(levelRoleId) {
+        const levelRole = this.levelRoles.find(lr => lr.id == levelRoleId);
+        if (!levelRole) return;
+        
+        // Recreate the display mode
+        const levelRoleItem = document.querySelector(`[data-level-role-id="${levelRoleId}"]`);
+        const roleName = this.getRoleName(levelRole.role_id);
+        
+        levelRoleItem.innerHTML = `
+            <div class="level-role-display">
+                <div class="level-role-badge">
+                    <i class="fas fa-star"></i>
+                    ${levelRole.level}
+                </div>
+                <div class="level-role-name">${roleName}</div>
+            </div>
+            <div class="level-role-actions">
+                <button class="level-role-btn" onclick="dashboard.editLevelRole('${levelRoleId}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="level-role-btn delete" onclick="dashboard.deleteLevelRole('${levelRoleId}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+    }
+
+    async deleteLevelRole(levelRoleId) {
+        if (!confirm('Are you sure you want to delete this level role?')) return;
+        
+        try {
+            // Find the level for this level role
+            const levelRole = this.levelRoles.find(lr => lr.level == levelRoleId || lr.guild_id + '_' + lr.level == levelRoleId);
+            const level = levelRole ? levelRole.level : levelRoleId;
+            
+            await this.apiCall(`/guild/${this.currentGuild}/level-roles/${level}`, 'DELETE');
+            this.showSuccess('Level role deleted successfully!');
+            
+            // Reload level roles
+            await this.loadLevelRoles();
+            
+        } catch (error) {
+            console.error('Failed to delete level role:', error);
+            this.showError('Failed to delete level role: ' + (error.detail || error.message || 'Unknown error'));
+        }
+    }
+
+    // Wrapper function to handle async removeLevelRoleItem from onclick
+    handleRemoveLevelRole(levelRoleId) {
+        this.removeLevelRoleItem(levelRoleId).catch(error => {
+            console.error('Failed to remove level role item:', error);
+            this.showError('Failed to remove level role: ' + (error.message || 'Unknown error'));
+        });
+    }
+
+    async removeLevelRoleItem(levelRoleId) {
+        const levelRoleItem = document.querySelector(`[data-level-role-id="${levelRoleId}"]`);
+        if (levelRoleItem) {
+            levelRoleItem.remove();
+        }
+        
+        // Show empty state if no items left
+        const levelRolesList = document.getElementById('levelRolesList');
+        if (levelRolesList.children.length === 0) {
+            await this.updateLevelRolesDisplay();
+        }
+    }
+
+    async loadLevelRoles() {
+        if (!this.currentGuild) return;
+        
+        try {
+            const response = await this.apiCall(`/guild/${this.currentGuild}/level-roles`);
+            this.levelRoles = response.level_roles || [];
+            await this.updateLevelRolesDisplay();
+        } catch (error) {
+            console.error('Failed to load level roles:', error);
+            this.levelRoles = [];
+            await this.updateLevelRolesDisplay();
+        }
+    }
+
     // Helper function to get user display name from user ID
     async getUserDisplayNameAsync(userId) {
         console.log('Getting display name for user ID:', userId, typeof userId);
@@ -563,7 +869,9 @@ class Dashboard {
         // If not found in members, try to get user info from API
         try {
             console.log(`Member not found locally, trying API for ID: ${userId}`);
-            const userInfo = await this.apiCall(`/user/${userId}`);
+            // Ensure userId is treated as string to prevent precision loss
+            const userIdStr = String(userId);
+            const userInfo = await this.apiCall(`/user/${userIdStr}`);
             if (userInfo && (userInfo.username || userInfo.display_name)) {
                 const displayName = userInfo.display_name || userInfo.username;
                 console.log(`Found user via API: ${displayName} for ID: ${userId}`);
@@ -2056,7 +2364,13 @@ class Dashboard {
     async loadXPSettings() {
         await this.loadGuildConfig();
         await this.loadGuildChannels();
+        await this.loadGuildRoles();  // Add this to load roles for level roles dropdown
         this.populateXPSettings();
+        
+        // Mark as loaded
+        if (this.dataLoaded) {
+            this.dataLoaded.roles = true;
+        }
     }
 
     async loadModerationData() {
@@ -3022,6 +3336,20 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             console.log('✅ Bootstrap tab listener added');
         }
+        
+        // Listen for XP settings tab to load roles for level roles
+        const xpTab = document.getElementById('xp-settings');
+        if (xpTab) {
+            xpTab.addEventListener('shown.bs.tab', async () => {
+                console.log('🔄 XP settings tab shown - loading roles for level roles');
+                if (!dashboard.roles) {
+                    await dashboard.loadGuildRoles();
+                }
+                // Update level roles display after roles are loaded
+                await dashboard.updateLevelRolesDisplay();
+            });
+            console.log('✅ XP tab listener added');
+        }
     }, 200);
     
     // Make setupNav globally available for debugging
@@ -3063,6 +3391,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetXPBtn = document.getElementById('resetXPBtn');
     if (resetXPBtn) {
         resetXPBtn.addEventListener('click', () => dashboard.resetServerXP());
+    }
+    
+    // Setup add level role button
+    const addLevelRoleBtn = document.getElementById('addLevelRoleBtn');
+    if (addLevelRoleBtn) {
+        addLevelRoleBtn.addEventListener('click', () => dashboard.addLevelRoleItem());
     }
     
     // Setup create role menu button

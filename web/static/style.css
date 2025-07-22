@@ -3180,6 +3180,169 @@ body > .modal-overlay {
     box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
 }
 
+/* Level Roles Styles */
+.level-roles-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.level-role-item {
+    background: var(--surface-lighter);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    transition: var(--transition-fast);
+}
+
+.level-role-item:hover {
+    border-color: var(--primary-yellow);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+.level-role-grid {
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    gap: var(--spacing-md);
+    align-items: center;
+    flex: 1;
+}
+
+.level-role-level {
+    background: var(--surface-dark);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    width: 100%;
+    min-width: 80px;
+}
+
+.level-role-level:focus {
+    outline: none;
+    border-color: var(--primary-yellow);
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
+}
+
+.level-role-role {
+    background: var(--surface-dark);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    width: 100%;
+}
+
+.level-role-role:focus {
+    outline: none;
+    border-color: var(--primary-yellow);
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
+}
+
+.level-role-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.level-role-btn {
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    transition: var(--transition-fast);
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+}
+
+.level-role-btn:hover {
+    border-color: var(--primary-yellow);
+    color: var(--primary-yellow);
+    transform: scale(1.05);
+}
+
+.level-role-btn.save {
+    color: var(--success);
+    border-color: var(--success);
+}
+
+.level-role-btn.save:hover {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.level-role-btn.delete {
+    color: var(--error);
+    border-color: var(--error);
+}
+
+.level-role-btn.delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+}
+
+.level-role-display {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex: 1;
+}
+
+.level-role-badge {
+    background: var(--primary-yellow);
+    color: var(--background-dark);
+    border-radius: 20px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.level-role-name {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.level-role-empty {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+/* Responsive adjustments for level roles */
+@media (max-width: 768px) {
+    .level-role-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+    }
+    
+    .level-role-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .level-role-display {
+        justify-content: space-between;
+    }
+}
+
 /* Responsive Design for Role Menus */
 @media (max-width: 768px) {
     .role-menu-header {
