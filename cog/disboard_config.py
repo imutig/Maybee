@@ -68,14 +68,15 @@ class DisboardConfig(commands.Cog):
             reminder_channel = channel or interaction.channel
             
             # Check if configuration already exists
-            existing_config = await self.bot.db.fetchone(
+            existing_config = await self.bot.db.query(
                 "SELECT * FROM disboard_config WHERE guild_id = %s",
-                (guild_id,)
+                (guild_id,),
+                fetchone=True
             )
             
             if existing_config:
                 # Update existing configuration
-                await self.bot.db.execute(
+                await self.bot.db.query(
                     """UPDATE disboard_config 
                        SET reminder_channel_id = %s, bump_role_id = %s, updated_at = %s
                        WHERE guild_id = %s""",
@@ -84,7 +85,7 @@ class DisboardConfig(commands.Cog):
                 action = _(guild_id, "commands.disboard.setup_updated")
             else:
                 # Create new configuration
-                await self.bot.db.execute(
+                await self.bot.db.query(
                     """INSERT INTO disboard_config 
                        (guild_id, reminder_channel_id, bump_role_id, created_at, updated_at)
                        VALUES (%s, %s, %s, %s, %s)""",
@@ -135,9 +136,10 @@ class DisboardConfig(commands.Cog):
         """Show current Disboard configuration status"""
         try:
             # Get configuration
-            config = await self.bot.db.fetchone(
+            config = await self.bot.db.query(
                 "SELECT * FROM disboard_config WHERE guild_id = %s",
-                (guild_id,)
+                (guild_id,),
+                fetchone=True
             )
             
             if not config:
@@ -171,9 +173,10 @@ class DisboardConfig(commands.Cog):
             role_status = bump_role.mention if bump_role else "❌ Aucun rôle configuré"
             
             # Get bump statistics
-            bump_stats = await self.bot.db.fetchone(
+            bump_stats = await self.bot.db.query(
                 "SELECT COUNT(*) as total_bumps, MAX(bump_time) as last_bump FROM disboard_bumps WHERE guild_id = %s",
-                (guild_id,)
+                (guild_id,),
+                fetchone=True
             )
             
             # Create status embed
@@ -232,7 +235,7 @@ class DisboardConfig(commands.Cog):
         """Reset Disboard configuration for the server"""
         try:
             # Delete configuration
-            await self.bot.db.execute(
+            await self.bot.db.query(
                 "DELETE FROM disboard_config WHERE guild_id = %s",
                 (guild_id,)
             )

@@ -93,15 +93,16 @@ class DisboardReminder(commands.Cog):
             
             # Get or create bump record
             logger.debug(f"📊 Recherche du dernier bump pour le serveur {guild.id}")
-            existing_bump = await self.bot.db.fetchone(
+            existing_bump = await self.bot.db.query(
                 "SELECT * FROM disboard_bumps WHERE guild_id = %s ORDER BY bump_time DESC LIMIT 1",
-                (guild.id,)
+                (guild.id,),
+                fetchone=True
             )
             
             if existing_bump:
                 # Update existing record
                 logger.debug(f"📝 Mise à jour du bump existant (ID: {existing_bump['id']}) - Ancien count: {existing_bump['bumps_count']}")
-                await self.bot.db.execute(
+                await self.bot.db.query(
                     """UPDATE disboard_bumps 
                        SET bumper_id = %s, bumper_name = %s, channel_id = %s, bump_time = %s, 
                            bumps_count = bumps_count + 1, updated_at = %s
@@ -114,7 +115,7 @@ class DisboardReminder(commands.Cog):
             else:
                 # Create new record
                 logger.debug(f"📝 Création d'un nouveau bump pour le serveur {guild.id}")
-                await self.bot.db.execute(
+                await self.bot.db.query(
                     """INSERT INTO disboard_bumps 
                        (guild_id, bumper_id, bumper_name, channel_id, bump_time, bumps_count, created_at, updated_at)
                        VALUES (%s, %s, %s, %s, %s, 1, %s, %s)""",
@@ -154,9 +155,10 @@ class DisboardReminder(commands.Cog):
             
             # Get server configuration
             logger.debug(f"🔧 Récupération de la configuration du serveur {guild.id}")
-            config = await self.bot.db.fetchone(
+            config = await self.bot.db.query(
                 "SELECT bump_role_id FROM disboard_config WHERE guild_id = %s",
-                (guild.id,)
+                (guild.id,),
+                fetchone=True
             )
             
             if not config or not config['bump_role_id']:
@@ -260,7 +262,7 @@ class DisboardReminder(commands.Cog):
                 return
             
             parts = custom_id.split("_")
-            if len(parts) != 4:
+            if len(parts) != 5:
                 return
             
             action = parts[2]
@@ -280,9 +282,10 @@ class DisboardReminder(commands.Cog):
             if not guild or guild.id != guild_id:
                 return
             
-            config = await self.bot.db.fetchone(
+            config = await self.bot.db.query(
                 "SELECT bump_role_id FROM disboard_config WHERE guild_id = %s",
-                (guild_id,)
+                (guild_id,),
+                fetchone=True
             )
             
             if not config or not config['bump_role_id']:
@@ -367,13 +370,14 @@ class DisboardReminder(commands.Cog):
             reminder_threshold = current_time - timedelta(hours=self.reminder_interval)
             
             # Get servers that need reminders
-            servers_needing_reminders = await self.bot.db.fetchall(
+            servers_needing_reminders = await self.bot.db.query(
                 """SELECT DISTINCT guild_id, 
                           (SELECT channel_id FROM disboard_bumps WHERE guild_id = db.guild_id ORDER BY bump_time DESC LIMIT 1) as channel_id,
                           (SELECT bump_time FROM disboard_bumps WHERE guild_id = db.guild_id ORDER BY bump_time DESC LIMIT 1) as last_bump
                    FROM disboard_bumps db
                    WHERE bump_time < %s""",
-                (reminder_threshold,)
+                (reminder_threshold,),
+                fetchall=True
             )
             
             for server_data in servers_needing_reminders:
@@ -385,9 +389,10 @@ class DisboardReminder(commands.Cog):
                     continue
                 
                 # Check if reminder was already sent recently
-                last_reminder = await self.bot.db.fetchone(
+                last_reminder = await self.bot.db.query(
                     "SELECT reminder_time FROM disboard_reminders WHERE guild_id = %s ORDER BY reminder_time DESC LIMIT 1",
-                    (guild_id,)
+                    (guild_id,),
+                    fetchone=True
                 )
                 
                 if last_reminder and (current_time - last_reminder['reminder_time']).total_seconds() < 3600:  # 1 hour cooldown
@@ -411,9 +416,10 @@ class DisboardReminder(commands.Cog):
                 return
             
             # Get server configuration for bump role
-            config = await self.bot.db.fetchone(
+            config = await self.bot.db.query(
                 "SELECT bump_role_id FROM disboard_config WHERE guild_id = %s",
-                (guild_id,)
+                (guild_id,),
+                fetchone=True
             )
             
             # Calculate time since last bump
@@ -455,7 +461,7 @@ class DisboardReminder(commands.Cog):
                 await channel.send(embed=embed)
             
             # Log reminder in database
-            await self.bot.db.execute(
+            await self.bot.db.query(
                 "INSERT INTO disboard_reminders (guild_id, channel_id, reminder_time) VALUES (%s, %s, %s)",
                 (guild_id, channel_id, datetime.utcnow())
             )
@@ -490,7 +496,7 @@ class DisboardReminder(commands.Cog):
                 period_name = "tous les temps"
             
             # Get top bumpers
-            top_bumpers = await self.bot.db.fetchall(
+            top_bumpers = await self.bot.db.query(
                 f"""SELECT bumper_id, bumper_name, COUNT(*) as bump_count, 
                            MAX(bump_time) as last_bump
                     FROM disboard_bumps 
@@ -498,7 +504,8 @@ class DisboardReminder(commands.Cog):
                     GROUP BY bumper_id, bumper_name
                     ORDER BY bump_count DESC, last_bump DESC
                     LIMIT 10""",
-                (guild_id,)
+                (guild_id,),
+                fetchall=True
             )
             
             if not top_bumpers:
@@ -530,9 +537,10 @@ class DisboardReminder(commands.Cog):
                 )
             
             # Add server stats
-            total_bumps = await self.bot.db.fetchone(
+            total_bumps = await self.bot.db.query(
                 f"SELECT COUNT(*) as total FROM disboard_bumps WHERE guild_id = %s {time_filter}",
-                (guild_id,)
+                (guild_id,),
+                fetchone=True
             )
             
             embed.set_footer(text=_(guild_id, "commands.bumptop.total_bumps", count=total_bumps['total'], period=period_name))
@@ -553,7 +561,7 @@ class DisboardReminder(commands.Cog):
             guild_id = interaction.guild.id
             
             # Get overall stats
-            stats = await self.bot.db.fetchone(
+            stats = await self.bot.db.query(
                 """SELECT 
                        COUNT(*) as total_bumps,
                        COUNT(DISTINCT bumper_id) as unique_bumpers,
@@ -562,7 +570,8 @@ class DisboardReminder(commands.Cog):
                        AVG(TIMESTAMPDIFF(HOUR, LAG(bump_time) OVER (ORDER BY bump_time), bump_time)) as avg_hours_between
                    FROM disboard_bumps 
                    WHERE guild_id = %s""",
-                (guild_id,)
+                (guild_id,),
+                fetchone=True
             )
             
             if not stats or not stats['total_bumps']:
@@ -588,7 +597,7 @@ class DisboardReminder(commands.Cog):
             )
             
             embed.add_field(name=_(guild_id, "commands.bumpstats.total_bumps"), value=f"**{stats['total_bumps']}**", inline=True)
-            embed.add_field(name=_(guild_id, "commands.bumpstats.unique_bumpers"), value=f"**{stats['unique_bumps']}**", inline=True)
+            embed.add_field(name=_(guild_id, "commands.bumpstats.unique_bumpers"), value=f"**{stats['unique_bumpers']}**", inline=True)
             embed.add_field(name=_(guild_id, "commands.bumpstats.last_bump"), value=f"<t:{int(stats['last_bump'].timestamp())}:R>", inline=True)
             
             embed.add_field(name=_(guild_id, "commands.bumpstats.first_bump"), value=f"<t:{int(stats['first_bump'].timestamp())}:R>", inline=True)
