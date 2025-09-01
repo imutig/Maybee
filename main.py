@@ -31,7 +31,7 @@ class UnicodeStreamHandler(logging.StreamHandler):
 
 # Configure logging with Unicode-safe handlers
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Temporairement activé pour debug Disboard
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('bot.log', encoding='utf-8'),
