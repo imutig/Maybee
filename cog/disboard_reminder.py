@@ -46,6 +46,12 @@ class DisboardReminder(commands.Cog):
         is_disboard = message.author.id == self.disboard_id
         logger.debug(f"🤖 Ce message provient-t-il de Disboard ? {'✅ Oui' if is_disboard else '❌ Non'} (ID attendu: {self.disboard_id}, ID reçu: {message.author.id})")
         
+        # Debug: Check for embeds
+        if is_disboard and message.embeds:
+            logger.debug(f"📋 Message Disboard avec {len(message.embeds)} embed(s)")
+            for i, embed in enumerate(message.embeds):
+                logger.debug(f"📋 Embed {i+1}: Title='{embed.title}', Description='{embed.description}'")
+        
         if not is_disboard or not message.guild:
             if not is_disboard:
                 logger.debug("❌ Message ignoré: pas de Disboard")
@@ -58,6 +64,7 @@ class DisboardReminder(commands.Cog):
         matched_pattern = None
         user_id = None
         
+        # First, try to detect bump from text content
         for pattern in self.bump_patterns:
             match = re.search(pattern, message.content, re.IGNORECASE)
             if match:
@@ -66,6 +73,31 @@ class DisboardReminder(commands.Cog):
                 user_id = int(match.group(1))
                 logger.debug(f"🎯 S'agit-il d'un message de bump ? ✅ Oui | Pattern: '{pattern}' | User ID: {user_id}")
                 break
+        
+        # If no text match, try to detect from embeds
+        if not is_bump_message and message.embeds:
+            logger.debug(f"🔍 Recherche de bump dans les embeds...")
+            for embed in message.embeds:
+                # Check embed title and description for bump indicators
+                embed_text = f"{embed.title or ''} {embed.description or ''}"
+                logger.debug(f"📋 Contenu de l'embed: '{embed_text}'")
+                
+                # Look for bump-related keywords in embed (English and French)
+                bump_keywords = ['bump', 'bumped', 'server bumped', 'successfully bumped', 'bump effectué', 'effectué']
+                if any(keyword.lower() in embed_text.lower() for keyword in bump_keywords):
+                    logger.debug(f"🎯 Bump détecté dans l'embed via keywords")
+                    is_bump_message = True
+                    # Try to extract user ID from embed fields or footer
+                    if embed.fields:
+                        for field in embed.fields:
+                            field_text = f"{field.name} {field.value}"
+                            # Look for user mention in field
+                            user_match = re.search(r'<@!?(\d+)>', field_text)
+                            if user_match:
+                                user_id = int(user_match.group(1))
+                                logger.debug(f"👤 User ID extrait de l'embed field: {user_id}")
+                                break
+                    break
         
         if not is_bump_message:
             logger.debug(f"🎯 S'agit-il d'un message de bump ? ❌ Non | Contenu: '{message.content}'")
