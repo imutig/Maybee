@@ -79,6 +79,9 @@ class DisboardReminder(commands.Cog):
         
         if not is_bump_message:
             logger.debug(f"🎯 S'agit-il d'un message de bump ? ❌ Non | Contenu: '{message.content}'")
+            # Debug: Check audit logs even for non-bump messages to see what's happening
+            logger.debug(f"🔍 Debug: Vérification des audit logs même pour un message non-bump...")
+            await self._debug_audit_logs(message.guild, message.channel)
             return
         
         # Since Disboard doesn't include user mentions, we need to find the user who used /bump
@@ -153,6 +156,52 @@ class DisboardReminder(commands.Cog):
         except Exception as e:
             logger.error(f"❌ Erreur lors de la recherche de l'utilisateur bump: {e}")
             return None
+    
+    async def _debug_audit_logs(self, guild: discord.Guild, channel: discord.TextChannel):
+         """Debug method to check audit logs for any recent activity"""
+         try:
+             logger.debug(f"🔍 Debug: Recherche dans les audit logs pour le serveur {guild.name}...")
+             
+             # Check all recent audit logs (not just application_command_permissions)
+             audit_log_count = 0
+             async for entry in guild.audit_logs(limit=5):
+                 audit_log_count += 1
+                 time_diff = (datetime.utcnow() - entry.created_at).total_seconds()
+                 
+                 logger.debug(f"📋 Debug: Audit log #{audit_log_count} - Action: {entry.action} | Utilisateur: {entry.user.display_name} | Temps: {time_diff:.1f}s")
+                 
+                 # Check if this is a command usage
+                 if hasattr(entry, 'target') and entry.target:
+                     logger.debug(f"📋 Debug: Target: {entry.target.name if hasattr(entry.target, 'name') else entry.target}")
+                 
+                 # Check if this is a recent command usage (within last 30 seconds)
+                 if time_diff <= 30:
+                     logger.debug(f"⏰ Debug: Audit log récent trouvé!")
+                     if hasattr(entry, 'target') and entry.target and hasattr(entry.target, 'name'):
+                         logger.debug(f"📋 Debug: Commande récente: '{entry.target.name}' par {entry.user.display_name}")
+             
+             if audit_log_count == 0:
+                 logger.debug(f"❌ Debug: Aucun audit log trouvé")
+             else:
+                 logger.debug(f"✅ Debug: {audit_log_count} audit log(s) trouvé(s)")
+             
+             # Also check recent messages in the channel
+             logger.debug(f"🔍 Debug: Vérification des messages récents dans le canal {channel.name}...")
+             message_count = 0
+             async for msg in channel.history(limit=5):
+                 message_count += 1
+                 time_diff = (datetime.utcnow() - msg.created_at).total_seconds()
+                 logger.debug(f"📋 Debug: Message #{message_count} - Auteur: {msg.author.display_name} | Contenu: '{msg.content[:30]}...' | Temps: {time_diff:.1f}s")
+             
+             if message_count == 0:
+                 logger.debug(f"❌ Debug: Aucun message récent trouvé")
+             else:
+                 logger.debug(f"✅ Debug: {message_count} message(s) récent(s) trouvé(s)")
+                 
+         except discord.Forbidden:
+             logger.error("❌ Debug: Pas de permission pour accéder aux audit logs")
+         except Exception as e:
+             logger.error(f"❌ Debug: Erreur lors de la vérification des audit logs: {e}")
     
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
