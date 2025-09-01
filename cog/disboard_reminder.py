@@ -20,14 +20,6 @@ class DisboardReminder(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.bump_patterns = [
-            r"<@!?(\d+)> bumped the server!",
-            r"<@!?(\d+)> just bumped the server!",
-            r"<@!?(\d+)> bumped the server",
-            r"<@!?(\d+)> just bumped the server",
-            r"<@!?(\d+)> bumped",
-            r"<@!?(\d+)> just bumped"
-        ]
         self.disboard_id = 302050872383242240  # Disboard bot ID
         self.reminder_interval = 2  # Hours between bumps
         self.bump_role_messages = {}  # Store message info for button handling
@@ -61,18 +53,14 @@ class DisboardReminder(commands.Cog):
             
         # Check if message contains bump confirmation
         is_bump_message = False
-        matched_pattern = None
-        user_id = None
         
-        # First, try to detect bump from text content
-        for pattern in self.bump_patterns:
-            match = re.search(pattern, message.content, re.IGNORECASE)
-            if match:
+        # Check if message contains bump confirmation (text or embed)
+        if message.content:
+            # Check text content for bump keywords
+            bump_keywords = ['bump', 'bumped', 'server bumped', 'successfully bumped', 'bump effectué', 'effectué']
+            if any(keyword.lower() in message.content.lower() for keyword in bump_keywords):
                 is_bump_message = True
-                matched_pattern = pattern
-                user_id = int(match.group(1))
-                logger.debug(f"🎯 S'agit-il d'un message de bump ? ✅ Oui | Pattern: '{pattern}' | User ID: {user_id}")
-                break
+                logger.debug(f"🎯 Bump détecté dans le contenu texte")
         
         # If no text match, try to detect from embeds
         if not is_bump_message and message.embeds:
@@ -87,29 +75,84 @@ class DisboardReminder(commands.Cog):
                 if any(keyword.lower() in embed_text.lower() for keyword in bump_keywords):
                     logger.debug(f"🎯 Bump détecté dans l'embed via keywords")
                     is_bump_message = True
-                    # Try to extract user ID from embed fields or footer
-                    if embed.fields:
-                        for field in embed.fields:
-                            field_text = f"{field.name} {field.value}"
-                            # Look for user mention in field
-                            user_match = re.search(r'<@!?(\d+)>', field_text)
-                            if user_match:
-                                user_id = int(user_match.group(1))
-                                logger.debug(f"👤 User ID extrait de l'embed field: {user_id}")
-                                break
                     break
         
         if not is_bump_message:
             logger.debug(f"🎯 S'agit-il d'un message de bump ? ❌ Non | Contenu: '{message.content}'")
             return
         
-        # Extract user ID from the bump message
-        bumper = message.guild.get_member(user_id)
+        # Since Disboard doesn't include user mentions, we need to find the user who used /bump
+        # We'll use audit logs to find the most recent /bump command usage
+        logger.debug(f"🔍 Recherche de l'utilisateur qui a utilisé /bump via audit log...")
+        bumper = await self._find_bump_user(message.guild, message.channel)
+        
         if bumper:
             logger.info(f"🚀 Bump détecté ! Utilisateur: {bumper.display_name} (ID: {bumper.id}) | Serveur: {message.guild.name}")
             await self._handle_bump_detected(message.guild, bumper, message.channel)
         else:
-            logger.warning(f"⚠️ Bump détecté mais utilisateur introuvable (ID: {user_id}) dans le serveur {message.guild.name}")
+            logger.warning(f"⚠️ Bump détecté mais utilisateur introuvable dans le serveur {message.guild.name}")
+    
+    async def _find_bump_user(self, guild: discord.Guild, channel: discord.TextChannel) -> Optional[discord.Member]:
+        """Find the user who used /bump command by checking audit logs"""
+        try:
+            logger.debug(f"🔍 Recherche dans les audit logs pour le serveur {guild.name}...")
+            
+            # Get audit logs for the last few minutes to find /bump usage
+            async for entry in guild.audit_logs(action=discord.AuditLogAction.application_command_permissions, limit=10):
+                # Calculate time difference
+                time_diff = (datetime.utcnow() - entry.created_at).total_seconds()
+                
+                # Check if this is a recent command usage (within last 30 seconds)
+                if time_diff > 30:
+                    logger.debug(f"⏰ Audit log ignoré (trop ancien): {time_diff:.1f}s - Utilisateur: {entry.user.display_name}")
+                    continue
+                
+                # Debug: Log all audit log entries
+                command_name = entry.target.name if hasattr(entry, 'target') and entry.target else "Inconnu"
+                logger.debug(f"📋 Audit log trouvé: Commande='{command_name}' | Utilisateur: {entry.user.display_name} | Temps: {time_diff:.1f}s")
+                
+                # Check if the command was /bump
+                if hasattr(entry, 'target') and entry.target and entry.target.name == 'bump':
+                    logger.debug(f"🎯 ✅ Commande /bump trouvée dans l'audit log - Utilisateur: {entry.user.display_name}")
+                    return entry.user
+                else:
+                    logger.debug(f"❌ Pas un bump: Commande '{command_name}' - Utilisateur: {entry.user.display_name}")
+            
+            logger.debug(f"🔍 Aucune commande /bump trouvée dans les audit logs, recherche dans l'historique du canal...")
+            
+            # Alternative: Check recent messages in the channel for /bump usage
+            logger.debug(f"🔍 Recherche de messages /bump récents dans le canal {channel.name}...")
+            async for msg in channel.history(limit=20, before=datetime.utcnow()):
+                # Skip bot messages
+                if msg.author.bot:
+                    continue
+                
+                # Calculate time difference
+                time_diff = (datetime.utcnow() - msg.created_at).total_seconds()
+                
+                # Debug: Log all recent messages
+                logger.debug(f"📋 Message trouvé: Contenu='{msg.content[:50]}...' | Auteur: {msg.author.display_name} | Temps: {time_diff:.1f}s")
+                
+                # Check if message contains /bump
+                if msg.content and '/bump' in msg.content.lower():
+                    # Check if this message is recent (within last 30 seconds)
+                    if time_diff <= 30:
+                        logger.debug(f"🎯 ✅ Message /bump trouvé - Utilisateur: {msg.author.display_name}")
+                        return msg.author
+                    else:
+                        logger.debug(f"⏰ Message /bump trop ancien: {time_diff:.1f}s - Utilisateur: {msg.author.display_name}")
+                else:
+                    logger.debug(f"❌ Pas un message /bump: '{msg.content[:30]}...' - Utilisateur: {msg.author.display_name}")
+            
+            logger.warning("❌ Aucun utilisateur trouvé pour le bump")
+            return None
+            
+        except discord.Forbidden:
+            logger.error("❌ Pas de permission pour accéder aux audit logs")
+            return None
+        except Exception as e:
+            logger.error(f"❌ Erreur lors de la recherche de l'utilisateur bump: {e}")
+            return None
     
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
