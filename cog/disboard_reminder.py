@@ -115,7 +115,10 @@ class DisboardReminder(commands.Cog):
     async def on_interaction(self, interaction: discord.Interaction):
         """Handle button interactions for bump role assignment"""
         if interaction.type == discord.InteractionType.component:
-            await self._handle_bump_role_button(interaction)
+            # Only handle bump role buttons, ignore other component interactions
+            custom_id = interaction.custom_id
+            if custom_id and custom_id.startswith("bump_role_"):
+                await self._handle_bump_role_button(interaction)
     
     async def _handle_bump_detected(self, guild: discord.Guild, bumper: discord.Member, channel: discord.TextChannel):
         """Handle detected bump and update database"""
