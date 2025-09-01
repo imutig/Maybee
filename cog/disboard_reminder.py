@@ -39,19 +39,45 @@ class DisboardReminder(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         """Detect Disboard bumps automatically"""
-        if message.author.id != self.disboard_id or not message.guild:
+        # Debug: Log every message for debugging
+        logger.debug(f"🔍 Message reçu - Auteur: {message.author.name} (ID: {message.author.id}) | Contenu: '{message.content}' | Serveur: {message.guild.name if message.guild else 'DM'}")
+        
+        # Check if message is from Disboard
+        is_disboard = message.author.id == self.disboard_id
+        logger.debug(f"🤖 Ce message provient-t-il de Disboard ? {'✅ Oui' if is_disboard else '❌ Non'} (ID attendu: {self.disboard_id}, ID reçu: {message.author.id})")
+        
+        if not is_disboard or not message.guild:
+            if not is_disboard:
+                logger.debug("❌ Message ignoré: pas de Disboard")
+            if not message.guild:
+                logger.debug("❌ Message ignoré: pas de serveur (DM)")
             return
             
         # Check if message contains bump confirmation
+        is_bump_message = False
+        matched_pattern = None
+        user_id = None
+        
         for pattern in self.bump_patterns:
             match = re.search(pattern, message.content, re.IGNORECASE)
             if match:
-                # Extract user ID from the bump message
+                is_bump_message = True
+                matched_pattern = pattern
                 user_id = int(match.group(1))
-                bumper = message.guild.get_member(user_id)
-                if bumper:
-                    await self._handle_bump_detected(message.guild, bumper, message.channel)
+                logger.debug(f"🎯 S'agit-il d'un message de bump ? ✅ Oui | Pattern: '{pattern}' | User ID: {user_id}")
                 break
+        
+        if not is_bump_message:
+            logger.debug(f"🎯 S'agit-il d'un message de bump ? ❌ Non | Contenu: '{message.content}'")
+            return
+        
+        # Extract user ID from the bump message
+        bumper = message.guild.get_member(user_id)
+        if bumper:
+            logger.info(f"🚀 Bump détecté ! Utilisateur: {bumper.display_name} (ID: {bumper.id}) | Serveur: {message.guild.name}")
+            await self._handle_bump_detected(message.guild, bumper, message.channel)
+        else:
+            logger.warning(f"⚠️ Bump détecté mais utilisateur introuvable (ID: {user_id}) dans le serveur {message.guild.name}")
     
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
@@ -62,9 +88,11 @@ class DisboardReminder(commands.Cog):
     async def _handle_bump_detected(self, guild: discord.Guild, bumper: discord.Member, channel: discord.TextChannel):
         """Handle detected bump and update database"""
         try:
+            logger.info(f"🔄 Traitement du bump détecté - Serveur: {guild.name} | Utilisateur: {bumper.display_name} | Canal: {channel.name}")
             current_time = datetime.utcnow()
             
             # Get or create bump record
+            logger.debug(f"📊 Recherche du dernier bump pour le serveur {guild.id}")
             existing_bump = await self.bot.db.fetchone(
                 "SELECT * FROM disboard_bumps WHERE guild_id = %s ORDER BY bump_time DESC LIMIT 1",
                 (guild.id,)
@@ -72,6 +100,7 @@ class DisboardReminder(commands.Cog):
             
             if existing_bump:
                 # Update existing record
+                logger.debug(f"📝 Mise à jour du bump existant (ID: {existing_bump['id']}) - Ancien count: {existing_bump['bumps_count']}")
                 await self.bot.db.execute(
                     """UPDATE disboard_bumps 
                        SET bumper_id = %s, bumper_name = %s, channel_id = %s, bump_time = %s, 
@@ -81,8 +110,10 @@ class DisboardReminder(commands.Cog):
                      current_time, existing_bump['id'])
                 )
                 bump_count = existing_bump['bumps_count'] + 1
+                logger.info(f"✅ Bump mis à jour - Nouveau count: {bump_count}")
             else:
                 # Create new record
+                logger.debug(f"📝 Création d'un nouveau bump pour le serveur {guild.id}")
                 await self.bot.db.execute(
                     """INSERT INTO disboard_bumps 
                        (guild_id, bumper_id, bumper_name, channel_id, bump_time, bumps_count, created_at, updated_at)
@@ -90,8 +121,10 @@ class DisboardReminder(commands.Cog):
                     (guild.id, bumper.id, bumper.display_name, channel.id, current_time, current_time, current_time)
                 )
                 bump_count = 1
+                logger.info(f"✅ Nouveau bump créé - Count: {bump_count}")
             
             # Send bump confirmation
+            logger.debug(f"📤 Envoi de l'embed de confirmation de bump")
             embed = discord.Embed(
                 title=_(guild.id, "disboard.bump_detected.title"),
                 description=_(guild.id, "disboard.bump_detected.description", bumper=bumper.display_name),
@@ -103,11 +136,13 @@ class DisboardReminder(commands.Cog):
             embed.set_footer(text=_(guild.id, "disboard.bump_detected.footer"))
             
             await channel.send(embed=embed)
+            logger.info(f"✅ Embed de confirmation envoyé dans #{channel.name}")
             
             # Send thank you message with role offer
+            logger.debug(f"📤 Envoi du message de remerciement")
             await self._send_thank_you_message(guild, bumper, channel)
             
-            logger.info(f"Bump detected in {guild.name} by {bumper.display_name} (ID: {bumper.id})")
+            logger.info(f"🎉 Bump traité avec succès dans {guild.name} par {bumper.display_name} (ID: {bumper.id})")
             
         except Exception as e:
             logger.error(f"Error handling bump detection: {e}")
@@ -115,7 +150,10 @@ class DisboardReminder(commands.Cog):
     async def _send_thank_you_message(self, guild: discord.Guild, bumper: discord.Member, channel: discord.TextChannel):
         """Send thank you message and offer bump role to user"""
         try:
+            logger.debug(f"💬 Préparation du message de remerciement pour {bumper.display_name}")
+            
             # Get server configuration
+            logger.debug(f"🔧 Récupération de la configuration du serveur {guild.id}")
             config = await self.bot.db.fetchone(
                 "SELECT bump_role_id FROM disboard_config WHERE guild_id = %s",
                 (guild.id,)
@@ -123,6 +161,7 @@ class DisboardReminder(commands.Cog):
             
             if not config or not config['bump_role_id']:
                 # No bump role configured, just send thank you message
+                logger.debug(f"❌ Aucun rôle de bump configuré pour le serveur {guild.id}")
                 embed = discord.Embed(
                     title=_(guild.id, "disboard.thank_you.title"),
                     description=_(guild.id, "disboard.thank_you.message", bumper=bumper.display_name, server=guild.name),
@@ -130,11 +169,13 @@ class DisboardReminder(commands.Cog):
                     timestamp=datetime.utcnow()
                 )
                 await channel.send(embed=embed)
+                logger.info(f"✅ Message de remerciement simple envoyé (pas de rôle configuré)")
                 return
             
             bump_role = guild.get_role(config['bump_role_id'])
             if not bump_role:
                 # Role not found, send thank you message without role offer
+                logger.warning(f"⚠️ Rôle de bump introuvable (ID: {config['bump_role_id']}) dans le serveur {guild.name}")
                 embed = discord.Embed(
                     title=_(guild.id, "disboard.thank_you.title"),
                     description=_(guild.id, "disboard.thank_you.message", bumper=bumper.display_name, server=guild.name),
@@ -142,11 +183,13 @@ class DisboardReminder(commands.Cog):
                     timestamp=datetime.utcnow()
                 )
                 await channel.send(embed=embed)
+                logger.info(f"✅ Message de remerciement envoyé (rôle introuvable)")
                 return
             
             # Check if user already has the bump role
             if bump_role in bumper.roles:
                 # User already has the role, just send thank you message
+                logger.debug(f"✅ L'utilisateur {bumper.display_name} a déjà le rôle {bump_role.name}")
                 embed = discord.Embed(
                     title=_(guild.id, "disboard.thank_you.title"),
                     description=_(guild.id, "disboard.thank_you.message", bumper=bumper.display_name, server=guild.name),
@@ -159,9 +202,11 @@ class DisboardReminder(commands.Cog):
                     inline=False
                 )
                 await channel.send(embed=embed)
+                logger.info(f"✅ Message de remerciement envoyé (utilisateur a déjà le rôle)")
                 return
             
             # Create thank you message with role offer
+            logger.debug(f"🎯 Création du message avec proposition de rôle pour {bumper.display_name}")
             embed = discord.Embed(
                 title=_(guild.id, "disboard.thank_you.title"),
                 description=_(guild.id, "disboard.thank_you.message", bumper=bumper.display_name, server=guild.name),
@@ -193,6 +238,7 @@ class DisboardReminder(commands.Cog):
             
             # Send message with buttons
             message = await channel.send(embed=embed, view=view)
+            logger.info(f"✅ Message avec proposition de rôle envoyé (Message ID: {message.id})")
             
             # Store message info for button handling
             self.bump_role_messages[bumper.id] = {
@@ -201,6 +247,7 @@ class DisboardReminder(commands.Cog):
                 'role_id': config['bump_role_id'],
                 'user_id': bumper.id
             }
+            logger.debug(f"💾 Informations du message stockées pour {bumper.id}")
             
         except Exception as e:
             logger.error(f"Error sending thank you message: {e}")
