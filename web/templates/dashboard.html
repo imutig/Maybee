@@ -106,6 +106,13 @@
                     </div>
                     <span class="nav-text" data-translate="navigation.ticket_system">Ticket System</span>
                 </a>
+                
+                <a class="nav-item" href="#embed" data-translate="navigation.embed_system">
+                    <div class="nav-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <span class="nav-text" data-translate="navigation.embed_system">Embed Creator</span>
+                </a>
             </nav>
         </aside>
 
@@ -898,6 +905,241 @@
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Embed Creator System -->
+                <div class="tab-pane fade" id="embed">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-code me-2"></i>
+                                Embed Creator
+                            </h3>
+                            <p class="card-subtitle">Create and send custom embed messages to any channel</p>
+                        </div>
+                        <div class="card-content">
+                            <form id="embedCreatorForm">
+                                <div class="settings-grid">
+                                    <!-- Target Settings -->
+                                    <div class="settings-section">
+                                        <h4 class="section-title">Target Settings</h4>
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label">Target Channel <span class="required">*</span></label>
+                                            <select id="embedTargetChannel" class="form-select" required>
+                                                <option value="">Select a channel...</option>
+                                            </select>
+                                            <div class="form-hint">Channel where the embed will be sent</div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Ping Settings</label>
+                                            <div class="ping-options">
+                                                <div class="form-group">
+                                                    <div class="toggle-switch">
+                                                        <input type="checkbox" id="embedPingRole" class="toggle-input">
+                                                        <label for="embedPingRole" class="toggle-label">
+                                                            <span class="toggle-text">Ping Role</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group" id="embedRoleSelector" style="display: none;">
+                                                    <select id="embedPingRoleSelect" class="form-select">
+                                                        <option value="">Select a role...</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <div class="toggle-switch">
+                                                        <input type="checkbox" id="embedPingUser" class="toggle-input">
+                                                        <label for="embedPingUser" class="toggle-label">
+                                                            <span class="toggle-text">Ping User</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group" id="embedUserSelector" style="display: none;">
+                                                    <select id="embedPingUserSelect" class="form-select">
+                                                        <option value="">Select a member...</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Embed Content -->
+                                    <div class="settings-section">
+                                        <h4 class="section-title">Embed Content</h4>
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label">Title</label>
+                                            <input type="text" id="embedTitle" class="form-control" placeholder="Embed title..." maxlength="256">
+                                            <div class="form-hint">Maximum 256 characters</div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Description</label>
+                                            <textarea id="embedDescription" class="form-textarea" rows="4" placeholder="Embed description..." maxlength="4096"></textarea>
+                                            <div class="form-hint">Maximum 4096 characters. Supports Discord markdown</div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Color</label>
+                                            <div class="color-picker-group">
+                                                <input type="color" id="embedColor" class="form-input color-picker" value="#5865F2">
+                                                <div class="color-presets">
+                                                    <button type="button" class="color-preset" data-color="#5865F2" title="Discord Blurple"></button>
+                                                    <button type="button" class="color-preset" data-color="#57F287" title="Green"></button>
+                                                    <button type="button" class="color-preset" data-color="#FEE75C" title="Yellow"></button>
+                                                    <button type="button" class="color-preset" data-color="#ED4245" title="Red"></button>
+                                                    <button type="button" class="color-preset" data-color="#EB459E" title="Pink"></button>
+                                                    <button type="button" class="color-preset" data-color="#00D9FF" title="Cyan"></button>
+                                                </div>
+                                            </div>
+                                            <div class="form-hint">Click color presets or use the color picker</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Media Settings -->
+                                    <div class="settings-section">
+                                        <h4 class="section-title">Media & Images</h4>
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label">Thumbnail URL</label>
+                                            <input type="url" id="embedThumbnail" class="form-control" placeholder="https://example.com/image.png">
+                                            <div class="form-hint">Small image displayed in the top-right corner</div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Image URL</label>
+                                            <input type="url" id="embedImage" class="form-control" placeholder="https://example.com/image.png">
+                                            <div class="form-hint">Large image displayed in the embed</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Author & Footer -->
+                                    <div class="settings-section">
+                                        <h4 class="section-title">Author & Footer</h4>
+                                        
+                                        <div class="form-group">
+                                            <div class="toggle-switch">
+                                                <input type="checkbox" id="embedAuthorEnabled" class="toggle-input">
+                                                <label for="embedAuthorEnabled" class="toggle-label">
+                                                    <span class="toggle-text">Add Author</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div id="embedAuthorContainer" style="display: none;">
+                                            <div class="form-group">
+                                                <label class="form-label">Author Name</label>
+                                                <input type="text" id="embedAuthorName" class="form-control" placeholder="Author name..." maxlength="256">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="form-label">Author Icon URL</label>
+                                                <input type="url" id="embedAuthorIcon" class="form-control" placeholder="https://example.com/icon.png">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="form-label">Author URL</label>
+                                                <input type="url" id="embedAuthorUrl" class="form-control" placeholder="https://example.com">
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <div class="toggle-switch">
+                                                <input type="checkbox" id="embedFooterEnabled" class="toggle-input">
+                                                <label for="embedFooterEnabled" class="toggle-label">
+                                                    <span class="toggle-text">Add Footer</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div id="embedFooterContainer" style="display: none;">
+                                            <div class="form-group">
+                                                <label class="form-label">Footer Text</label>
+                                                <input type="text" id="embedFooterText" class="form-control" placeholder="Footer text..." maxlength="2048">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="form-label">Footer Icon URL</label>
+                                                <input type="url" id="embedFooterIcon" class="form-control" placeholder="https://example.com/icon.png">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <div class="toggle-switch">
+                                                    <input type="checkbox" id="embedTimestamp" class="toggle-input">
+                                                    <label for="embedTimestamp" class="toggle-label">
+                                                        <span class="toggle-text">Add Timestamp</span>
+                                                    </label>
+                                                </div>
+                                                <div class="form-hint">Adds current date/time to footer</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Custom Fields -->
+                                    <div class="settings-section">
+                                        <h4 class="section-title">Custom Fields</h4>
+                                        
+                                        <div class="form-group">
+                                            <div class="toggle-switch">
+                                                <input type="checkbox" id="embedFieldsEnabled" class="toggle-input">
+                                                <label for="embedFieldsEnabled" class="toggle-label">
+                                                    <span class="toggle-text">Add Custom Fields</span>
+                                                </label>
+                                            </div>
+                                            <div class="form-hint">Add additional fields to organize content</div>
+                                        </div>
+
+                                        <div id="embedFieldsContainer" style="display: none;">
+                                            <div class="form-group">
+                                                <label class="form-label">Fields</label>
+                                                <div id="embedFieldsList">
+                                                    <!-- Dynamic fields will be added here -->
+                                                </div>
+                                                <button type="button" class="add-field-btn" id="addEmbedField">
+                                                    <i class="fas fa-plus me-2"></i>Add Field
+                                                </button>
+                                                <div class="form-hint">Maximum 25 fields, each field has a limit of 1024 characters for both name and value</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Preview Section -->
+                                <div class="settings-section">
+                                    <h4 class="section-title">Preview</h4>
+                                    <div class="embed-preview-container">
+                                        <div id="embedPreview" class="discord-embed">
+                                            <div class="embed-content">
+                                                <div class="embed-title-preview">Preview your embed here</div>
+                                                <div class="embed-description-preview">Fill in the fields above to see a live preview</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="form-actions">
+                                    <button type="button" class="btn-primary" id="sendEmbedBtn">
+                                        <i class="fas fa-paper-plane me-2"></i>
+                                        Send Embed
+                                    </button>
+                                    <button type="button" class="btn-secondary" id="previewEmbedBtn">
+                                        <i class="fas fa-eye me-2"></i>
+                                        Refresh Preview
+                                    </button>
+                                    <button type="button" class="btn-outline" id="clearEmbedBtn">
+                                        <i class="fas fa-trash me-2"></i>
+                                        Clear All
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

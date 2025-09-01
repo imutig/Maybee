@@ -1,0 +1,84 @@
+/* Maybee Bot Brand CSS Variables */
+:root {
+  /* Primary Colors */
+  --maybee-yellow: #FFD700;     /* Gold - Primary brand color */
+  --maybee-blue: #5865F2;       /* Discord Blurple - Secondary */
+  --maybee-orange: #FF6B35;     /* Accent - Energy/Action */
+  
+  /* Discord Theme Colors */
+  --discord-dark: #2C2F33;      /* Dark background */
+  --discord-darker: #23272A;    /* Darker background */
+  --discord-light: #99AAB5;     /* Light text */
+  --discord-white: #FFFFFF;     /* White text */
+  
+  /* Semantic Colors */
+  --success: #43B581;           /* Green for success states */
+  --warning: #FAA61A;           /* Orange for warnings */
+  --error: #F04747;             /* Red for errors */
+  --info: var(--maybee-blue);   /* Blue for info */
+  
+  /* Typography */
+  --font-heading: 'Comfortaa', cursive;
+  --font-body: 'Poppins', sans-serif;
+  --font-mono: 'Fira Code', monospace;
+  
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+/* Logo Container Styles */
+.maybee-logo {
+  display: inline-block;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: var(--maybee-yellow);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.maybee-logo::before {
+  content: "🐝 ";
+  font-size: 1.2em;
+}
+
+/* Button Styles */
+.maybee-button {
+  background: linear-gradient(135deg, var(--maybee-yellow), var(--maybee-orange));
+  color: var(--discord-darker);
+  border: none;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.maybee-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(255, 215, 0, 0.3);
+}
+
+/* Card Styles */
+.maybee-card {
+  background: var(--discord-dark);
+  border: 2px solid var(--maybee-yellow);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  color: var(--discord-white);
+}
+
+/* Embed Styles for Discord */
+.maybee-embed {
+  border-left: 4px solid var(--maybee-yellow);
+  background: rgba(255, 215, 0, 0.1);
+}

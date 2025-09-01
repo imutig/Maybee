@@ -98,6 +98,7 @@ async def lifespan(app: FastAPI):
     await create_role_menu_tables()  # Add role menu tables
     await create_ticket_tables()  # Add ticket system tables
     await create_level_roles_table()  # Add level roles table
+    await create_embed_config_table()  # Add embed config table
     yield
     # Shutdown
     if database:
@@ -285,6 +286,45 @@ class TicketConfig(BaseModel):
     reason: str = "No reason provided"
     duration: Optional[int] = None  # For timeout (in minutes)
     channel_id: Optional[str] = None  # Channel to send moderation messages to
+
+# Embed System Models
+class EmbedField(BaseModel):
+    name: str
+    value: str
+    inline: bool = False
+
+class EmbedCreator(BaseModel):
+    target_channel: str
+    ping_role_id: Optional[str] = None
+    ping_user_id: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    color: str = "#5865F2"
+    thumbnail_url: Optional[str] = None
+    image_url: Optional[str] = None
+    author_name: Optional[str] = None
+    author_icon_url: Optional[str] = None
+    author_url: Optional[str] = None
+    footer_text: Optional[str] = None
+    footer_icon_url: Optional[str] = None
+    timestamp_enabled: bool = False
+    fields: Optional[List[EmbedField]] = None
+
+class EmbedConfig(BaseModel):
+    id: Optional[int] = None
+    name: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    color: str = "#5865F2"
+    thumbnail_url: Optional[str] = None
+    image_url: Optional[str] = None
+    author_name: Optional[str] = None
+    author_icon_url: Optional[str] = None
+    author_url: Optional[str] = None
+    footer_text: Optional[str] = None
+    footer_icon_url: Optional[str] = None
+    timestamp_enabled: bool = False
+    fields: Optional[List[EmbedField]] = None
 
 class DeployRequest(BaseModel):
     channel_id: str
@@ -665,6 +705,40 @@ async def create_level_roles_table():
         return True
     except Exception as e:
         print(f"❌ Error creating level_roles table: {e}")
+        return False
+
+async def create_embed_config_table():
+    """Create the embed_config table for storing custom embed configurations"""
+    embed_config_table = """
+    CREATE TABLE IF NOT EXISTS embed_config (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        guild_id BIGINT NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        title VARCHAR(256),
+        description TEXT,
+        color VARCHAR(7) DEFAULT '#5865F2',
+        thumbnail_url VARCHAR(512),
+        image_url VARCHAR(512),
+        author_name VARCHAR(256),
+        author_icon_url VARCHAR(512),
+        author_url VARCHAR(512),
+        footer_text VARCHAR(2048),
+        footer_icon_url VARCHAR(512),
+        timestamp_enabled BOOLEAN DEFAULT FALSE,
+        fields JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_guild_id (guild_id),
+        INDEX idx_name (guild_id, name)
+    )
+    """
+    
+    try:
+        await database.execute(embed_config_table)
+        print("✅ Embed config table created/verified")
+        return True
+    except Exception as e:
+        print(f"❌ Error creating embed_config table: {e}")
         return False
 
 async def migrate_welcome_config_table():
@@ -4061,6 +4135,249 @@ async def detect_language_from_browser(request: Request):
         }
     except Exception as e:
         print(f"Detect language error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ===== EMBED CREATOR ENDPOINTS =====
+
+@app.post("/api/guild/{guild_id}/embed/send")
+async def send_embed_message(
+    guild_id: str,
+    embed_data: EmbedCreator,
+    current_user: str = Depends(get_current_user)
+):
+    """Send a custom embed message to a Discord channel"""
+    try:
+        print(f"📝 Sending embed message for guild {guild_id}")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get bot token
+        bot_token = DISCORD_BOT_TOKEN
+        if not bot_token:
+            raise HTTPException(status_code=500, detail="Bot token not configured")
+        
+        # Clean the token
+        bot_token = bot_token.strip()
+        if '=' in bot_token and 'DISCORD_TOKEN=' in bot_token:
+            bot_token = bot_token.split('=', 1)[1]
+        
+        # Build Discord embed
+        embed = {}
+        
+        if embed_data.title:
+            embed["title"] = embed_data.title
+        
+        if embed_data.description:
+            embed["description"] = embed_data.description
+        
+        if embed_data.color:
+            # Convert hex color to decimal
+            color_hex = embed_data.color.lstrip('#')
+            embed["color"] = int(color_hex, 16)
+        
+        if embed_data.thumbnail_url:
+            embed["thumbnail"] = {"url": embed_data.thumbnail_url}
+        
+        if embed_data.image_url:
+            embed["image"] = {"url": embed_data.image_url}
+        
+        # Author section
+        if embed_data.author_name:
+            author = {"name": embed_data.author_name}
+            if embed_data.author_icon_url:
+                author["icon_url"] = embed_data.author_icon_url
+            if embed_data.author_url:
+                author["url"] = embed_data.author_url
+            embed["author"] = author
+        
+        # Footer section
+        footer_parts = []
+        if embed_data.footer_text:
+            footer = {"text": embed_data.footer_text}
+            if embed_data.footer_icon_url:
+                footer["icon_url"] = embed_data.footer_icon_url
+            embed["footer"] = footer
+        
+        # Timestamp
+        if embed_data.timestamp_enabled:
+            embed["timestamp"] = datetime.utcnow().isoformat()
+        
+        # Fields
+        if embed_data.fields:
+            embed_fields = []
+            for field in embed_data.fields:
+                if field.name and field.value:  # Only add fields with both name and value
+                    embed_fields.append({
+                        "name": field.name[:1024],  # Discord limit
+                        "value": field.value[:1024],  # Discord limit
+                        "inline": field.inline
+                    })
+            
+            if embed_fields:
+                embed["fields"] = embed_fields[:25]  # Discord limit of 25 fields
+        
+        # Prepare message content
+        message_content = ""
+        ping_parts = []
+        
+        # Add role ping
+        if embed_data.ping_role_id:
+            ping_parts.append(f"<@&{embed_data.ping_role_id}>")
+        
+        # Add user ping
+        if embed_data.ping_user_id:
+            ping_parts.append(f"<@{embed_data.ping_user_id}>")
+        
+        if ping_parts:
+            message_content = " ".join(ping_parts)
+        
+        # Prepare message payload
+        message_payload = {
+            "embeds": [embed]
+        }
+        
+        if message_content:
+            message_payload["content"] = message_content
+        
+        print(f"🔍 Embed payload: {embed}")
+        
+        # Send message to Discord
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"https://discord.com/api/channels/{embed_data.target_channel}/messages",
+                headers={
+                    "Authorization": f"Bot {bot_token}",
+                    "Content-Type": "application/json"
+                },
+                json=message_payload
+            )
+            
+            print(f"🔍 Discord API response status: {response.status_code}")
+            
+            if response.status_code == 200:
+                response_data = response.json()
+                print(f"✅ Embed message sent successfully: {response_data.get('id')}")
+                return {
+                    "success": True,
+                    "message": "Embed sent successfully!",
+                    "message_id": response_data.get("id")
+                }
+            else:
+                error_data = response.json() if response.content else {}
+                print(f"❌ Discord API error: {response.status_code} - {error_data}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to send embed: {error_data.get('message', 'Unknown error')}"
+                )
+    
+    except Exception as e:
+        print(f"❌ Send embed error: {e}")
+        import traceback
+        print(f"❌ Send embed traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guild/{guild_id}/embed/saved")
+async def get_saved_embeds(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get saved embed configurations for a guild"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get saved embeds from database
+        saved_embeds = await database.fetch_all(
+            "SELECT * FROM embed_config WHERE guild_id = %s ORDER BY created_at DESC",
+            (guild_id,)
+        )
+        
+        result = []
+        for embed in saved_embeds:
+            embed_data = {
+                "id": embed["id"],
+                "name": embed["name"],
+                "title": embed["title"],
+                "description": embed["description"],
+                "color": embed["color"],
+                "thumbnail_url": embed["thumbnail_url"],
+                "image_url": embed["image_url"],
+                "author_name": embed["author_name"],
+                "author_icon_url": embed["author_icon_url"],
+                "author_url": embed["author_url"],
+                "footer_text": embed["footer_text"],
+                "footer_icon_url": embed["footer_icon_url"],
+                "timestamp_enabled": embed["timestamp_enabled"],
+                "fields": json.loads(embed["fields"]) if embed["fields"] else None,
+                "created_at": embed["created_at"],
+                "updated_at": embed["updated_at"]
+            }
+            result.append(embed_data)
+        
+        return result
+    
+    except Exception as e:
+        print(f"Get saved embeds error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/guild/{guild_id}/embed/save")
+async def save_embed_config(
+    guild_id: str,
+    embed_config: EmbedConfig,
+    current_user: str = Depends(get_current_user)
+):
+    """Save an embed configuration for future use"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Save embed configuration
+        await database.execute(
+            """INSERT INTO embed_config 
+               (guild_id, name, title, description, color, thumbnail_url, image_url, 
+                author_name, author_icon_url, author_url, footer_text, footer_icon_url, 
+                timestamp_enabled, fields, created_at, updated_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (guild_id, embed_config.name, embed_config.title, embed_config.description,
+             embed_config.color, embed_config.thumbnail_url, embed_config.image_url,
+             embed_config.author_name, embed_config.author_icon_url, embed_config.author_url,
+             embed_config.footer_text, embed_config.footer_icon_url, embed_config.timestamp_enabled,
+             json.dumps([field.dict() for field in embed_config.fields]) if embed_config.fields else None,
+             datetime.utcnow(), datetime.utcnow())
+        )
+        
+        return {"message": "Embed configuration saved successfully"}
+    
+    except Exception as e:
+        print(f"Save embed config error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/guild/{guild_id}/embed/saved/{embed_id}")
+async def delete_saved_embed(
+    guild_id: str,
+    embed_id: int,
+    current_user: str = Depends(get_current_user)
+):
+    """Delete a saved embed configuration"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Delete embed configuration
+        await database.execute(
+            "DELETE FROM embed_config WHERE id = %s AND guild_id = %s",
+            (embed_id, guild_id)
+        )
+        
+        return {"message": "Embed configuration deleted successfully"}
+    
+    except Exception as e:
+        print(f"Delete embed config error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Production server startup

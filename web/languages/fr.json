@@ -10,7 +10,10 @@
     "xp_system": "Système XP",
     "moderation": "Modération",
     "welcome_system": "Système d'accueil",
+    "role_menus": "Menus de rôles",
     "server_logs": "Journaux du serveur",
+    "ticket_system": "Système de tickets",
+    "embed_system": "Créateur d'embed",
     "logout": "Déconnexion",
     "select_server": "Sélectionner un serveur...",
     "loading_dashboard": "Chargement du tableau de bord..."

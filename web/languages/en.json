@@ -10,7 +10,10 @@
     "xp_system": "XP System",
     "moderation": "Moderation",
     "welcome_system": "Welcome System",
+    "role_menus": "Role Menus",
     "server_logs": "Server Logs",
+    "ticket_system": "Ticket System",
+    "embed_system": "Embed Creator",
     "logout": "Logout",
     "select_server": "Select a server...",
     "loading_dashboard": "Loading dashboard..."

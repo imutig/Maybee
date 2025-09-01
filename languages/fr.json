@@ -49,10 +49,87 @@
     "command_cooldown": "❌ Cette commande est en cooldown. Réessayez plus tard.",
     "bot_missing_permissions": "❌ Je n'ai pas les permissions requises sur ce serveur."
   },
+  "disboard": {
+    "bump_detected": {
+      "title": "🚀 Bump Détecté !",
+      "description": "**{bumper}** a bumpé le serveur !",
+      "bump_count": "Nombre de bumps",
+      "next_bump": "Prochain bump possible",
+      "footer": "Disboard Reminder System"
+    },
+    "reminder": {
+      "title": "⏰ Rappel de Bump !",
+      "description": "Il est temps de bumper votre serveur sur Disboard !",
+      "last_bump": "Dernier bump",
+      "time_elapsed": "Temps écoulé",
+      "command": "Commande",
+      "footer": "Disboard Reminder System • Bump toutes les 2h"
+    },
+    "thank_you": {
+      "title": "🙏 Merci pour le Bump !",
+      "message": "Merci à toi **{bumper}** d'avoir bumpé **{server}** !",
+      "role_offer": "Veux-tu être ping à chaque fois qu'il est possible de bump ?",
+      "yes_button": "Oui",
+      "no_button": "Non",
+      "role_assigned": "✅ Rôle de bump assigné ! Tu seras maintenant ping pour les rappels.",
+      "role_declined": "❌ Aucun rôle assigné. Tu peux changer d'avis plus tard avec `/disboard setup`."
+    },
+    "error": {
+      "bumptop_error": "❌ Erreur lors de la récupération de la toplist des bumps.",
+      "bumpstats_error": "❌ Erreur lors de la récupération des statistiques.",
+      "role_assignment_error": "❌ Erreur lors de l'assignation du rôle."
+    }
+  },
   "commands": {
     "ping": {
       "description": "Affiche la latence du bot",
       "response": "Pong 🏓 {latency} ms"
+    },
+    "bumptop": {
+      "description": "Afficher la toplist des bumps du serveur",
+      "period_param": "Période pour la toplist (week/month/all)",
+      "embed_title": "📊 Toplist des Bumps",
+      "no_bumps": "Aucun bump enregistré {period}.",
+      "top_bumpers": "Top bumpers {period}",
+      "bump_count": "bumps",
+      "last_bump": "Dernier",
+      "total_bumps": "Total: {count} bumps {period}"
+    },
+    "bumpstats": {
+      "description": "Afficher les statistiques de bump du serveur",
+      "embed_title": "📊 Statistiques des Bumps",
+      "no_stats": "Aucune statistique disponible pour ce serveur.",
+      "server_stats": "Statistiques complètes pour **{server}**",
+      "total_bumps": "Total des bumps",
+      "unique_bumpers": "Bumpers uniques",
+      "last_bump": "Dernier bump",
+      "first_bump": "Premier bump",
+      "time_elapsed": "Temps écoulé",
+      "avg_between": "Moyenne entre bumps",
+      "status": "Statut",
+      "ready_bump": "🟢 Prêt pour un nouveau bump",
+      "soon_bump": "🟡 Bump possible bientôt",
+      "long_time_bump": "🔴 Bump possible depuis longtemps"
+    },
+    "disboard": {
+      "description": "Configurer le système de rappel Disboard",
+      "action_param": "Action à effectuer (setup/status/reset)",
+      "channel_param": "Salon pour les rappels (optionnel)",
+      "role_param": "Rôle à ping pour les rappels (optionnel)",
+      "setup_success": "Configuration {action} avec succès !",
+      "setup_updated": "mise à jour",
+      "setup_created": "créée",
+      "reminder_channel": "Salon de rappels",
+      "bump_role": "Rôle de bump",
+      "status": "Statut",
+      "enabled": "✅ Activé",
+      "disabled": "❌ Désactivé",
+      "interval": "Intervalle",
+      "not_configured": "Aucune configuration trouvée pour ce serveur.",
+      "use_setup": "Utilisez `/disboard setup`",
+      "reset_success": "Configuration réinitialisée avec succès !",
+      "config_deleted": "Configuration supprimée",
+      "disboard_system": "Disboard Reminder System"
     },
     "avatar": {
       "description": "Affiche l'avatar d'un utilisateur",

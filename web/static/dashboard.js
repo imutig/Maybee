@@ -298,23 +298,59 @@ class Dashboard {
             'xp-settings': document.querySelector('a[href="#xp-settings"]'),
             'moderation': document.querySelector('a[href="#moderation"]'),
             'welcome': document.querySelector('a[href="#welcome"]'),
-            'logs': document.querySelector('a[href="#logs"]')
+            'role-menus': document.querySelector('a[href="#role-menus"]'),
+            'logs': document.querySelector('a[href="#logs"]'),
+            'tickets': document.querySelector('a[href="#tickets"]'),
+            'embed': document.querySelector('a[href="#embed"]')
         };
 
         if (navigationElements.overview) {
-            navigationElements.overview.innerHTML = `<i class="fas fa-tachometer-alt me-2"></i>${this.getString('navigation.overview')}`;
+            navigationElements.overview.innerHTML = `
+                <div class="nav-icon"><i class="fas fa-tachometer-alt"></i></div>
+                <span class="nav-text">${this.getString('navigation.overview')}</span>
+            `;
         }
         if (navigationElements['xp-settings']) {
-            navigationElements['xp-settings'].innerHTML = `<i class="fas fa-trophy me-2"></i>${this.getString('navigation.xp_system')}`;
+            navigationElements['xp-settings'].innerHTML = `
+                <div class="nav-icon"><i class="fas fa-trophy"></i></div>
+                <span class="nav-text">${this.getString('navigation.xp_system')}</span>
+            `;
         }
         if (navigationElements.moderation) {
-            navigationElements.moderation.innerHTML = `<i class="fas fa-shield-alt me-2"></i>${this.getString('navigation.moderation')}`;
+            navigationElements.moderation.innerHTML = `
+                <div class="nav-icon"><i class="fas fa-shield-alt"></i></div>
+                <span class="nav-text">${this.getString('navigation.moderation')}</span>
+            `;
         }
         if (navigationElements.welcome) {
-            navigationElements.welcome.innerHTML = `<i class="fas fa-door-open me-2"></i>${this.getString('navigation.welcome_system')}`;
+            navigationElements.welcome.innerHTML = `
+                <div class="nav-icon"><i class="fas fa-door-open"></i></div>
+                <span class="nav-text">${this.getString('navigation.welcome_system')}</span>
+            `;
+        }
+        if (navigationElements['role-menus']) {
+            navigationElements['role-menus'].innerHTML = `
+                <div class="nav-icon"><i class="fas fa-list"></i></div>
+                <span class="nav-text">${this.getString('navigation.role_menus')}</span>
+            `;
         }
         if (navigationElements.logs) {
-            navigationElements.logs.innerHTML = `<i class="fas fa-file-alt me-2"></i>${this.getString('navigation.server_logs')}`;
+            navigationElements.logs.innerHTML = `
+                <div class="nav-icon"><i class="fas fa-file-alt"></i></div>
+                <span class="nav-text">${this.getString('navigation.server_logs')}</span>
+            `;
+        }
+        if (navigationElements.tickets) {
+            navigationElements.tickets.innerHTML = `
+                <div class="nav-icon"><i class="fas fa-ticket-alt"></i></div>
+                <span class="nav-text">${this.getString('navigation.ticket_system')}</span>
+            `;
+        }
+        if (navigationElements.embed) {
+            navigationElements.embed.innerHTML = `
+                <div class="nav-icon"><i class="fas fa-code"></i></div>
+                <span class="nav-text">${this.getString('navigation.embed_system')}</span>
+            `;
         }
 
         // Update logout link
@@ -3041,6 +3077,644 @@ class Dashboard {
         // Populate logs settings form
         console.log('Populating logs settings...');
     }
+
+    // ===== EMBED CREATOR METHODS =====
+
+    async initEmbedCreator() {
+        console.log('🎨 Initializing embed creator...');
+        
+        // Initialize toggles
+        this.initEmbedToggles();
+        
+        // Initialize color picker
+        this.initColorPicker();
+        
+        // Initialize embed preview
+        this.updateEmbedPreview();
+        
+        // Setup event listeners
+        this.setupEmbedEventListeners();
+        
+        console.log('✅ Embed creator initialized');
+    }
+
+    initEmbedToggles() {
+        // Ping role toggle
+        const pingRoleToggle = document.getElementById('embedPingRole');
+        const roleSelector = document.getElementById('embedRoleSelector');
+        if (pingRoleToggle && roleSelector) {
+            pingRoleToggle.addEventListener('change', (e) => {
+                roleSelector.style.display = e.target.checked ? 'block' : 'none';
+            });
+        }
+
+        // Ping user toggle
+        const pingUserToggle = document.getElementById('embedPingUser');
+        const userSelector = document.getElementById('embedUserSelector');
+        if (pingUserToggle && userSelector) {
+            pingUserToggle.addEventListener('change', (e) => {
+                userSelector.style.display = e.target.checked ? 'block' : 'none';
+            });
+        }
+
+        // Author toggle
+        const authorToggle = document.getElementById('embedAuthorEnabled');
+        const authorContainer = document.getElementById('embedAuthorContainer');
+        if (authorToggle && authorContainer) {
+            authorToggle.addEventListener('change', (e) => {
+                authorContainer.style.display = e.target.checked ? 'block' : 'none';
+                this.updateEmbedPreview();
+            });
+        }
+
+        // Footer toggle
+        const footerToggle = document.getElementById('embedFooterEnabled');
+        const footerContainer = document.getElementById('embedFooterContainer');
+        if (footerToggle && footerContainer) {
+            footerToggle.addEventListener('change', (e) => {
+                footerContainer.style.display = e.target.checked ? 'block' : 'none';
+                this.updateEmbedPreview();
+            });
+        }
+
+        // Fields toggle
+        const fieldsToggle = document.getElementById('embedFieldsEnabled');
+        const fieldsContainer = document.getElementById('embedFieldsContainer');
+        if (fieldsToggle && fieldsContainer) {
+            fieldsToggle.addEventListener('change', (e) => {
+                fieldsContainer.style.display = e.target.checked ? 'block' : 'none';
+                this.updateEmbedPreview();
+            });
+        }
+    }
+
+    initColorPicker() {
+        const colorPicker = document.getElementById('embedColor');
+        const colorPresets = document.querySelectorAll('.color-preset');
+
+        if (colorPicker) {
+            colorPicker.addEventListener('change', () => {
+                this.updateEmbedPreview();
+                // Update border color
+                const embedPreview = document.querySelector('.discord-embed');
+                if (embedPreview) {
+                    embedPreview.style.borderLeftColor = colorPicker.value;
+                }
+            });
+        }
+
+        colorPresets.forEach(preset => {
+            preset.addEventListener('click', () => {
+                const color = preset.dataset.color;
+                if (colorPicker) {
+                    colorPicker.value = color;
+                    this.updateEmbedPreview();
+                    const embedPreview = document.querySelector('.discord-embed');
+                    if (embedPreview) {
+                        embedPreview.style.borderLeftColor = color;
+                    }
+                }
+                
+                // Update active state
+                colorPresets.forEach(p => p.classList.remove('active'));
+                preset.classList.add('active');
+            });
+        });
+    }
+
+    setupEmbedEventListeners() {
+        // Update preview on all input changes
+        const inputs = [
+            'embedTitle', 'embedDescription', 'embedThumbnail', 'embedImage',
+            'embedAuthorName', 'embedAuthorIcon', 'embedAuthorUrl',
+            'embedFooterText', 'embedFooterIcon', 'embedTimestamp'
+        ];
+
+        inputs.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', () => this.updateEmbedPreview());
+                if (element.type === 'checkbox') {
+                    element.addEventListener('change', () => this.updateEmbedPreview());
+                }
+            }
+        });
+
+        // Add field button
+        const addFieldBtn = document.getElementById('addEmbedField');
+        if (addFieldBtn) {
+            addFieldBtn.addEventListener('click', () => this.addEmbedField());
+        }
+
+        // Form submission
+        const sendBtn = document.getElementById('sendEmbedBtn');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => this.sendEmbedMessage());
+        }
+
+        // Preview refresh button
+        const previewBtn = document.getElementById('previewEmbedBtn');
+        if (previewBtn) {
+            previewBtn.addEventListener('click', () => this.updateEmbedPreview());
+        }
+
+        // Clear button
+        const clearBtn = document.getElementById('clearEmbedBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearEmbedForm());
+        }
+    }
+
+    addEmbedField() {
+        const fieldsList = document.getElementById('embedFieldsList');
+        if (!fieldsList) return;
+
+        const fieldItem = document.createElement('div');
+        fieldItem.className = 'embed-field-item';
+        fieldItem.innerHTML = `
+            <div class="field-input-group">
+                <label>Field Name</label>
+                <input type="text" class="field-input form-control field-name" placeholder="Field name..." maxlength="256">
+            </div>
+            <div class="field-input-group">
+                <label>Field Value</label>
+                <textarea class="field-input form-control field-value" placeholder="Field value..." rows="3" maxlength="1024"></textarea>
+            </div>
+            <div class="field-toggle-wrapper">
+                <div class="toggle-label-text">Inline</div>
+                <div class="field-toggle-switch">
+                    <input type="checkbox" class="field-inline">
+                    <span class="field-toggle-slider"></span>
+                </div>
+            </div>
+            <div class="field-actions">
+                <button type="button" class="field-move-btn field-up" title="Move Up">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
+                <button type="button" class="field-remove-btn" title="Remove Field">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+
+        // Add event listeners
+        const removeBtn = fieldItem.querySelector('.field-remove-btn');
+        removeBtn.addEventListener('click', () => {
+            fieldItem.remove();
+            this.updateEmbedPreview();
+        });
+
+        const upBtn = fieldItem.querySelector('.field-up');
+        upBtn.addEventListener('click', () => {
+            const prev = fieldItem.previousElementSibling;
+            if (prev) {
+                fieldsList.insertBefore(fieldItem, prev);
+                this.updateEmbedPreview();
+            }
+        });
+
+        // Input listeners
+        const nameInput = fieldItem.querySelector('.field-name');
+        const valueInput = fieldItem.querySelector('.field-value');
+        const inlineToggle = fieldItem.querySelector('.field-inline');
+        
+        nameInput.addEventListener('input', () => this.updateEmbedPreview());
+        valueInput.addEventListener('input', () => this.updateEmbedPreview());
+        inlineToggle.addEventListener('change', () => this.updateEmbedPreview());
+
+        // Toggle functionality
+        const toggleSlider = fieldItem.querySelector('.field-toggle-slider');
+        toggleSlider.addEventListener('click', () => {
+            inlineToggle.checked = !inlineToggle.checked;
+            this.updateEmbedPreview();
+        });
+
+        fieldsList.appendChild(fieldItem);
+        this.updateEmbedPreview();
+    }
+
+    updateEmbedPreview() {
+        const preview = document.getElementById('embedPreview');
+        if (!preview) return;
+
+        // Get form data
+        const title = document.getElementById('embedTitle')?.value || '';
+        const description = document.getElementById('embedDescription')?.value || '';
+        const color = document.getElementById('embedColor')?.value || '#5865F2';
+        const thumbnailUrl = document.getElementById('embedThumbnail')?.value || '';
+        const imageUrl = document.getElementById('embedImage')?.value || '';
+        
+        // Author data
+        const authorEnabled = document.getElementById('embedAuthorEnabled')?.checked || false;
+        const authorName = document.getElementById('embedAuthorName')?.value || '';
+        const authorIcon = document.getElementById('embedAuthorIcon')?.value || '';
+        const authorUrl = document.getElementById('embedAuthorUrl')?.value || '';
+        
+        // Footer data
+        const footerEnabled = document.getElementById('embedFooterEnabled')?.checked || false;
+        const footerText = document.getElementById('embedFooterText')?.value || '';
+        const footerIcon = document.getElementById('embedFooterIcon')?.value || '';
+        const timestampEnabled = document.getElementById('embedTimestamp')?.checked || false;
+
+        // Build preview HTML
+        let html = '<div class="embed-content">';
+        
+        // Author
+        if (authorEnabled && authorName) {
+            html += '<div class="embed-author">';
+            if (authorIcon) {
+                html += `<img src="${authorIcon}" class="embed-author-icon" onerror="this.style.display='none'">`;
+            }
+            if (authorUrl) {
+                html += `<a href="${authorUrl}" class="embed-author-name" target="_blank">${this.formatDiscordText(authorName)}</a>`;
+            } else {
+                html += `<span class="embed-author-name">${this.formatDiscordText(authorName)}</span>`;
+            }
+            html += '</div>';
+        }
+
+        // Title
+        if (title) {
+            html += `<div class="embed-title-preview">${this.formatDiscordText(title)}</div>`;
+        }
+
+        // Description
+        if (description) {
+            const formattedDescription = this.formatDiscordText(description).replace(/\n/g, '<br>');
+            html += `<div class="embed-description-preview">${formattedDescription}</div>`;
+        }
+
+        // Fields
+        const fieldsContainer = document.getElementById('embedFieldsList');
+        if (fieldsContainer) {
+            const fields = fieldsContainer.querySelectorAll('.embed-field-item');
+            if (fields.length > 0) {
+                html += '<div class="embed-fields">';
+                fields.forEach(field => {
+                    const name = field.querySelector('.field-name')?.value || '';
+                    const value = field.querySelector('.field-value')?.value || '';
+                    const inline = field.querySelector('.field-inline')?.checked || false;
+                    
+                    if (name && value) {
+                        const formattedName = this.formatDiscordText(name);
+                        const formattedValue = this.formatDiscordText(value).replace(/\n/g, '<br>');
+                        html += `
+                            <div class="embed-field ${inline ? 'inline' : ''}">
+                                <div class="embed-field-name">${formattedName}</div>
+                                <div class="embed-field-value">${formattedValue}</div>
+                            </div>
+                        `;
+                    }
+                });
+                html += '</div>';
+            }
+        }
+
+        html += '</div>';
+
+        // Image
+        if (imageUrl) {
+            html += `<img src="${imageUrl}" class="embed-image" onerror="this.style.display='none'">`;
+        }
+
+        // Thumbnail
+        if (thumbnailUrl) {
+            html = `<img src="${thumbnailUrl}" class="embed-thumbnail" onerror="this.style.display='none'">${html}`;
+        }
+
+        // Footer
+        if (footerEnabled && (footerText || timestampEnabled)) {
+            html += '<div class="embed-footer">';
+            if (footerIcon) {
+                html += `<img src="${footerIcon}" class="embed-footer-icon" onerror="this.style.display='none'">`;
+            }
+            if (footerText) {
+                html += `<span class="embed-footer-text">${this.formatDiscordText(footerText)}</span>`;
+            }
+            if (timestampEnabled) {
+                const now = new Date().toLocaleString();
+                html += `<span class="embed-timestamp">${footerText ? ' • ' : ''}${now}</span>`;
+            }
+            html += '</div>';
+        }
+
+        preview.innerHTML = html;
+        preview.style.borderLeftColor = color;
+    }
+
+    async sendEmbedMessage() {
+        if (!this.currentGuild) {
+            this.showError('Please select a server first.');
+            return;
+        }
+
+        // Get target channel
+        const targetChannel = document.getElementById('embedTargetChannel')?.value;
+        if (!targetChannel) {
+            this.showError('Please select a target channel.');
+            return;
+        }
+
+        // Validate that we have either title or description
+        const title = document.getElementById('embedTitle')?.value || '';
+        const description = document.getElementById('embedDescription')?.value || '';
+        
+        if (!title && !description) {
+            this.showError('Please provide at least a title or description for the embed.');
+            return;
+        }
+
+        try {
+            // Show loading state
+            const sendBtn = document.getElementById('sendEmbedBtn');
+            const originalText = sendBtn.innerHTML;
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+            sendBtn.disabled = true;
+
+            // Collect form data
+            const embedData = {
+                target_channel: targetChannel,
+                title: title || null,
+                description: description || null,
+                color: document.getElementById('embedColor')?.value || '#5865F2',
+                thumbnail_url: document.getElementById('embedThumbnail')?.value || null,
+                image_url: document.getElementById('embedImage')?.value || null
+            };
+
+            // Ping settings
+            if (document.getElementById('embedPingRole')?.checked) {
+                embedData.ping_role_id = document.getElementById('embedPingRoleSelect')?.value || null;
+            }
+            if (document.getElementById('embedPingUser')?.checked) {
+                embedData.ping_user_id = document.getElementById('embedPingUserSelect')?.value || null;
+            }
+
+            // Author settings
+            if (document.getElementById('embedAuthorEnabled')?.checked) {
+                embedData.author_name = document.getElementById('embedAuthorName')?.value || null;
+                embedData.author_icon_url = document.getElementById('embedAuthorIcon')?.value || null;
+                embedData.author_url = document.getElementById('embedAuthorUrl')?.value || null;
+            }
+
+            // Footer settings
+            if (document.getElementById('embedFooterEnabled')?.checked) {
+                embedData.footer_text = document.getElementById('embedFooterText')?.value || null;
+                embedData.footer_icon_url = document.getElementById('embedFooterIcon')?.value || null;
+                embedData.timestamp_enabled = document.getElementById('embedTimestamp')?.checked || false;
+            }
+
+            // Fields
+            if (document.getElementById('embedFieldsEnabled')?.checked) {
+                const fields = [];
+                const fieldItems = document.querySelectorAll('#embedFieldsList .embed-field-item');
+                fieldItems.forEach(item => {
+                    const name = item.querySelector('.field-name')?.value?.trim();
+                    const value = item.querySelector('.field-value')?.value?.trim();
+                    const inline = item.querySelector('.field-inline')?.checked || false;
+                    
+                    if (name && value) {
+                        fields.push({ name, value, inline });
+                    }
+                });
+                embedData.fields = fields.length > 0 ? fields : null;
+            }
+
+            // Send the embed
+            const response = await this.apiCall(`/guild/${this.currentGuild}/embed/send`, 'POST', embedData);
+            
+            this.showSuccess('Embed sent successfully!');
+            
+            // Optionally clear form or keep it for reuse
+            // this.clearEmbedForm();
+
+        } catch (error) {
+            console.error('Failed to send embed:', error);
+            this.showError(error.message || 'Failed to send embed. Please try again.');
+        } finally {
+            // Restore button state
+            const sendBtn = document.getElementById('sendEmbedBtn');
+            sendBtn.innerHTML = originalText;
+            sendBtn.disabled = false;
+        }
+    }
+
+    clearEmbedForm() {
+        // Clear all form fields
+        const inputs = [
+            'embedTargetChannel', 'embedTitle', 'embedDescription', 'embedThumbnail', 'embedImage',
+            'embedAuthorName', 'embedAuthorIcon', 'embedAuthorUrl',
+            'embedFooterText', 'embedFooterIcon'
+        ];
+
+        inputs.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.value = '';
+            }
+        });
+
+        // Reset checkboxes
+        const checkboxes = [
+            'embedPingRole', 'embedPingUser', 'embedAuthorEnabled', 
+            'embedFooterEnabled', 'embedTimestamp', 'embedFieldsEnabled'
+        ];
+
+        checkboxes.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.checked = false;
+            }
+        });
+
+        // Reset color
+        const colorPicker = document.getElementById('embedColor');
+        if (colorPicker) {
+            colorPicker.value = '#5865F2';
+        }
+
+        // Clear fields
+        const fieldsList = document.getElementById('embedFieldsList');
+        if (fieldsList) {
+            fieldsList.innerHTML = '';
+        }
+
+        // Hide containers
+        const containers = [
+            'embedRoleSelector', 'embedUserSelector', 'embedAuthorContainer',
+            'embedFooterContainer', 'embedFieldsContainer'
+        ];
+
+        containers.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.style.display = 'none';
+            }
+        });
+
+        // Update preview
+        this.updateEmbedPreview();
+        
+        this.showSuccess('Form cleared successfully!');
+    }
+
+    async loadEmbedCreatorData() {
+        console.log('🔄 Loading embed creator data...');
+        console.log('📊 Current data state:', {
+            channels: this.channels ? this.channels.length : 'null',
+            roles: this.roles ? this.roles.length : 'null',
+            members: this.members ? this.members.length : 'null'
+        });
+        
+        // Load channels for target selection
+        if (!this.channels) {
+            console.log('📺 Loading channels...');
+            await this.loadGuildChannels();
+        }
+        
+        // Load roles for ping selection
+        if (!this.roles) {
+            console.log('🎭 Loading roles...');
+            await this.loadGuildRoles();
+        }
+        
+        // Load members for ping selection
+        if (!this.members) {
+            console.log('👥 Loading members...');
+            await this.loadGuildMembers();
+        }
+        
+        console.log('✅ Data loaded, populating selectors...');
+        console.log('📊 Final data state:', {
+            channels: this.channels ? this.channels.length : 'null',
+            roles: this.roles ? this.roles.length : 'null',
+            members: this.members ? this.members.length : 'null'
+        });
+        
+        // Populate selectors
+        this.populateEmbedChannelSelector();
+        this.populateEmbedRoleSelector();
+        this.populateEmbedMemberSelector();
+        
+        console.log('🎯 Embed creator data loading complete');
+    }
+
+    // Format Discord text (bold, italic, underline, etc.)
+    formatDiscordText(text) {
+        if (!text) return text;
+        
+        // Escape HTML first to prevent XSS
+        text = text.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;');
+        
+        // Apply Discord formatting
+        // **bold**
+        text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        
+        // *italic*
+        text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        
+        // __underline__
+        text = text.replace(/__([^_]+)__/g, '<u>$1</u>');
+        
+        // ~~strikethrough~~
+        text = text.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+        
+        // `code`
+        text = text.replace(/`([^`]+)`/g, '<code class="discord-inline-code">$1</code>');
+        
+        // ```code block```
+        text = text.replace(/```([^`]+)```/g, '<pre class="discord-code-block">$1</pre>');
+        
+        // > quote
+        text = text.replace(/^> (.+)$/gm, '<div class="discord-quote">$1</div>');
+        
+        return text;
+    }
+
+    populateEmbedChannelSelector() {
+        console.log('📺 Populating embed channel selector...');
+        const channelSelect = document.getElementById('embedTargetChannel');
+        console.log('📺 Channel select element:', channelSelect ? 'FOUND' : 'NOT FOUND');
+        console.log('📺 Channels data:', this.channels ? `${this.channels.length} channels` : 'NO DATA');
+        
+        if (!channelSelect || !this.channels) {
+            console.log('❌ Cannot populate channel selector - missing element or data');
+            return;
+        }
+
+        channelSelect.innerHTML = '<option value="">Select a channel...</option>';
+        
+        // For the bulk data, all channels are already text channels (type 0)
+        // so we don't need to filter by type anymore
+        console.log('📺 All channels available:', this.channels.length);
+        
+        this.channels.forEach(channel => {
+            const option = document.createElement('option');
+            option.value = channel.id;
+            option.textContent = `# ${channel.name}`;
+            channelSelect.appendChild(option);
+        });
+        
+        console.log('✅ Channel selector populated with', this.channels.length, 'channels');
+    }
+
+    populateEmbedRoleSelector() {
+        const roleSelect = document.getElementById('embedPingRoleSelect');
+        if (!roleSelect || !this.roles) return;
+
+        roleSelect.innerHTML = '<option value="">Select a role...</option>';
+        
+        // Filter out @everyone and managed roles
+        const availableRoles = this.roles.filter(role => 
+            role.name !== '@everyone' && !role.managed
+        );
+        
+        availableRoles.forEach(role => {
+            const option = document.createElement('option');
+            option.value = role.id;
+            option.textContent = role.name;
+            roleSelect.appendChild(option);
+        });
+    }
+
+    populateEmbedMemberSelector() {
+        console.log('👥 Populating embed member selector...');
+        const memberSelect = document.getElementById('embedPingUserSelect');
+        console.log('👥 Member select element:', memberSelect ? 'FOUND' : 'NOT FOUND');
+        console.log('👥 Members data:', this.members ? `${this.members.length} members` : 'NO DATA');
+        
+        if (!memberSelect || !this.members) {
+            console.log('❌ Cannot populate member selector - missing element or data');
+            return;
+        }
+
+        memberSelect.innerHTML = '<option value="">Select a member...</option>';
+        
+        // Limit to first 100 members to avoid performance issues
+        const membersToShow = this.members.slice(0, 100);
+        console.log('👥 Members to show:', membersToShow.length);
+        
+        membersToShow.forEach(member => {
+            const option = document.createElement('option');
+            // The member API returns: {id, username, display_name, avatar, joined_at}
+            // Not: {user: {id, username}, nick}
+            option.value = member.id;
+            option.textContent = member.display_name || member.username;
+            memberSelect.appendChild(option);
+        });
+        
+        if (this.members.length > 100) {
+            const option = document.createElement('option');
+            option.disabled = true;
+            option.textContent = `... and ${this.members.length - 100} more members`;
+            memberSelect.appendChild(option);
+        }
+        
+        console.log('✅ Member selector populated with', membersToShow.length, 'members');
+    }
 }
 
 // Setup modern navigation for the new sidebar
@@ -3504,6 +4178,40 @@ document.addEventListener('DOMContentLoaded', () => {
             const fieldItem = dashboard.createFieldItem('', '', false, goodbyeFieldsList);
             goodbyeFieldsList.appendChild(fieldItem);
             dashboard.updateFieldMoveButtons(goodbyeFieldsList);
+        });
+    }
+
+    // Setup embed creator tab listener
+    const embedTab = document.getElementById('embed');
+    if (embedTab) {
+        embedTab.addEventListener('shown.bs.tab', async () => {
+            console.log('🎨 Embed creator tab shown - initializing...');
+            console.log('🔍 Current embed data loaded status:', dashboard.dataLoaded?.embed);
+            
+            // Always load data for embed creator to ensure it works
+            await dashboard.loadEmbedCreatorData();
+            await dashboard.initEmbedCreator();
+            dashboard.dataLoaded.embed = true;
+            
+            console.log('✅ Embed creator initialization complete');
+        });
+    }
+
+    // Also listen for simple navigation clicks
+    const embedNavLink = document.querySelector('a[href="#embed"]');
+    if (embedNavLink) {
+        embedNavLink.addEventListener('click', async () => {
+            console.log('🎨 Embed creator nav clicked - initializing...');
+            setTimeout(async () => {
+                console.log('🔍 Current embed data loaded status:', dashboard.dataLoaded?.embed);
+                
+                // Always load data for embed creator to ensure it works
+                await dashboard.loadEmbedCreatorData();
+                await dashboard.initEmbedCreator();
+                dashboard.dataLoaded.embed = true;
+                
+                console.log('✅ Embed creator click initialization complete');
+            }, 100);
         });
     }
 });
