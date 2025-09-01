@@ -82,7 +82,7 @@ class DisboardConfig(commands.Cog):
                        WHERE guild_id = %s""",
                     (reminder_channel.id, role.id if role else None, datetime.utcnow(), guild_id)
                 )
-                action = _(guild_id, "commands.disboard.setup_updated")
+                action = _("commands.disboard.setup_updated", guild_id=guild_id)
             else:
                 # Create new configuration
                 await self.bot.db.query(
@@ -91,37 +91,37 @@ class DisboardConfig(commands.Cog):
                        VALUES (%s, %s, %s, %s, %s)""",
                     (guild_id, reminder_channel.id, role.id if role else None, datetime.utcnow(), datetime.utcnow())
                 )
-                action = _(guild_id, "commands.disboard.setup_created")
+                action = _("commands.disboard.setup_created", guild_id=guild_id)
             
             # Create confirmation embed
             embed = discord.Embed(
                 title="⚙️ Configuration Disboard",
-                description=_(guild_id, "commands.disboard.setup_success", action=action),
+                description=_("commands.disboard.setup_success", guild_id=guild_id, action=action),
                 color=discord.Color.green(),
                 timestamp=datetime.utcnow()
             )
             embed.add_field(
-                name=_(guild_id, "commands.disboard.reminder_channel"), 
+                name=_("commands.disboard.reminder_channel", guild_id=guild_id), 
                 value=reminder_channel.mention, 
                 inline=True
             )
             if role:
                 embed.add_field(
-                    name=_(guild_id, "commands.disboard.bump_role"), 
+                    name=_("commands.disboard.bump_role", guild_id=guild_id), 
                     value=role.mention, 
                     inline=True
                 )
             embed.add_field(
-                name=_(guild_id, "commands.disboard.status"), 
-                value=_(guild_id, "commands.disboard.enabled"), 
+                name=_("commands.disboard.status", guild_id=guild_id), 
+                value=_("commands.disboard.enabled", guild_id=guild_id), 
                 inline=True
             )
             embed.add_field(
-                name=_(guild_id, "commands.disboard.interval"), 
+                name=_("commands.disboard.interval", guild_id=guild_id), 
                 value="2h", 
                 inline=True
             )
-            embed.set_footer(text=_(guild_id, "commands.disboard.disboard_system"))
+            embed.set_footer(text=_("commands.disboard.disboard_system", guild_id=guild_id))
             
             await interaction.response.send_message(embed=embed)
             
@@ -145,18 +145,18 @@ class DisboardConfig(commands.Cog):
             if not config:
                 embed = discord.Embed(
                     title="⚙️ Configuration Disboard",
-                    description=_(guild_id, "commands.disboard.not_configured"),
+                    description=_("commands.disboard.not_configured", guild_id=guild_id),
                     color=discord.Color.orange(),
                     timestamp=datetime.utcnow()
                 )
                 embed.add_field(
-                    name=_(guild_id, "commands.disboard.status"), 
+                    name=_("commands.disboard.status", guild_id=guild_id), 
                     value="❌ Non configuré", 
                     inline=True
                 )
                 embed.add_field(
                     name="Action", 
-                    value=_(guild_id, "commands.disboard.use_setup"), 
+                    value=_("commands.disboard.use_setup", guild_id=guild_id), 
                     inline=True
                 )
                 await interaction.response.send_message(embed=embed)
@@ -187,22 +187,22 @@ class DisboardConfig(commands.Cog):
                 timestamp=datetime.utcnow()
             )
             embed.add_field(
-                name=_(guild_id, "commands.disboard.status"), 
-                value=_(guild_id, "commands.disboard.enabled") if config['reminder_enabled'] else _(guild_id, "commands.disboard.disabled"), 
+                name=_("commands.disboard.status", guild_id=guild_id), 
+                value=_("commands.disboard.enabled", guild_id=guild_id) if config['reminder_enabled'] else _("commands.disboard.disabled", guild_id=guild_id), 
                 inline=True
             )
             embed.add_field(
-                name=_(guild_id, "commands.disboard.reminder_channel"), 
+                name=_("commands.disboard.reminder_channel", guild_id=guild_id), 
                 value=channel_status, 
                 inline=True
             )
             embed.add_field(
-                name=_(guild_id, "commands.disboard.bump_role"), 
+                name=_("commands.disboard.bump_role", guild_id=guild_id), 
                 value=role_status, 
                 inline=True
             )
             embed.add_field(
-                name=_(guild_id, "commands.disboard.interval"), 
+                name=_("commands.disboard.interval", guild_id=guild_id), 
                 value=f"{config['reminder_interval_hours']}h", 
                 inline=True
             )
@@ -220,7 +220,7 @@ class DisboardConfig(commands.Cog):
                         inline=True
                     )
             
-            embed.set_footer(text=_(guild_id, "commands.disboard.disboard_system"))
+            embed.set_footer(text=_("commands.disboard.disboard_system", guild_id=guild_id))
             
             await interaction.response.send_message(embed=embed)
             
@@ -243,21 +243,21 @@ class DisboardConfig(commands.Cog):
             # Create confirmation embed
             embed = discord.Embed(
                 title="⚙️ Configuration Disboard",
-                description=_(guild_id, "commands.disboard.reset_success"),
+                description=_("commands.disboard.reset_success", guild_id=guild_id),
                 color=discord.Color.orange(),
                 timestamp=datetime.utcnow()
             )
             embed.add_field(
                 name="Action", 
-                value=_(guild_id, "commands.disboard.config_deleted"), 
+                value=_("commands.disboard.config_deleted", guild_id=guild_id), 
                 inline=True
             )
             embed.add_field(
-                name=_(guild_id, "commands.disboard.status"), 
-                value=_(guild_id, "commands.disboard.disabled"), 
+                name=_("commands.disboard.status", guild_id=guild_id), 
+                value=_("commands.disboard.disabled", guild_id=guild_id), 
                 inline=True
             )
-            embed.set_footer(text=_(guild_id, "commands.disboard.disboard_system"))
+            embed.set_footer(text=_("commands.disboard.disboard_system", guild_id=guild_id))
             
             await interaction.response.send_message(embed=embed)
             

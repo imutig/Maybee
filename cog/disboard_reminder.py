@@ -127,14 +127,14 @@ class DisboardReminder(commands.Cog):
             # Send bump confirmation
             logger.debug(f"📤 Envoi de l'embed de confirmation de bump")
             embed = discord.Embed(
-                title=_(guild.id, "disboard.bump_detected.title"),
-                description=_(guild.id, "disboard.bump_detected.description", bumper=bumper.display_name),
+                title=_("disboard.bump_detected.title", guild_id=guild.id),
+                description=_("disboard.bump_detected.description", guild_id=guild.id, bumper=bumper.display_name),
                 color=discord.Color.green(),
                 timestamp=current_time
             )
-            embed.add_field(name=_(guild.id, "disboard.bump_detected.bump_count"), value=f"**{bump_count}**", inline=True)
-            embed.add_field(name=_(guild.id, "disboard.bump_detected.next_bump"), value=f"<t:{int((current_time + timedelta(hours=2)).timestamp())}:R>", inline=True)
-            embed.set_footer(text=_(guild.id, "disboard.bump_detected.footer"))
+            embed.add_field(name=_("disboard.bump_detected.bump_count", guild_id=guild.id), value=f"**{bump_count}**", inline=True)
+            embed.add_field(name=_("disboard.bump_detected.next_bump", guild_id=guild.id), value=f"<t:{int((current_time + timedelta(hours=2)).timestamp())}:R>", inline=True)
+            embed.set_footer(text=_("disboard.bump_detected.footer", guild_id=guild.id))
             
             await channel.send(embed=embed)
             logger.info(f"✅ Embed de confirmation envoyé dans #{channel.name}")
@@ -165,8 +165,8 @@ class DisboardReminder(commands.Cog):
                 # No bump role configured, just send thank you message
                 logger.debug(f"❌ Aucun rôle de bump configuré pour le serveur {guild.id}")
                 embed = discord.Embed(
-                    title=_(guild.id, "disboard.thank_you.title"),
-                    description=_(guild.id, "disboard.thank_you.message", bumper=bumper.display_name, server=guild.name),
+                    title=_("disboard.thank_you.title", guild_id=guild.id),
+                    description=_("disboard.thank_you.message", guild_id=guild.id, bumper=bumper.display_name, server=guild.name),
                     color=discord.Color.blue(),
                     timestamp=datetime.utcnow()
                 )
@@ -179,8 +179,8 @@ class DisboardReminder(commands.Cog):
                 # Role not found, send thank you message without role offer
                 logger.warning(f"⚠️ Rôle de bump introuvable (ID: {config['bump_role_id']}) dans le serveur {guild.name}")
                 embed = discord.Embed(
-                    title=_(guild.id, "disboard.thank_you.title"),
-                    description=_(guild.id, "disboard.thank_you.message", bumper=bumper.display_name, server=guild.name),
+                    title=_("disboard.thank_you.title", guild_id=guild.id),
+                    description=_("disboard.thank_you.message", guild_id=guild.id, bumper=bumper.display_name, server=guild.name),
                     color=discord.Color.blue(),
                     timestamp=datetime.utcnow()
                 )
@@ -193,8 +193,8 @@ class DisboardReminder(commands.Cog):
                 # User already has the role, just send thank you message
                 logger.debug(f"✅ L'utilisateur {bumper.display_name} a déjà le rôle {bump_role.name}")
                 embed = discord.Embed(
-                    title=_(guild.id, "disboard.thank_you.title"),
-                    description=_(guild.id, "disboard.thank_you.message", bumper=bumper.display_name, server=guild.name),
+                    title=_("disboard.thank_you.title", guild_id=guild.id),
+                    description=_("disboard.thank_you.message", guild_id=guild.id, bumper=bumper.display_name, server=guild.name),
                     color=discord.Color.blue(),
                     timestamp=datetime.utcnow()
                 )
@@ -210,26 +210,26 @@ class DisboardReminder(commands.Cog):
             # Create thank you message with role offer
             logger.debug(f"🎯 Création du message avec proposition de rôle pour {bumper.display_name}")
             embed = discord.Embed(
-                title=_(guild.id, "disboard.thank_you.title"),
-                description=_(guild.id, "disboard.thank_you.message", bumper=bumper.display_name, server=guild.name),
+                title=_("disboard.thank_you.title", guild_id=guild.id),
+                description=_("disboard.thank_you.message", guild_id=guild.id, bumper=bumper.display_name, server=guild.name),
                 color=discord.Color.blue(),
                 timestamp=datetime.utcnow()
             )
             embed.add_field(
                 name="🎯 Proposition de rôle",
-                value=_(guild.id, "disboard.thank_you.role_offer"),
+                value=_("disboard.thank_you.role_offer", guild_id=guild.id),
                 inline=False
             )
             
             # Create buttons
             yes_button = discord.ui.Button(
                 style=discord.ButtonStyle.green,
-                label=_(guild.id, "disboard.thank_you.yes_button"),
+                label=_("disboard.thank_you.yes_button", guild_id=guild.id),
                 custom_id=f"bump_role_yes_{bumper.id}_{guild.id}"
             )
             no_button = discord.ui.Button(
                 style=discord.ButtonStyle.red,
-                label=_(guild.id, "disboard.thank_you.no_button"),
+                label=_("disboard.thank_you.no_button", guild_id=guild.id),
                 custom_id=f"bump_role_no_{bumper.id}_{guild.id}"
             )
             
@@ -319,7 +319,7 @@ class DisboardReminder(commands.Cog):
                     
                     embed = discord.Embed(
                         title="✅ Rôle assigné !",
-                        description=_(guild.id, "disboard.thank_you.role_assigned"),
+                        description=_("disboard.thank_you.role_assigned", guild_id=guild.id),
                         color=discord.Color.green(),
                         timestamp=datetime.utcnow()
                     )
@@ -335,7 +335,7 @@ class DisboardReminder(commands.Cog):
                 except Exception as e:
                     logger.error(f"Error assigning bump role: {e}")
                     await interaction.response.send_message(
-                        _(guild.id, "disboard.error.role_assignment_error"),
+                        _("disboard.error.role_assignment_error", guild_id=guild.id),
                         ephemeral=True
                     )
                     
@@ -343,7 +343,7 @@ class DisboardReminder(commands.Cog):
                 # User declined the role
                 embed = discord.Embed(
                     title="❌ Rôle refusé",
-                    description=_(guild.id, "disboard.thank_you.role_declined"),
+                    description=_("disboard.thank_you.role_declined", guild_id=guild.id),
                     color=discord.Color.orange(),
                     timestamp=datetime.utcnow()
                 )
@@ -437,27 +437,27 @@ class DisboardReminder(commands.Cog):
             
             # Create reminder embed
             embed = discord.Embed(
-                title=_(guild.id, "disboard.reminder.title"),
-                description=_(guild.id, "disboard.reminder.description"),
+                title=_("disboard.reminder.title", guild_id=guild.id),
+                description=_("disboard.reminder.description", guild_id=guild.id),
                 color=discord.Color.orange(),
                 timestamp=datetime.utcnow()
             )
             embed.add_field(
-                name=_(guild.id, "disboard.reminder.last_bump"), 
+                name=_("disboard.reminder.last_bump", guild_id=guild.id), 
                 value=f"<t:{int(last_bump.timestamp())}:R>", 
                 inline=True
             )
             embed.add_field(
-                name=_(guild.id, "disboard.reminder.time_elapsed"), 
+                name=_("disboard.reminder.time_elapsed", guild_id=guild.id), 
                 value=f"**{hours_since_bump}h**", 
                 inline=True
             )
             embed.add_field(
-                name=_(guild.id, "disboard.reminder.command"), 
+                name=_("disboard.reminder.command", guild_id=guild.id), 
                 value="`/bump`", 
                 inline=True
             )
-            embed.set_footer(text=_(guild.id, "disboard.reminder.footer"))
+            embed.set_footer(text=_("disboard.reminder.footer", guild_id=guild.id))
             
             # Send reminder with role ping if configured
             if config and config['bump_role_id']:
@@ -519,8 +519,8 @@ class DisboardReminder(commands.Cog):
             
             if not top_bumpers:
                 embed = discord.Embed(
-                    title=_(guild_id, "commands.bumptop.embed_title"),
-                    description=_(guild_id, "commands.bumptop.no_bumps", period=period_name),
+                    title=_("commands.bumptop.embed_title", guild_id=guild_id),
+                    description=_("commands.bumptop.no_bumps", guild_id=guild_id, period=period_name),
                     color=discord.Color.blue(),
                     timestamp=datetime.utcnow()
                 )
@@ -529,8 +529,8 @@ class DisboardReminder(commands.Cog):
             
             # Create leaderboard embed
             embed = discord.Embed(
-                title=_(guild_id, "commands.bumptop.embed_title"),
-                description=_(guild_id, "commands.bumptop.top_bumpers", period=period_name),
+                title=_("commands.bumptop.embed_title", guild_id=guild_id),
+                description=_("commands.bumptop.top_bumpers", guild_id=guild_id, period=period_name),
                 color=discord.Color.gold(),
                 timestamp=datetime.utcnow()
             )
@@ -541,7 +541,7 @@ class DisboardReminder(commands.Cog):
                 
                 embed.add_field(
                     name=f"{medal} {bumper['bumper_name']}",
-                    value=f"**{bumper['bump_count']}** {_(guild_id, 'commands.bumptop.bump_count')}\n{_(guild_id, 'commands.bumptop.last_bump')}: <t:{int(bumper['last_bump'].timestamp())}:R>",
+                    value=f"**{bumper['bump_count']}** {_('commands.bumptop.bump_count', guild_id=guild_id)}\n{_('commands.bumptop.last_bump', guild_id=guild_id)}: <t:{int(bumper['last_bump'].timestamp())}:R>",
                     inline=False
                 )
             
@@ -552,14 +552,14 @@ class DisboardReminder(commands.Cog):
                 fetchone=True
             )
             
-            embed.set_footer(text=_(guild_id, "commands.bumptop.total_bumps", count=total_bumps['total'], period=period_name))
+            embed.set_footer(text=_("commands.bumptop.total_bumps", guild_id=guild_id, count=total_bumps['total'], period=period_name))
             
             await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in bumptop command: {e}")
             await interaction.response.send_message(
-                _(guild_id, "disboard.error.bumptop_error"),
+                _("disboard.error.bumptop_error", guild_id=guild_id),
                 ephemeral=True
             )
     
@@ -610,8 +610,8 @@ class DisboardReminder(commands.Cog):
             
             if not stats or not stats['total_bumps']:
                 embed = discord.Embed(
-                    title=_(guild_id, "commands.bumpstats.embed_title"),
-                    description=_(guild_id, "commands.bumpstats.no_stats"),
+                    title=_("commands.bumpstats.embed_title", guild_id=guild_id),
+                    description=_("commands.bumpstats.no_stats", guild_id=guild_id),
                     color=discord.Color.blue(),
                     timestamp=datetime.utcnow()
                 )
@@ -624,40 +624,40 @@ class DisboardReminder(commands.Cog):
             
             # Create stats embed
             embed = discord.Embed(
-                title=_(guild_id, "commands.bumpstats.embed_title"),
-                description=_(guild_id, "commands.bumpstats.server_stats", server=interaction.guild.name),
+                title=_("commands.bumpstats.embed_title", guild_id=guild_id),
+                description=_("commands.bumpstats.server_stats", guild_id=guild_id, server=interaction.guild.name),
                 color=discord.Color.blue(),
                 timestamp=datetime.utcnow()
             )
             
-            embed.add_field(name=_(guild_id, "commands.bumpstats.total_bumps"), value=f"**{stats['total_bumps']}**", inline=True)
-            embed.add_field(name=_(guild_id, "commands.bumpstats.unique_bumpers"), value=f"**{stats['unique_bumpers']}**", inline=True)
-            embed.add_field(name=_(guild_id, "commands.bumpstats.last_bump"), value=f"<t:{int(stats['last_bump'].timestamp())}:R>", inline=True)
+            embed.add_field(name=_("commands.bumpstats.total_bumps", guild_id=guild_id), value=f"**{stats['total_bumps']}**", inline=True)
+            embed.add_field(name=_("commands.bumpstats.unique_bumpers", guild_id=guild_id), value=f"**{stats['unique_bumpers']}**", inline=True)
+            embed.add_field(name=_("commands.bumpstats.last_bump", guild_id=guild_id), value=f"<t:{int(stats['last_bump'].timestamp())}:R>", inline=True)
             
-            embed.add_field(name=_(guild_id, "commands.bumpstats.first_bump"), value=f"<t:{int(stats['first_bump'].timestamp())}:R>", inline=True)
-            embed.add_field(name=_(guild_id, "commands.bumpstats.time_elapsed"), value=f"**{hours_since_last}h**", inline=True)
+            embed.add_field(name=_("commands.bumpstats.first_bump", guild_id=guild_id), value=f"<t:{int(stats['first_bump'].timestamp())}:R>", inline=True)
+            embed.add_field(name=_("commands.bumpstats.time_elapsed", guild_id=guild_id), value=f"**{hours_since_last}h**", inline=True)
             
             if stats['avg_hours_between']:
-                embed.add_field(name=_(guild_id, "commands.bumpstats.avg_between"), value=f"**{stats['avg_hours_between']:.1f}h**", inline=True)
+                embed.add_field(name=_("commands.bumpstats.avg_between", guild_id=guild_id), value=f"**{stats['avg_hours_between']:.1f}h**", inline=True)
             
             # Add bump frequency indicator
             if hours_since_last <= 2:
-                status = _(guild_id, "commands.bumpstats.ready_bump")
+                status = _("commands.bumpstats.ready_bump", guild_id=guild_id)
             elif hours_since_last <= 4:
-                status = _(guild_id, "commands.bumpstats.soon_bump")
+                status = _("commands.bumpstats.soon_bump", guild_id=guild_id)
             else:
-                status = _(guild_id, "commands.bumpstats.long_time_bump")
+                status = _("commands.bumpstats.long_time_bump", guild_id=guild_id)
             
-            embed.add_field(name=_(guild_id, "commands.bumpstats.status"), value=status, inline=False)
+            embed.add_field(name=_("commands.bumpstats.status", guild_id=guild_id), value=status, inline=False)
             
-            embed.set_footer(text=_(guild_id, "disboard.bump_detected.footer"))
+            embed.set_footer(text=_("disboard.bump_detected.footer", guild_id=guild_id))
             
             await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in bumpstats command: {e}")
             await interaction.response.send_message(
-                _(guild_id, "disboard.error.bumpstats_error"),
+                _("disboard.error.bumpstats_error", guild_id=guild_id),
                 ephemeral=True
             )
 
