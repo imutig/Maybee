@@ -1,6 +1,6 @@
 -- Migration: Ensure Disboard System Tables Exist
 -- This migration ensures all required tables for the Disboard bump reminder system exist
--- It can be run multiple times safely (uses CREATE TABLE IF NOT EXISTS)
+-- It can be run multiple times safely (uses CREATE TABLE IF NOT EXISTS),
 
 -- Table for tracking Disboard bumps
 CREATE TABLE IF NOT EXISTS disboard_bumps (
@@ -90,3 +90,4 @@ SELECT
     COUNT(*) as row_count,
     'OK' as status
 FROM disboard_config;
+
