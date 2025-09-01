@@ -258,16 +258,25 @@ class DisboardReminder(commands.Cog):
         """Handle bump role button interactions"""
         try:
             custom_id = interaction.custom_id
+            if not custom_id or not isinstance(custom_id, str):
+                logger.debug(f"❌ custom_id invalide: {custom_id} (type: {type(custom_id)})")
+                return
+                
             if not custom_id.startswith("bump_role_"):
                 return
             
             parts = custom_id.split("_")
             if len(parts) != 5:
+                logger.debug(f"❌ Nombre de parties incorrect dans custom_id: {custom_id} (parties: {parts})")
                 return
             
-            action = parts[2]
-            user_id = int(parts[3])
-            guild_id = int(parts[4])
+            try:
+                action = parts[2]
+                user_id = int(parts[3])
+                guild_id = int(parts[4])
+            except (ValueError, IndexError) as e:
+                logger.error(f"❌ Erreur lors du parsing du custom_id '{custom_id}': {e}")
+                return
             
             # Check if this interaction is from the intended user
             if interaction.user.id != user_id:
@@ -566,13 +575,38 @@ class DisboardReminder(commands.Cog):
                        COUNT(*) as total_bumps,
                        COUNT(DISTINCT bumper_id) as unique_bumpers,
                        MAX(bump_time) as last_bump,
-                       MIN(bump_time) as first_bump,
-                       AVG(TIMESTAMPDIFF(HOUR, LAG(bump_time) OVER (ORDER BY bump_time), bump_time)) as avg_hours_between
+                       MIN(bump_time) as first_bump
                    FROM disboard_bumps 
                    WHERE guild_id = %s""",
                 (guild_id,),
                 fetchone=True
             )
+            
+            # Calculate average time between bumps (simplified approach)
+            if stats and stats['total_bumps'] > 1:
+                # Get all bumps ordered by time to calculate intervals
+                all_bumps = await self.bot.db.query(
+                    "SELECT bump_time FROM disboard_bumps WHERE guild_id = %s ORDER BY bump_time",
+                    (guild_id,),
+                    fetchall=True
+                )
+                
+                if len(all_bumps) > 1:
+                    total_hours = 0
+                    intervals = 0
+                    for i in range(len(all_bumps) - 1):
+                        time_diff = all_bumps[i+1]['bump_time'] - all_bumps[i]['bump_time']
+                        total_hours += time_diff.total_seconds() / 3600
+                        intervals += 1
+                    
+                    if intervals > 0:
+                        stats['avg_hours_between'] = total_hours / intervals
+                    else:
+                        stats['avg_hours_between'] = None
+                else:
+                    stats['avg_hours_between'] = None
+            else:
+                stats['avg_hours_between'] = None
             
             if not stats or not stats['total_bumps']:
                 embed = discord.Embed(
