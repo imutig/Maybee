@@ -102,8 +102,7 @@ class DisboardReminder(commands.Cog):
             
             # Get audit logs for the last few minutes to find /bump usage
             async for entry in guild.audit_logs(action=discord.AuditLogAction.application_command_permissions, limit=10):
-                # Calculate time difference
-                # Fix timezone issue: use utcnow() for both dates
+                # Calculate time difference - Fix timezone issue
                 time_diff = (datetime.utcnow() - entry.created_at.replace(tzinfo=None)).total_seconds()
                 
                 # Check if this is a recent command usage (within last 30 seconds)
@@ -160,51 +159,51 @@ class DisboardReminder(commands.Cog):
     
     async def _debug_audit_logs(self, guild: discord.Guild, channel: discord.TextChannel):
         """Debug method to check audit logs for any recent activity"""
-         try:
-             logger.debug(f"🔍 Debug: Recherche dans les audit logs pour le serveur {guild.name}...")
-             
-             # Check all recent audit logs (not just application_command_permissions)
-             audit_log_count = 0
-             async for entry in guild.audit_logs(limit=5):
-                 audit_log_count += 1
-                 # Fix timezone issue: use utcnow() for both dates
-                 time_diff = (datetime.utcnow() - entry.created_at.replace(tzinfo=None)).total_seconds()
-                 
-                 logger.debug(f"📋 Debug: Audit log #{audit_log_count} - Action: {entry.action} | Utilisateur: {entry.user.display_name} | Temps: {time_diff:.1f}s")
-                 
-                 # Check if this is a command usage
-                 if hasattr(entry, 'target') and entry.target:
-                     logger.debug(f"📋 Debug: Target: {entry.target.name if hasattr(entry.target, 'name') else entry.target}")
-                 
-                 # Check if this is a recent command usage (within last 30 seconds)
-                 if time_diff <= 30:
-                     logger.debug(f"⏰ Debug: Audit log récent trouvé!")
-                     if hasattr(entry, 'target') and entry.target and hasattr(entry.target, 'name'):
-                         logger.debug(f"📋 Debug: Commande récente: '{entry.target.name}' par {entry.user.display_name}")
-             
-             if audit_log_count == 0:
-                 logger.debug(f"❌ Debug: Aucun audit log trouvé")
-             else:
-                 logger.debug(f"✅ Debug: {audit_log_count} audit log(s) trouvé(s)")
-             
-             # Also check recent messages in the channel
-             logger.debug(f"🔍 Debug: Vérification des messages récents dans le canal {channel.name}...")
-             message_count = 0
-             async for msg in channel.history(limit=5):
-                 message_count += 1
-                 time_diff = (datetime.utcnow() - msg.created_at).total_seconds()
-                 logger.debug(f"📋 Debug: Message #{message_count} - Auteur: {msg.author.display_name} | Contenu: '{msg.content[:30]}...' | Temps: {time_diff:.1f}s")
-             
-             if message_count == 0:
-                 logger.debug(f"❌ Debug: Aucun message récent trouvé")
-             else:
-                 logger.debug(f"✅ Debug: {message_count} message(s) récent(s) trouvé(s)")
-                 
-         except discord.Forbidden:
-             logger.error("❌ Debug: Pas de permission pour accéder aux audit logs")
-         except Exception as e:
-             logger.error(f"❌ Debug: Erreur lors de la vérification des audit logs: {e}")
-    
+        try:
+            logger.debug(f"🔍 Debug: Recherche dans les audit logs pour le serveur {guild.name}...")
+            
+            # Check all recent audit logs (not just application_command_permissions)
+            audit_log_count = 0
+            async for entry in guild.audit_logs(limit=5):
+                audit_log_count += 1
+                # Fix timezone issue: use utcnow() for both dates
+                time_diff = (datetime.utcnow() - entry.created_at.replace(tzinfo=None)).total_seconds()
+                
+                logger.debug(f"📋 Debug: Audit log #{audit_log_count} - Action: {entry.action} | Utilisateur: {entry.user.display_name} | Temps: {time_diff:.1f}s")
+                
+                # Check if this is a command usage
+                if hasattr(entry, 'target') and entry.target:
+                    logger.debug(f"📋 Debug: Target: {entry.target.name if hasattr(entry.target, 'name') else entry.target}")
+                
+                # Check if this is a recent command usage (within last 30 seconds)
+                if time_diff <= 30:
+                    logger.debug(f"⏰ Debug: Audit log récent trouvé!")
+                    if hasattr(entry, 'target') and entry.target and hasattr(entry.target, 'name'):
+                        logger.debug(f"📋 Debug: Commande récente: '{entry.target.name}' par {entry.user.display_name}")
+            
+            if audit_log_count == 0:
+                logger.debug(f"❌ Debug: Aucun audit log trouvé")
+            else:
+                logger.debug(f"✅ Debug: {audit_log_count} audit log(s) trouvé(s)")
+            
+            # Also check recent messages in the channel
+            logger.debug(f"🔍 Debug: Vérification des messages récents dans le canal {channel.name}...")
+            message_count = 0
+            async for msg in channel.history(limit=5):
+                message_count += 1
+                time_diff = (datetime.utcnow() - msg.created_at).total_seconds()
+                logger.debug(f"📋 Debug: Message #{message_count} - Auteur: {msg.author.display_name} | Contenu: '{msg.content[:30]}...' | Temps: {time_diff:.1f}s")
+            
+            if message_count == 0:
+                logger.debug(f"❌ Debug: Aucun message récent trouvé")
+            else:
+                logger.debug(f"✅ Debug: {message_count} message(s) récent(s) trouvé(s)")
+                
+        except discord.Forbidden:
+            logger.error("❌ Debug: Pas de permission pour accéder aux audit logs")
+        except Exception as e:
+            logger.error(f"❌ Debug: Erreur lors de la vérification des audit logs: {e}")
+
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
         """Handle button interactions for bump role assignment"""
@@ -213,7 +212,7 @@ class DisboardReminder(commands.Cog):
             custom_id = interaction.custom_id
             if custom_id and custom_id.startswith("bump_role_"):
                 await self._handle_bump_role_button(interaction)
-    
+
     async def _handle_bump_detected(self, guild: discord.Guild, bumper: discord.Member, channel: discord.TextChannel):
         """Handle detected bump and update database"""
         try:
@@ -276,7 +275,7 @@ class DisboardReminder(commands.Cog):
             
         except Exception as e:
             logger.error(f"Error handling bump detection: {e}")
-    
+
     async def _send_thank_you_message(self, guild: discord.Guild, bumper: discord.Member, channel: discord.TextChannel):
         """Send thank you message and offer bump role to user"""
         try:
@@ -382,7 +381,7 @@ class DisboardReminder(commands.Cog):
             
         except Exception as e:
             logger.error(f"Error sending thank you message: {e}")
-    
+
     async def _handle_bump_role_button(self, interaction: discord.Interaction):
         """Handle bump role button interactions"""
         try:
@@ -499,7 +498,7 @@ class DisboardReminder(commands.Cog):
                 "❌ Erreur lors du traitement de la demande.",
                 ephemeral=True
             )
-    
+
     @tasks.loop(minutes=5)
     async def check_reminders(self):
         """Check and send bump reminders every 5 minutes"""
@@ -541,7 +540,7 @@ class DisboardReminder(commands.Cog):
                 
         except Exception as e:
             logger.error(f"Error checking bump reminders: {e}")
-    
+
     async def _send_bump_reminder(self, guild_id: int, channel_id: int, last_bump: datetime):
         """Send bump reminder to specified channel"""
         try:
@@ -608,7 +607,7 @@ class DisboardReminder(commands.Cog):
             
         except Exception as e:
             logger.error(f"Error sending bump reminder: {e}")
-    
+
     @app_commands.command(name="bumptop", description="Afficher la toplist des bumps du serveur")
     @app_commands.describe(
         period="Période pour la toplist (week/month/all)"
@@ -691,7 +690,7 @@ class DisboardReminder(commands.Cog):
                 _("disboard.error.bumptop_error", guild_id=guild_id),
                 ephemeral=True
             )
-    
+
     @app_commands.command(name="bumpstats", description="Afficher les statistiques de bump du serveur")
     async def bumpstats(self, interaction: discord.Interaction):
         """Display server bump statistics"""
