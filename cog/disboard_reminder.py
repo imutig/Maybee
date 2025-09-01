@@ -103,7 +103,8 @@ class DisboardReminder(commands.Cog):
             # Get audit logs for the last few minutes to find /bump usage
             async for entry in guild.audit_logs(action=discord.AuditLogAction.application_command_permissions, limit=10):
                 # Calculate time difference
-                time_diff = (datetime.utcnow() - entry.created_at).total_seconds()
+                # Fix timezone issue: use utcnow() for both dates
+                time_diff = (datetime.utcnow() - entry.created_at.replace(tzinfo=None)).total_seconds()
                 
                 # Check if this is a recent command usage (within last 30 seconds)
                 if time_diff > 30:
@@ -158,7 +159,7 @@ class DisboardReminder(commands.Cog):
             return None
     
     async def _debug_audit_logs(self, guild: discord.Guild, channel: discord.TextChannel):
-         """Debug method to check audit logs for any recent activity"""
+        """Debug method to check audit logs for any recent activity"""
          try:
              logger.debug(f"🔍 Debug: Recherche dans les audit logs pour le serveur {guild.name}...")
              
@@ -166,7 +167,8 @@ class DisboardReminder(commands.Cog):
              audit_log_count = 0
              async for entry in guild.audit_logs(limit=5):
                  audit_log_count += 1
-                 time_diff = (datetime.utcnow() - entry.created_at).total_seconds()
+                 # Fix timezone issue: use utcnow() for both dates
+                 time_diff = (datetime.utcnow() - entry.created_at.replace(tzinfo=None)).total_seconds()
                  
                  logger.debug(f"📋 Debug: Audit log #{audit_log_count} - Action: {entry.action} | Utilisateur: {entry.user.display_name} | Temps: {time_diff:.1f}s")
                  
