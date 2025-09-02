@@ -1442,12 +1442,30 @@ class Dashboard {
         
         try {
             console.log(`🔄 Making API call to send menu ${menuId}`);
-            await this.apiCall(`/guild/${this.currentGuild}/role-menus/${menuId}/send`, 'POST');
+            const response = await this.apiCall(`/guild/${this.currentGuild}/role-menus/${menuId}/send`, 'POST');
             console.log(`✅ Send API call successful for menu ${menuId}`);
-            this.showSuccess('Role menu sent to Discord channel successfully!');
+            
+            // Check if the message was actually created
+            if (response.message && response.message.includes('Message ID:')) {
+                this.showSuccess(response.message);
+            } else {
+                this.showSuccess('Role menu sent to Discord channel successfully!');
+            }
+            
+            // Refresh the role menus list to show updated status
+            setTimeout(() => {
+                this.loadRoleMenus();
+            }, 1000);
+            
         } catch (error) {
             console.error('❌ Failed to send role menu:', error);
-            this.showError('Failed to send role menu. Please try again.');
+            let errorMessage = 'Failed to send role menu. Please try again.';
+            
+            if (error.response && error.response.data && error.response.data.detail) {
+                errorMessage = `Error: ${error.response.data.detail}`;
+            }
+            
+            this.showError(errorMessage);
         }
     }
 

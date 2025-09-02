@@ -2481,17 +2481,122 @@ async def send_role_menu_message(
         if not options:
             raise HTTPException(status_code=400, detail="Role menu has no options")
         
-        # Force immediate creation by setting message_id to NULL
-        # This will trigger the bot's check_new_role_menus task to create the message immediately
-        await database.execute(
-            "UPDATE role_menus SET message_id = NULL WHERE id = %s",
-            (menu_id,)
-        )
+        # Create the Discord message directly using Discord API
+        import httpx
+        import json
         
-        return {"success": True, "message": "Role menu message sent to Discord channel successfully!"}
+        # Build the select menu options
+        select_options = []
+        for option in options:
+            select_option = {
+                "label": option["label"],
+                "value": str(option["role_id"]),
+                "description": option.get("description"),
+            }
+            if option.get("emoji"):
+                select_option["emoji"] = {"name": option["emoji"]}
+            select_options.append(select_option)
+        
+        # Create the embed
+        embed = {
+            "title": menu["title"],
+            "description": menu.get("description", ""),
+            "color": int(menu.get("color", "#5865F2").replace("#", ""), 16),
+            "footer": {"text": "Role Menu"}
+        }
+        
+        # Create the select menu component
+        select_menu = {
+            "type": 1,  # Action Row
+            "components": [{
+                "type": 3,  # Select Menu
+                "custom_id": f"role_menu_{menu_id}",
+                "placeholder": menu.get("placeholder", "Select a role..."),
+                "min_values": menu.get("min_values", 0),
+                "max_values": menu.get("max_values", 1),
+                "options": select_options
+            }]
+        }
+        
+        # Send the message to Discord
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            headers = {
+                "Authorization": f"Bot {DISCORD_BOT_TOKEN}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "embeds": [embed],
+                "components": [select_menu]
+            }
+            
+            response = await client.post(
+                f"https://discord.com/api/v10/channels/{menu['channel_id']}/messages",
+                headers=headers,
+                json=payload
+            )
+            
+            if response.status_code == 200:
+                message_data = response.json()
+                message_id = message_data["id"]
+                
+                # Update the database with the message ID
+                await database.execute(
+                    "UPDATE role_menus SET message_id = %s WHERE id = %s",
+                    (message_id, menu_id)
+                )
+                
+                print(f"✅ Created Discord message {message_id} for role menu {menu_id}")
+                return {"success": True, "message": f"Role menu message sent to Discord channel successfully! Message ID: {message_id}"}
+            else:
+                error_msg = f"Discord API error: {response.status_code} - {response.text}"
+                print(f"❌ {error_msg}")
+                raise HTTPException(status_code=500, detail=error_msg)
         
     except Exception as e:
         print(f"Send role menu message error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guild/{guild_id}/role-menus/{menu_id}/status")
+async def get_role_menu_status(
+    guild_id: str,
+    menu_id: int,
+    current_user: str = Depends(get_current_user)
+):
+    """Check the status of a role menu"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get menu data
+        menu = await database.fetch_one(
+            "SELECT * FROM role_menus WHERE id = %s AND guild_id = %s",
+            (menu_id, guild_id)
+        )
+        
+        if not menu:
+            raise HTTPException(status_code=404, detail="Role menu not found")
+        
+        # Get options count
+        options_count = await database.fetch_one(
+            "SELECT COUNT(*) as count FROM role_menu_options WHERE menu_id = %s",
+            (menu_id,)
+        )
+        
+        status = {
+            "id": menu["id"],
+            "title": menu["title"],
+            "channel_id": menu["channel_id"],
+            "message_id": menu["message_id"],
+            "has_discord_message": menu["message_id"] is not None,
+            "options_count": options_count["count"] if options_count else 0,
+            "created_at": menu["created_at"].isoformat() if menu["created_at"] else None
+        }
+        
+        return status
+        
+    except Exception as e:
+        print(f"Get role menu status error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 async def notify_bot_role_menu_delete(guild_id: str, channel_id: int, message_id: int):
