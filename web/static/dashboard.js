@@ -1399,6 +1399,10 @@ class Dashboard {
                         </div>
                     </div>
                     <div class="role-menu-actions">
+                        <button class="action-btn-small" onclick="dashboard.sendRoleMenu(${menu.id})" style="background: #28a745; border-color: #28a745;">
+                            <i class="fas fa-paper-plane"></i>
+                            Send
+                        </button>
                         <button class="action-btn-small" onclick="dashboard.editRoleMenu(${menu.id})">
                             <i class="fas fa-edit"></i>
                             Edit
@@ -1430,6 +1434,20 @@ class Dashboard {
         } catch (error) {
             console.error('❌ Failed to load role menu:', error);
             this.showError('Failed to load role menu for editing.');
+        }
+    }
+
+    async sendRoleMenu(menuId) {
+        console.log(`📤 Attempting to send role menu with ID: ${menuId}`);
+        
+        try {
+            console.log(`🔄 Making API call to send menu ${menuId}`);
+            await this.apiCall(`/guild/${this.currentGuild}/role-menus/${menuId}/send`, 'POST');
+            console.log(`✅ Send API call successful for menu ${menuId}`);
+            this.showSuccess('Role menu sent to Discord channel successfully!');
+        } catch (error) {
+            console.error('❌ Failed to send role menu:', error);
+            this.showError('Failed to send role menu. Please try again.');
         }
     }
 

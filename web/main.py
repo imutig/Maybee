@@ -2434,11 +2434,65 @@ async def notify_bot_role_menu_update(guild_id: str, menu_id: int):
     try:
         print(f"✅ Role menu {menu_id} created for guild {guild_id}")
         print(f"🤖 Bot will automatically create Discord message within 30 seconds")
+        
+        # Try to trigger immediate creation by updating the menu to have a NULL message_id
+        # This will make the bot's check_new_role_menus task pick it up immediately
+        try:
+            await database.execute(
+                "UPDATE role_menus SET message_id = NULL WHERE id = %s",
+                (menu_id,)
+            )
+            print(f"🔄 Triggered immediate message creation for role menu {menu_id}")
+        except Exception as db_error:
+            print(f"⚠️ Could not trigger immediate creation: {db_error}")
+        
         return True
         
     except Exception as e:
         print(f"Error in notify_bot_role_menu_update: {e}")
         return False
+
+@app.post("/api/guild/{guild_id}/role-menus/{menu_id}/send")
+async def send_role_menu_message(
+    guild_id: str,
+    menu_id: int,
+    current_user: str = Depends(get_current_user)
+):
+    """Send role menu message to Discord channel"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get menu data
+        menu = await database.fetch_one(
+            "SELECT * FROM role_menus WHERE id = %s AND guild_id = %s",
+            (menu_id, guild_id)
+        )
+        
+        if not menu:
+            raise HTTPException(status_code=404, detail="Role menu not found")
+        
+        # Get options
+        options = await database.fetch_all(
+            "SELECT * FROM role_menu_options WHERE menu_id = %s ORDER BY position",
+            (menu_id,)
+        )
+        
+        if not options:
+            raise HTTPException(status_code=400, detail="Role menu has no options")
+        
+        # Force immediate creation by setting message_id to NULL
+        # This will trigger the bot's check_new_role_menus task to create the message immediately
+        await database.execute(
+            "UPDATE role_menus SET message_id = NULL WHERE id = %s",
+            (menu_id,)
+        )
+        
+        return {"success": True, "message": "Role menu message sent to Discord channel successfully!"}
+        
+    except Exception as e:
+        print(f"Send role menu message error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def notify_bot_role_menu_delete(guild_id: str, channel_id: int, message_id: int):
     """Notify bot to delete role menu message"""

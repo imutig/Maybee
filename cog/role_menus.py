@@ -288,6 +288,7 @@ class RoleMenus(commands.Cog):
         try:
             channel = self.bot.get_channel(menu_data['channel_id'])
             if not channel:
+                logger.error(f"Channel {menu_data['channel_id']} not found for menu {menu_data['id']}")
                 return None
             
             # Create embed
@@ -354,6 +355,45 @@ class RoleMenus(commands.Cog):
         except Exception as e:
             logger.error(f"Error creating/updating menu message: {e}")
             return None
+
+    async def force_create_menu_message(self, menu_id: int) -> bool:
+        """Force create a Discord message for a specific role menu"""
+        try:
+            # Get menu data
+            menu = await self.bot.db.query(
+                "SELECT * FROM role_menus WHERE id = %s",
+                params=(menu_id,),
+                fetchone=True
+            )
+            
+            if not menu:
+                logger.error(f"Role menu {menu_id} not found")
+                return False
+            
+            # Get menu options
+            options = await self.bot.db.query(
+                "SELECT * FROM role_menu_options WHERE menu_id = %s ORDER BY position",
+                params=(menu_id,),
+                fetchall=True
+            )
+            
+            if not options:
+                logger.error(f"Role menu {menu_id} has no options")
+                return False
+            
+            # Create the message
+            message = await self.create_or_update_menu_message(menu, options)
+            
+            if message:
+                logger.info(f"✅ Forced creation of Discord message for role menu {menu_id}")
+                return True
+            else:
+                logger.error(f"❌ Failed to force create Discord message for role menu {menu_id}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error in force_create_menu_message: {e}")
+            return False
 
 async def setup(bot):
     await bot.add_cog(RoleMenus(bot))
