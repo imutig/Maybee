@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from i18n import _
 
 from services import handle_errors, rate_limit
@@ -80,7 +80,7 @@ class DisboardConfig(commands.Cog):
                     """UPDATE disboard_config 
                        SET reminder_channel_id = %s, bump_role_id = %s, updated_at = %s
                        WHERE guild_id = %s""",
-                    (reminder_channel.id, role.id if role else None, datetime.utcnow(), guild_id)
+                    (reminder_channel.id, role.id if role else None, datetime.now(), guild_id)
                 )
                 action = _("commands.disboard.setup_updated", guild_id=guild_id)
             else:
@@ -89,7 +89,7 @@ class DisboardConfig(commands.Cog):
                     """INSERT INTO disboard_config 
                        (guild_id, reminder_channel_id, bump_role_id, created_at, updated_at)
                        VALUES (%s, %s, %s, %s, %s)""",
-                    (guild_id, reminder_channel.id, role.id if role else None, datetime.utcnow(), datetime.utcnow())
+                    (guild_id, reminder_channel.id, role.id if role else None, datetime.now(), datetime.now())
                 )
                 action = _("commands.disboard.setup_created", guild_id=guild_id)
             
@@ -98,7 +98,7 @@ class DisboardConfig(commands.Cog):
                 title="⚙️ Configuration Disboard",
                 description=_("commands.disboard.setup_success", guild_id=guild_id, action=action),
                 color=discord.Color.green(),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now()
             )
             embed.add_field(
                 name=_("commands.disboard.reminder_channel", guild_id=guild_id), 
@@ -147,7 +147,7 @@ class DisboardConfig(commands.Cog):
                     title="⚙️ Configuration Disboard",
                     description=_("commands.disboard.not_configured", guild_id=guild_id),
                     color=discord.Color.orange(),
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now()
                 )
                 embed.add_field(
                     name=_("commands.disboard.status", guild_id=guild_id), 
@@ -184,7 +184,7 @@ class DisboardConfig(commands.Cog):
                 title="⚙️ Configuration Disboard",
                 description="Configuration actuelle du système de rappel",
                 color=discord.Color.blue(),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now()
             )
             embed.add_field(
                 name=_("commands.disboard.status", guild_id=guild_id), 
@@ -245,7 +245,7 @@ class DisboardConfig(commands.Cog):
                 title="⚙️ Configuration Disboard",
                 description=_("commands.disboard.reset_success", guild_id=guild_id),
                 color=discord.Color.orange(),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now()
             )
             embed.add_field(
                 name="Action", 

@@ -51,7 +51,7 @@
   },
   "disboard": {
     "bump_detected": {
-      "title": "🚀 Bump Détecté !",
+      "title": "🚀 Bump détecté !",
       "description": "**{bumper}** a bumpé le serveur !",
       "bump_count": "Nombre de bumps",
       "next_bump": "Prochain bump possible",
@@ -109,7 +109,7 @@
       "status": "Statut",
       "ready_bump": "🟢 Prêt pour un nouveau bump",
       "soon_bump": "🟡 Bump possible bientôt",
-      "long_time_bump": "🔴 Bump possible depuis longtemps"
+      "long_time_bump": "🔴 Bump imposible pour encore un moment"
     },
     "disboard": {
       "description": "Configurer le système de rappel Disboard",

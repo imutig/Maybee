@@ -31,7 +31,7 @@ class UnicodeStreamHandler(logging.StreamHandler):
 
 # Configure logging with Unicode-safe handlers
 logging.basicConfig(
-    level=logging.DEBUG,  # Temporairement activé pour debug Disboard
+    level=logging.INFO,  # Changé de DEBUG à INFO pour réduire le spam
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('bot.log', encoding='utf-8'),
@@ -39,6 +39,12 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Configure Discord.py to be less verbose
+logging.getLogger('discord').setLevel(logging.WARNING)
+logging.getLogger('discord.http').setLevel(logging.WARNING)
+logging.getLogger('discord.gateway').setLevel(logging.WARNING)
+logging.getLogger('discord.client').setLevel(logging.WARNING)
 
 
 # ========== Configuration du bot ==========

@@ -95,7 +95,7 @@ class I18n:
         """Load user and guild language preferences from database"""
         try:
             # Load user language preferences
-            user_results = await db.fetch_all("SELECT user_id, language_code FROM user_languages")
+            user_results = await db.query("SELECT user_id, language_code FROM user_languages", fetchall=True)
             if user_results:
                 for row in user_results:
                     # Handle both dict and tuple formats
@@ -106,7 +106,7 @@ class I18n:
                 print(f"✅ Loaded {len(user_results)} user language preferences")
             
             # Load guild language preferences
-            guild_results = await db.fetch_all("SELECT guild_id, language_code FROM guild_languages")
+            guild_results = await db.query("SELECT guild_id, language_code FROM guild_languages", fetchall=True)
             if guild_results:
                 for row in guild_results:
                     # Handle both dict and tuple formats

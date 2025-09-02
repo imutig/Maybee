@@ -94,9 +94,10 @@ class XPBatchProcessor:
                 WHERE guild_id = %s AND user_id IN ({})
             """.format(','.join(['%s'] * len(user_ids)))
             
-            current_xp_results = await self.database.fetch_all(
+            current_xp_results = await self.database.query(
                 current_xp_query, 
-                [guild_id] + user_ids
+                [guild_id] + user_ids,
+                fetchall=True
             )
             
             # Create lookup for current XP
@@ -299,17 +300,19 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
             # Get XP data - try new enhanced table first, fallback to old table
             xp_data = None
             try:
-                xp_data = await self.bot.db.fetch_one(
+                xp_data = await self.bot.db.query(
                     "SELECT xp, level, text_xp, voice_xp FROM user_xp WHERE user_id = %s AND guild_id = %s",
-                    target_user.id, interaction.guild.id
+                    (target_user.id, interaction.guild.id),
+                    fetchone=True
                 )
             except:
                 # Fallback to old table structure
                 try:
-                    xp_data = await self.bot.db.fetch_one(
-                        "SELECT xp, level, text_xp, voice_xp FROM xp_data WHERE user_id = %s AND guild_id = %s",
-                        target_user.id, interaction.guild.id
-                    )
+                                    xp_data = await self.bot.db.query(
+                    "SELECT xp, level, text_xp, voice_xp FROM xp_data WHERE user_id = %s AND guild_id = %s",
+                    (target_user.id, interaction.guild.id),
+                    fetchone=True
+                )
                 except:
                     pass
             
@@ -389,14 +392,15 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
                 # Try to get recent activity if available
                 try:
                     week_ago = datetime.now() - timedelta(days=7)
-                    recent_activity = await self.bot.db.fetch_all(
+                    recent_activity = await self.bot.db.query(
                         """SELECT DATE(timestamp) as date, SUM(xp_gained) as daily_xp
                            FROM xp_history 
                            WHERE guild_id = %s AND user_id = %s AND timestamp >= %s
                            GROUP BY DATE(timestamp)
                            ORDER BY date DESC
                            LIMIT 5""",
-                        interaction.guild.id, target_user.id, week_ago
+                        (interaction.guild.id, target_user.id, week_ago),
+                        fetchall=True
                     )
                     
                     if recent_activity:
@@ -452,18 +456,19 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
             offset = (page - 1) * 10
             
             # Get leaderboard data
-            leaderboard_data = await self.bot.db.fetch_all("""
+            leaderboard_data = await self.bot.db.query("""
                 SELECT user_id, xp, level 
                 FROM user_xp 
                 WHERE guild_id = %s 
                 ORDER BY level DESC, xp DESC 
                 LIMIT 10 OFFSET %s
-            """, interaction.guild.id, offset)
+            """, (interaction.guild.id, offset), fetchall=True)
             
             # Get total count for pagination
-            total_count = await self.bot.db.fetch_one(
+            total_count = await self.bot.db.query(
                 "SELECT COUNT(*) FROM user_xp WHERE guild_id = %s",
-                interaction.guild.id
+                (interaction.guild.id,),
+                fetchone=True
             )
             total_pages = (total_count[0] + 9) // 10 if total_count else 1
             

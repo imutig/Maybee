@@ -137,8 +137,8 @@ class ConfigView(discord.ui.View):
         )
         
         # Get current confession settings
-        result = await self.bot.db.query("SELECT channel_id FROM confession_config WHERE guild_id = %s", (self.guild_id,))
-        confession_channel = result[0]["channel_id"] if result else None
+        result = await self.bot.db.query("SELECT channel_id FROM confession_config WHERE guild_id = %s", (self.guild_id,), fetchone=True)
+        confession_channel = result["channel_id"] if result else None
         
         if confession_channel:
             channel = self.bot.get_channel(confession_channel)
@@ -159,8 +159,8 @@ class ConfigView(discord.ui.View):
         )
         
         # Get current role request settings
-        result = await self.bot.db.query("SELECT channel_id FROM role_request_config WHERE guild_id = %s", (self.guild_id,))
-        role_request_channel = result[0]["channel_id"] if result else None
+        result = await self.bot.db.query("SELECT channel_id FROM role_request_config WHERE guild_id = %s", (self.guild_id,), fetchone=True)
+        role_request_channel = result["channel_id"] if result else None
         
         if role_request_channel:
             channel = self.bot.get_channel(role_request_channel)
@@ -235,8 +235,8 @@ class ConfigView(discord.ui.View):
         )
         
         # Get current language
-        result = await self.bot.db.query("SELECT language_code FROM guild_languages WHERE guild_id = %s", (self.guild_id,))
-        current_language = result[0]["language_code"] if result else "en"
+        result = await self.bot.db.query("SELECT language_code FROM guild_languages WHERE guild_id = %s", (self.guild_id,), fetchone=True)
+        current_language = result["language_code"] if result else "en"
         
         embed.add_field(
             name=_("config_system.language.current_language", interaction.user.id, self.guild_id),

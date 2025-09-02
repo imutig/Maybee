@@ -174,6 +174,10 @@ print(f"  - DISCORD_CLIENT_SECRET: {'✅ Found' if DISCORD_CLIENT_SECRET else '�
 # Database
 database = None
 
+# Cache for guild access verification
+guild_access_cache = {}
+guild_access_cache_ttl = 300  # 5 minutes
+
 # Pydantic models
 class User(BaseModel):
     id: str
@@ -388,17 +392,50 @@ async def get_user_guilds(access_token: str) -> List[Dict]:
         return []
 
 async def get_bot_guilds() -> List[str]:
-    """Get guilds where the bot is present from database"""
+    """Get guilds where the bot is present using Discord API"""
     try:
-        # Get distinct guild IDs from the database where the bot has been active
-        guilds_data = await database.query(
-            "SELECT DISTINCT guild_id FROM xp_data", 
-            fetchall=True
-        )
-        return [str(guild['guild_id']) for guild in guilds_data] if guilds_data else []
+        if not DISCORD_BOT_TOKEN:
+            print("❌ No Discord bot token available for API calls")
+            return []
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            headers = {"Authorization": f"Bot {DISCORD_BOT_TOKEN}"}
+            response = await client.get("https://discord.com/api/users/@me/guilds", headers=headers)
+            
+            if response.status_code == 200:
+                guilds = response.json()
+                guild_ids = [str(guild['id']) for guild in guilds]
+                print(f"✅ Bot guilds from Discord API: {len(guild_ids)} guilds")
+                return guild_ids
+            else:
+                print(f"❌ Discord API error when fetching bot guilds: {response.status_code}")
+                print(f"❌ Error details: {response.text}")
+                # Fallback to database method
+                try:
+                    guilds_data = await database.query(
+                        "SELECT DISTINCT guild_id FROM xp_data", 
+                        fetchall=True
+                    )
+                    fallback_guilds = [str(guild['guild_id']) for guild in guilds_data] if guilds_data else []
+                    print(f"🔄 Using fallback database method: {len(fallback_guilds)} guilds")
+                    return fallback_guilds
+                except Exception as db_error:
+                    print(f"❌ Database fallback also failed: {db_error}")
+                    return []
     except Exception as e:
-        print(f"Error getting bot guilds from database: {e}")
-        return []
+        print(f"❌ Error getting bot guilds from Discord API: {e}")
+        # Fallback to database method
+        try:
+            guilds_data = await database.query(
+                "SELECT DISTINCT guild_id FROM xp_data", 
+                fetchall=True
+            )
+            fallback_guilds = [str(guild['guild_id']) for guild in guilds_data] if guilds_data else []
+            print(f"🔄 Using fallback database method: {len(fallback_guilds)} guilds")
+            return fallback_guilds
+        except Exception as db_error:
+            print(f"❌ Database fallback also failed: {db_error}")
+            return []
 
 # Database initialization
 async def init_database():
