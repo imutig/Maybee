@@ -22,7 +22,6 @@ class DisboardReminder(commands.Cog):
         self.bot = bot
         self.disboard_id = 302050872383242240  # Disboard bot ID
         self.reminder_interval = 2  # Hours between bumps
-        self.bump_role_messages = {}  # Store message info for button handling
         self.check_reminders.start()
         
     def cog_unload(self):
@@ -64,19 +63,6 @@ class DisboardReminder(commands.Cog):
 
     
 
-
-    @commands.Cog.listener()
-    async def on_interaction(self, interaction: discord.Interaction):
-        """Handle button interactions for bump role assignment"""
-        # Only handle component interactions (buttons, select menus, etc.)
-        if interaction.type == discord.InteractionType.component:
-            try:
-                custom_id = interaction.custom_id
-                if custom_id and custom_id.startswith("bump_role_"):
-                    await self._handle_bump_role_button(interaction)
-            except AttributeError:
-                # Some component interactions might not have custom_id
-                pass
 
     async def _handle_bump_detected(self, guild: discord.Guild, bumper: discord.Member, channel: discord.TextChannel):
         """Handle detected bump and update database"""
@@ -177,175 +163,140 @@ class DisboardReminder(commands.Cog):
                 inline=False
             )
             
-            # Create buttons
-            yes_button = discord.ui.Button(
-                style=discord.ButtonStyle.green,
-                label="✅ Oui, notifiez-moi",
-                custom_id=f"bump_role_yes_{bumper.id}_{guild.id}"
-            )
-            no_button = discord.ui.Button(
-                style=discord.ButtonStyle.red,
-                label="❌ Non, merci",
-                custom_id=f"bump_role_no_{bumper.id}_{guild.id}"
-            )
+            # Create buttons with proper callback handling
+            class BumpRoleView(discord.ui.View):
+                def __init__(self, bot, bumper_id, guild_id, role_id):
+                    super().__init__(timeout=300)  # 5 minutes timeout
+                    self.bot = bot
+                    self.bumper_id = bumper_id
+                    self.guild_id = guild_id
+                    self.role_id = role_id
+                
+                @discord.ui.button(label="✅ Oui, notifiez-moi", style=discord.ButtonStyle.green, custom_id="bump_role_yes")
+                async def yes_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    await self._handle_button_click(interaction, "yes")
+                
+                @discord.ui.button(label="❌ Non, merci", style=discord.ButtonStyle.red, custom_id="bump_role_no")
+                async def no_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    await self._handle_button_click(interaction, "no")
+                
+                async def _handle_button_click(self, interaction: discord.Interaction, action: str):
+                    try:
+                        logger.info(f"🔘 Bouton {action} cliqué par {interaction.user.display_name} (ID: {interaction.user.id})")
+                        
+                        # Check if this interaction is from the intended user
+                        if interaction.user.id != self.bumper_id:
+                            logger.warning(f"❌ Utilisateur incorrect: {interaction.user.display_name} (ID: {interaction.user.id}) au lieu de l'utilisateur attendu (ID: {self.bumper_id})")
+                            await interaction.response.send_message(
+                                "❌ Seul l'utilisateur qui a bumpé peut utiliser ces boutons.",
+                                ephemeral=True
+                            )
+                            return
+                        
+                        # Get guild and role
+                        guild = interaction.guild
+                        if not guild or guild.id != self.guild_id:
+                            logger.error(f"❌ Guild incorrect: guild_id={guild.id if guild else None}, expected_guild_id={self.guild_id}")
+                            await interaction.response.send_message("❌ Erreur: Serveur incorrect", ephemeral=True)
+                            return
+                        
+                        logger.info(f"🔍 Recherche configuration pour guild_id={self.guild_id}")
+                        config = await self.bot.db.query(
+                            "SELECT bump_role_id FROM disboard_config WHERE guild_id = %s",
+                            (self.guild_id,),
+                            fetchone=True
+                        )
+                        
+                        if not config or not config['bump_role_id']:
+                            logger.error(f"❌ Configuration de rôle de bump introuvable pour guild_id={self.guild_id}")
+                            await interaction.response.send_message(
+                                "❌ Configuration de rôle de bump introuvable.",
+                                ephemeral=True
+                            )
+                            return
+                        
+                        logger.info(f"🔍 Rôle configuré: role_id={config['bump_role_id']}")
+                        bump_role = guild.get_role(config['bump_role_id'])
+                        if not bump_role:
+                            logger.error(f"❌ Rôle de bump introuvable: role_id={config['bump_role_id']} dans guild={guild.name}")
+                            await interaction.response.send_message(
+                                "❌ Rôle de bump introuvable.",
+                                ephemeral=True
+                            )
+                            return
+                        
+                        logger.info(f"✅ Rôle trouvé: {bump_role.name} (ID: {bump_role.id})")
+                        
+                        if action == "yes":
+                            # Assign the role
+                            logger.info(f"🎯 Tentative d'assignation du rôle {bump_role.name} à {interaction.user.display_name}")
+                            try:
+                                await interaction.user.add_roles(bump_role)
+                                logger.info(f"✅ Rôle {bump_role.name} assigné avec succès à {interaction.user.display_name}")
+                                
+                                embed = discord.Embed(
+                                    title="✅ Rôle assigné !",
+                                    description=_("disboard.thank_you.role_assigned", guild_id=guild.id),
+                                    color=discord.Color.green(),
+                                    timestamp=datetime.now()
+                                )
+                                await interaction.response.send_message(embed=embed, ephemeral=True)
+                                
+                                logger.info(f"Bump role {bump_role.name} assigned to {interaction.user.display_name} in {guild.name}")
+                                
+                            except discord.Forbidden:
+                                logger.error(f"❌ Permission refusée pour assigner le rôle {bump_role.name} à {interaction.user.display_name}")
+                                await interaction.response.send_message(
+                                    "❌ Je n'ai pas la permission d'assigner ce rôle.",
+                                    ephemeral=True
+                                )
+                            except Exception as e:
+                                logger.error(f"❌ Erreur lors de l'assignation du rôle {bump_role.name} à {interaction.user.display_name}: {e}")
+                                await interaction.response.send_message(
+                                    _("disboard.error.role_assignment_error", guild_id=guild.id),
+                                    ephemeral=True
+                                )
+                                
+                        elif action == "no":
+                            # User declined the role
+                            embed = discord.Embed(
+                                title="❌ Rôle refusé",
+                                description=_("disboard.thank_you.role_declined", guild_id=guild.id),
+                                color=discord.Color.orange(),
+                                timestamp=datetime.now()
+                            )
+                            await interaction.response.send_message(embed=embed, ephemeral=True)
+                        
+                        # Remove the buttons from the original message
+                        try:
+                            original_message = interaction.message
+                            if original_message:
+                                # Create new embed without buttons
+                                embed = original_message.embeds[0]
+                                embed.add_field(
+                                    name="🎯 Statut",
+                                    value="✅ Rôle accepté" if action == "yes" else "❌ Rôle refusé",
+                                    inline=False
+                                )
+                                await original_message.edit(embed=embed, view=None)
+                        except Exception as e:
+                            logger.error(f"Error updating original message: {e}")
+                            
+                    except Exception as e:
+                        logger.error(f"Error handling bump role button: {e}")
+                        await interaction.response.send_message(
+                            "❌ Erreur lors du traitement de la demande.",
+                            ephemeral=True
+                        )
             
             # Create view with buttons
-            view = discord.ui.View(timeout=300)  # 5 minutes timeout
-            view.add_item(yes_button)
-            view.add_item(no_button)
+            view = BumpRoleView(self.bot, bumper.id, guild.id, config['bump_role_id'])
             
             # Send message with buttons
-            message = await channel.send(embed=embed, view=view)
-            
-            # Store message info for button handling
-            self.bump_role_messages[bumper.id] = {
-                'message_id': message.id,
-                'guild_id': guild.id,
-                'role_id': config['bump_role_id'],
-                'user_id': bumper.id
-            }
+            await channel.send(embed=embed, view=view)
             
         except Exception as e:
             logger.error(f"Error sending bump role offer message: {e}")
-
-    async def _handle_bump_role_button(self, interaction: discord.Interaction):
-        """Handle bump role button interactions"""
-        try:
-            custom_id = interaction.custom_id
-            logger.info(f"🔘 Bouton cliqué: custom_id='{custom_id}' par {interaction.user.display_name}")
-            
-            if not custom_id or not isinstance(custom_id, str):
-                logger.error(f"❌ custom_id invalide: {custom_id} (type: {type(custom_id)})")
-                await interaction.response.send_message("❌ Erreur: ID de bouton invalide", ephemeral=True)
-                return
-                
-            if not custom_id.startswith("bump_role_"):
-                logger.debug(f"❌ custom_id ne commence pas par 'bump_role_': {custom_id}")
-                return
-            
-            parts = custom_id.split("_")
-            logger.info(f"🔍 Parts du custom_id: {parts}")
-            
-            if len(parts) != 5:
-                logger.error(f"❌ Nombre de parties incorrect dans custom_id: {custom_id} (parties: {parts}, longueur: {len(parts)})")
-                await interaction.response.send_message("❌ Erreur: Format de bouton incorrect", ephemeral=True)
-                return
-            
-            try:
-                action = parts[2]
-                user_id = int(parts[3])
-                guild_id = int(parts[4])
-                logger.info(f"🔍 Parsed: action='{action}', user_id={user_id}, guild_id={guild_id}")
-            except (ValueError, IndexError) as e:
-                logger.error(f"❌ Erreur lors du parsing du custom_id '{custom_id}': {e}")
-                await interaction.response.send_message("❌ Erreur: Impossible de lire les données du bouton", ephemeral=True)
-                return
-            
-            # Check if this interaction is from the intended user
-            logger.info(f"🔍 Vérification utilisateur: interaction.user.id={interaction.user.id}, expected_user_id={user_id}")
-            if interaction.user.id != user_id:
-                logger.warning(f"❌ Utilisateur incorrect: {interaction.user.display_name} (ID: {interaction.user.id}) au lieu de l'utilisateur attendu (ID: {user_id})")
-                await interaction.response.send_message(
-                    "❌ Seul l'utilisateur qui a bumpé peut utiliser ces boutons.",
-                    ephemeral=True
-                )
-                return
-            
-            # Get guild and role
-            guild = interaction.guild
-            if not guild or guild.id != guild_id:
-                logger.error(f"❌ Guild incorrect: guild_id={guild.id if guild else None}, expected_guild_id={guild_id}")
-                await interaction.response.send_message("❌ Erreur: Serveur incorrect", ephemeral=True)
-                return
-            
-            logger.info(f"🔍 Recherche configuration pour guild_id={guild_id}")
-            config = await self.bot.db.query(
-                "SELECT bump_role_id FROM disboard_config WHERE guild_id = %s",
-                (guild_id,),
-                fetchone=True
-            )
-            
-            if not config or not config['bump_role_id']:
-                logger.error(f"❌ Configuration de rôle de bump introuvable pour guild_id={guild_id}")
-                await interaction.response.send_message(
-                    "❌ Configuration de rôle de bump introuvable.",
-                    ephemeral=True
-                )
-                return
-            
-            logger.info(f"🔍 Rôle configuré: role_id={config['bump_role_id']}")
-            bump_role = guild.get_role(config['bump_role_id'])
-            if not bump_role:
-                logger.error(f"❌ Rôle de bump introuvable: role_id={config['bump_role_id']} dans guild={guild.name}")
-                await interaction.response.send_message(
-                    "❌ Rôle de bump introuvable.",
-                    ephemeral=True
-                )
-                return
-            
-            logger.info(f"✅ Rôle trouvé: {bump_role.name} (ID: {bump_role.id})")
-            
-            if action == "yes":
-                # Assign the role
-                logger.info(f"🎯 Tentative d'assignation du rôle {bump_role.name} à {interaction.user.display_name}")
-                try:
-                    await interaction.user.add_roles(bump_role)
-                    logger.info(f"✅ Rôle {bump_role.name} assigné avec succès à {interaction.user.display_name}")
-                    
-                    embed = discord.Embed(
-                        title="✅ Rôle assigné !",
-                        description=_("disboard.thank_you.role_assigned", guild_id=guild.id),
-                        color=discord.Color.green(),
-                        timestamp=datetime.now()
-                    )
-                    await interaction.response.send_message(embed=embed, ephemeral=True)
-                    
-                    logger.info(f"Bump role {bump_role.name} assigned to {interaction.user.display_name} in {guild.name}")
-                    
-                except discord.Forbidden:
-                    logger.error(f"❌ Permission refusée pour assigner le rôle {bump_role.name} à {interaction.user.display_name}")
-                    await interaction.response.send_message(
-                        "❌ Je n'ai pas la permission d'assigner ce rôle.",
-                        ephemeral=True
-                    )
-                except Exception as e:
-                    logger.error(f"❌ Erreur lors de l'assignation du rôle {bump_role.name} à {interaction.user.display_name}: {e}")
-                    await interaction.response.send_message(
-                        _("disboard.error.role_assignment_error", guild_id=guild.id),
-                        ephemeral=True
-                    )
-                    
-            elif action == "no":
-                # User declined the role
-                embed = discord.Embed(
-                    title="❌ Rôle refusé",
-                    description=_("disboard.thank_you.role_declined", guild_id=guild.id),
-                    color=discord.Color.orange(),
-                    timestamp=datetime.now()
-                )
-                await interaction.response.send_message(embed=embed, ephemeral=True)
-            
-            # Remove the buttons from the original message
-            try:
-                original_message = interaction.message
-                if original_message:
-                    # Create new embed without buttons
-                    embed = original_message.embeds[0]
-                    embed.add_field(
-                        name="🎯 Statut",
-                        value="✅ Rôle accepté" if action == "yes" else "❌ Rôle refusé",
-                        inline=False
-                    )
-                    await original_message.edit(embed=embed, view=None)
-            except Exception as e:
-                logger.error(f"Error updating original message: {e}")
-                
-        except Exception as e:
-            logger.error(f"Error handling bump role button: {e}")
-            await interaction.response.send_message(
-                "❌ Erreur lors du traitement de la demande.",
-                ephemeral=True
-            )
 
     @tasks.loop(minutes=1)
     async def check_reminders(self):
