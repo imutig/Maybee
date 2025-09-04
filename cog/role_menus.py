@@ -33,18 +33,23 @@ class RoleMenuDropdown(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         """Handle role selection from dropdown"""
         try:
+            logger.info(f"🔄 Role menu interaction received: User {interaction.user} selected {self.values} from menu {self.menu_data['id']}")
+            
             guild = interaction.guild
             member = interaction.user
             
             if not guild or not member:
+                logger.error(f"❌ Invalid guild or member in role menu interaction")
                 await interaction.response.send_message("❌ Could not process role selection.", ephemeral=True)
                 return
             
             selected_role_ids = [int(value) for value in self.values]
+            logger.info(f"📝 Selected role IDs: {selected_role_ids}")
             
             # Check bot permissions
             bot_member = guild.get_member(self.bot.user.id)
             if not bot_member:
+                logger.error(f"❌ Bot member not found in guild {guild.id}")
                 await interaction.response.send_message("❌ Bot member not found.", ephemeral=True)
                 return
             
@@ -54,7 +59,14 @@ class RoleMenuDropdown(discord.ui.Select):
                 params=(self.menu_data['id'],),
                 fetchall=True
             )
+            
+            if not menu_options:
+                logger.error(f"❌ No options found for menu {self.menu_data['id']}")
+                await interaction.response.send_message("❌ Menu configuration error.", ephemeral=True)
+                return
+                
             menu_role_ids = [option['role_id'] for option in menu_options]
+            logger.info(f"📋 Menu role IDs: {menu_role_ids}")
             
             # Check if this is a single-selection menu (max_values = 1)
             is_single_selection = self.menu_data.get('max_values', 1) == 1
@@ -118,7 +130,9 @@ class RoleMenuDropdown(discord.ui.Select):
             await interaction.response.send_message(response, ephemeral=True)
             
         except Exception as e:
-            logger.error(f"Error in role menu callback: {e}")
+            logger.error(f"❌ Error in role menu callback: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             await interaction.response.send_message("❌ An error occurred while processing your selection.", ephemeral=True)
 
 class RoleMenuView(discord.ui.View):
@@ -139,6 +153,11 @@ class RoleMenus(commands.Cog):
     async def cog_load(self):
         """Load persistent views for existing role menus"""
         try:
+            # Wait for database to be connected
+            if not self.bot.db.pool:
+                logger.info("Waiting for database connection before loading role menu views...")
+                await self.bot.db.connect()
+            
             # Get all active role menus
             menus = await self.bot.db.query(
                 "SELECT * FROM role_menus WHERE message_id IS NOT NULL",
@@ -149,6 +168,8 @@ class RoleMenus(commands.Cog):
             if not menus:
                 logger.info("No existing role menus found with message IDs")
                 return
+            
+            logger.info(f"Found {len(menus)} role menus with message IDs, loading persistent views...")
             
             for menu in menus:
                 # Get menu options
@@ -161,14 +182,19 @@ class RoleMenus(commands.Cog):
                 if options:
                     view = RoleMenuView(self.bot, menu, options)
                     self.bot.add_view(view, message_id=menu['message_id'])
+                    logger.info(f"✅ Loaded persistent view for role menu {menu['id']} ({menu['title']})")
+                else:
+                    logger.warning(f"⚠️  Role menu {menu['id']} has no options, skipping persistent view")
                     
-            logger.info(f"Loaded {len(menus)} persistent role menu views")
+            logger.info(f"✅ Loaded {len(menus)} persistent role menu views")
             
             # Start the background task to check for new role menus
             self.check_new_role_menus.start()
             
         except Exception as e:
             logger.error(f"Error loading role menu views: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             
     async def cog_unload(self):
         """Stop background tasks when cog is unloaded"""

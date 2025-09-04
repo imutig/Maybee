@@ -66,8 +66,8 @@
       "footer": "Disboard Reminder System • Bump toutes les 2h"
     },
     "thank_you": {
-      "title": "🙏 Merci pour le Bump !",
-      "message": "Merci à toi **{bumper}** d'avoir bumpé **{server}** !",
+      "title": "🙏 Merci !",
+      "message": "Merci **{bumper}** d'avoir bumpé **{server}** !",
       "role_offer": "Veux-tu être ping à chaque fois qu'il est possible de bump ?",
       "yes_button": "Oui",
       "no_button": "Non",

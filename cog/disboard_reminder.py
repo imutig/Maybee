@@ -59,10 +59,6 @@ class DisboardReminder(commands.Cog):
             await self._handle_bump_detected(message.guild, user, message.channel)
         else:
             logger.warning(f"⚠️ Bump détecté mais utilisateur introuvable")
-    
-
-    
-
 
     async def _handle_bump_detected(self, guild: discord.Guild, bumper: discord.Member, channel: discord.TextChannel):
         """Handle detected bump and update database"""
@@ -85,18 +81,8 @@ class DisboardReminder(commands.Cog):
             )
             bump_count = total_bumps['count']
             
-            # Send bump confirmation
-            embed = discord.Embed(
-                title=_("disboard.bump_detected.title", guild_id=guild.id),
-                description=_("disboard.bump_detected.description", guild_id=guild.id, bumper=bumper.display_name),
-                color=discord.Color.green(),
-                timestamp=current_time
-            )
-            embed.add_field(name=_("disboard.bump_detected.bump_count", guild_id=guild.id), value=f"**{bump_count}**", inline=True)
-            embed.add_field(name=_("disboard.bump_detected.next_bump", guild_id=guild.id), value=f"<t:{int((current_time + timedelta(hours=2)).timestamp())}:R>", inline=True)
-            embed.set_footer(text=_("disboard.bump_detected.footer", guild_id=guild.id))
-            
-            await channel.send(embed=embed)
+            # Send simple thank you message
+            await channel.send(_("disboard.thank_you.message", guild_id=guild.id, bumper=bumper.display_name, server=guild.name))
             
             # Send thank you message with role offer
             await self._send_thank_you_message(guild, bumper, channel)
@@ -116,7 +102,21 @@ class DisboardReminder(commands.Cog):
                 fetchone=True
             )
             
-            # Create base embed for role notification
+            if not config or not config['bump_role_id']:
+                # No bump role configured, don't send any message
+                return
+            
+            bump_role = guild.get_role(config['bump_role_id'])
+            if not bump_role:
+                # Role not found, don't send any message
+                return
+            
+            # Check if user already has the bump role
+            if bump_role in bumper.roles:
+                # User already has the role, don't send any message
+                return
+            
+            # User doesn't have the role, send ephemeral message with role offer
             embed = discord.Embed(
                 title="🔔 Notification de bump",
                 description=f"**{bumper.display_name}**, vous souhaitez être notifié au prochain bump ?",
@@ -124,39 +124,6 @@ class DisboardReminder(commands.Cog):
                 timestamp=datetime.now()
             )
             
-            if not config or not config['bump_role_id']:
-                # No bump role configured
-                embed.add_field(
-                    name="⚠️ Configuration requise",
-                    value="Aucun rôle de bump n'est configuré. Utilisez `/disboard setup role` pour configurer un rôle.",
-                    inline=False
-                )
-                await channel.send(embed=embed)
-                return
-            
-            bump_role = guild.get_role(config['bump_role_id'])
-            if not bump_role:
-                # Role not found
-                embed.add_field(
-                    name="⚠️ Rôle introuvable",
-                    value="Le rôle de bump configuré n'existe plus. Utilisez `/disboard setup role` pour reconfigurer.",
-                    inline=False
-                )
-                await channel.send(embed=embed)
-                return
-            
-            # Check if user already has the bump role
-            if bump_role in bumper.roles:
-                # User already has the role
-                embed.add_field(
-                    name="✅ Déjà notifié",
-                    value=f"Vous avez déjà le rôle {bump_role.mention} ! Vous serez notifié pour **TOUS** les prochains bumps.",
-                    inline=False
-                )
-                await channel.send(embed=embed)
-                return
-            
-            # Create role offer message
             embed.add_field(
                 name="🎯 Cliquez ici pour être notifié",
                 value=f"En acceptant, vous recevrez le rôle {bump_role.mention} et serez notifié pour **TOUS** les prochains bumps.",
@@ -166,7 +133,7 @@ class DisboardReminder(commands.Cog):
             # Create buttons with proper callback handling
             class BumpRoleView(discord.ui.View):
                 def __init__(self, bot, bumper_id, guild_id, role_id):
-                    super().__init__(timeout=300)  # 5 minutes timeout
+                    super().__init__(timeout=30)  # 30 seconds timeout to match deletion
                     self.bot = bot
                     self.bumper_id = bumper_id
                     self.guild_id = guild_id
@@ -267,20 +234,16 @@ class DisboardReminder(commands.Cog):
                             )
                             await interaction.response.send_message(embed=embed, ephemeral=True)
                         
-                        # Remove the buttons from the original message
+                        # Delete the original message after interaction
                         try:
                             original_message = interaction.message
                             if original_message:
-                                # Create new embed without buttons
-                                embed = original_message.embeds[0]
-                                embed.add_field(
-                                    name="🎯 Statut",
-                                    value="✅ Rôle accepté" if action == "yes" else "❌ Rôle refusé",
-                                    inline=False
-                                )
-                                await original_message.edit(embed=embed, view=None)
+                                await original_message.delete()
+                        except discord.NotFound:
+                            # Message already deleted
+                            pass
                         except Exception as e:
-                            logger.error(f"Error updating original message: {e}")
+                            logger.error(f"Error deleting original message: {e}")
                             
                     except Exception as e:
                         logger.error(f"Error handling bump role button: {e}")
@@ -292,8 +255,22 @@ class DisboardReminder(commands.Cog):
             # Create view with buttons
             view = BumpRoleView(self.bot, bumper.id, guild.id, config['bump_role_id'])
             
-            # Send message with buttons
-            await channel.send(embed=embed, view=view)
+            # Send temporary message with buttons in the channel
+            temp_message = await channel.send(embed=embed, view=view)
+            
+            # Delete the message after 30 seconds
+            async def delete_message():
+                await asyncio.sleep(30)
+                try:
+                    await temp_message.delete()
+                except discord.NotFound:
+                    # Message already deleted by user interaction
+                    pass
+                except Exception as e:
+                    logger.error(f"Error deleting temporary bump role message: {e}")
+            
+            # Start the deletion task
+            asyncio.create_task(delete_message())
             
         except Exception as e:
             logger.error(f"Error sending bump role offer message: {e}")
@@ -393,43 +370,18 @@ class DisboardReminder(commands.Cog):
                 fetchone=True
             )
             
-            # Calculate time since last bump
-            time_since_bump = datetime.now() - last_bump
-            hours_since_bump = int(time_since_bump.total_seconds() / 3600)
-            
-            # Create reminder embed
-            embed = discord.Embed(
-                title=_("disboard.reminder.title", guild_id=guild.id),
-                description=_("disboard.reminder.description", guild_id=guild.id),
-                color=discord.Color.orange(),
-                timestamp=datetime.now()
-            )
-            embed.add_field(
-                name=_("disboard.reminder.last_bump", guild_id=guild.id), 
-                value=f"<t:{int(last_bump.timestamp())}:R>", 
-                inline=True
-            )
-            embed.add_field(
-                name=_("disboard.reminder.time_elapsed", guild_id=guild.id), 
-                value=f"**{hours_since_bump}h**", 
-                inline=True
-            )
-            embed.add_field(
-                name=_("disboard.reminder.command", guild_id=guild.id), 
-                value="`/bump`", 
-                inline=True
-            )
-            embed.set_footer(text=_("disboard.reminder.footer", guild_id=guild.id))
+            # Send short reminder message
+            reminder_message = "⏰ Il est temps de bumper le serveur ! `/bump`"
             
             # Send reminder with role ping if configured
             if config and config['bump_role_id']:
                 bump_role = guild.get_role(config['bump_role_id'])
                 if bump_role:
-                    await channel.send(f"{bump_role.mention}", embed=embed)
+                    await channel.send(f"{bump_role.mention} {reminder_message}")
                 else:
-                    await channel.send(embed=embed)
+                    await channel.send(reminder_message)
             else:
-                await channel.send(embed=embed)
+                await channel.send(reminder_message)
             
             # Log reminder in database
             await self.bot.db.query(
