@@ -194,15 +194,20 @@ class XPBatchProcessor:
             raise
     
     def _calculate_level(self, xp: int) -> int:
-        """Calculate level from XP"""
+        """
+        Calculate level from XP using a progressive formula that starts easy and becomes gradually harder.
+        Formula: level = floor(xp / 200) + floor(sqrt(xp / 500)) + 1
+        This creates an easy start with gradual difficulty increase.
+        """
         if xp < 0:
-            return 0
-        level = 0
-        required_xp = 0
-        while required_xp <= xp:
-            level += 1
-            required_xp += level * 100
-        return level - 1
+            return 1
+        import math
+        
+        # Formule hybride : linéaire au début, puis racine carrée
+        linear_part = xp // 200
+        sqrt_part = int(math.sqrt(xp / 400))
+        
+        return linear_part + sqrt_part + 1
     
     async def force_process(self):
         """Force process any pending updates"""

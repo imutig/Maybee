@@ -176,6 +176,31 @@ class XPSystem(commands.Cog):
         self.xp_multiplier = XPMultiplier(bot)  # XP multiplier system
         print("✅ XPSystem cog chargé")
 
+    def _calculate_level(self, xp: int) -> int:
+        """
+        Calculate level from XP using a progressive formula that starts easy and becomes gradually harder.
+        Formula: level = floor(xp / 200) + floor(sqrt(xp / 500)) + 1
+        This creates an easy start with gradual difficulty increase.
+        
+        Level progression:
+        Level 1: 0-199 XP
+        Level 2: 200-399 XP  
+        Level 3: 400-599 XP
+        Level 4: 600-799 XP
+        Level 5: 800-999 XP
+        Level 10: ~2000 XP
+        etc.
+        """
+        if xp < 0:
+            return 1
+        import math
+        
+        # Formule hybride : linéaire au début, puis racine carrée
+        linear_part = xp // 200
+        sqrt_part = int(math.sqrt(xp / 400))
+        
+        return linear_part + sqrt_part + 1
+
     @commands.Cog.listener()
     async def on_ready(self):
         if not self.voice_xp_loop.is_running():
@@ -258,7 +283,7 @@ class XPSystem(commands.Cog):
                 print(f"📈 XP Gained: {actual_xp_gained} XP ({source}) - User {user_id} in guild {guild_id}")
             
             new_xp = data["xp"] + actual_xp_gained
-            new_level = int((new_xp / 100)**0.5) + 1
+            new_level = self._calculate_level(new_xp)
             leveled_up = new_level > data["level"]
 
             # Update main XP table
