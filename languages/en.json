@@ -81,6 +81,24 @@
     }
   },
   "commands": {
+    "dmlogs": {
+      "description": "Configure DM logs to receive private notifications",
+      "embed_title": "📨 DM Logs Configuration",
+      "embed_description": "Configure which commands you want to monitor via private message.",
+      "current_status": "📊 Current Status",
+      "enabled": "✅ Enabled",
+      "disabled": "❌ Disabled",
+      "how_it_works": "ℹ️ How it works",
+      "how_it_works_text": "• Enable the commands you want to monitor\n• You'll receive a DM each time they're used\n• Perfect for monitoring your important commands",
+      "footer": "Use the buttons below to configure your preferences",
+      "enable_all": "✅ Enable All",
+      "disable_all": "❌ Disable All",
+      "close": "🔒 Close",
+      "all_enabled": "✅ All DM logs have been enabled!",
+      "all_disabled": "❌ All DM logs have been disabled!",
+      "menu_closed": "🔒 Menu closed.",
+      "unauthorized": "❌ You are not authorized to use this menu."
+    },
     "ping": {
       "description": "Display bot latency",
       "response": "Pong 🏓 {latency} ms"
@@ -109,7 +127,7 @@
       "status": "Status",
       "ready_bump": "🟢 Ready for new bump",
       "soon_bump": "🟡 Bump possible soon",
-      "long_time_bump": "🔴 Bump possible for a long time"
+      "long_time_bump": "🔴 Can't bump for a long time"
     },
     "disboard": {
       "description": "Configure Disboard reminder system",

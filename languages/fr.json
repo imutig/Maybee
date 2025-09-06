@@ -81,6 +81,24 @@
     }
   },
   "commands": {
+    "dmlogs": {
+      "description": "Configurer les logs DM pour recevoir des notifications privées",
+      "embed_title": "📨 Configuration des Logs DM",
+      "embed_description": "Configurez quelles commandes vous voulez surveiller via message privé.",
+      "current_status": "📊 État actuel",
+      "enabled": "✅ Activé",
+      "disabled": "❌ Désactivé",
+      "how_it_works": "ℹ️ Comment ça marche",
+      "how_it_works_text": "• Activez les commandes que vous voulez surveiller\n• Vous recevrez un DM à chaque utilisation\n• Parfait pour surveiller vos commandes importantes",
+      "footer": "Utilisez les boutons ci-dessous pour configurer vos préférences",
+      "enable_all": "✅ Activer Tout",
+      "disable_all": "❌ Désactiver Tout",
+      "close": "🔒 Fermer",
+      "all_enabled": "✅ Tous les logs DM ont été activés !",
+      "all_disabled": "❌ Tous les logs DM ont été désactivés !",
+      "menu_closed": "🔒 Menu fermé.",
+      "unauthorized": "❌ Vous n'êtes pas autorisé à utiliser ce menu."
+    },
     "ping": {
       "description": "Affiche la latence du bot",
       "response": "Pong 🏓 {latency} ms"
