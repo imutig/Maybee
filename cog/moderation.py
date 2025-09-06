@@ -23,6 +23,7 @@ class Moderation(commands.Cog):
         member="The member to warn",
         reason="The reason for the warning"
     )
+    @log_command_usage
     async def warn(self, interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
         """Warn a member and log the warning"""
         user_id = interaction.user.id
@@ -114,6 +115,7 @@ class Moderation(commands.Cog):
         duration="Duration in minutes (max 2880 = 48 hours)",
         reason="The reason for the timeout"
     )
+    @log_command_usage
     async def timeout(self, interaction: discord.Interaction, member: discord.Member, 
                      duration: int, reason: str = "No reason provided"):
         """Timeout a member for a specified duration"""

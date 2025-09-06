@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from i18n import i18n, _
 from services import ServiceContainer, BotConfig, RateLimitManager, handle_errors, rate_limit
 from monitoring import initialize_monitoring, get_health_checker, profile_performance
+from cog.command_logger import log_command_usage
 
 # Setup enhanced logging with Unicode support
 import sys
@@ -257,6 +258,7 @@ async def on_app_command_error(interaction: discord.Interaction, error):
 @bot.tree.command(name="health", description="Check bot health and performance metrics")
 @handle_errors
 @rate_limit(cooldown=30)
+@log_command_usage
 async def health_check(interaction: discord.Interaction):
     """Health check command for monitoring bot status"""
     if not interaction.user.guild_permissions.administrator:
@@ -352,6 +354,7 @@ async def health_check(interaction: discord.Interaction):
 @bot.tree.command(name="sync", description="Synchronise les commandes slash pour ce serveur (Admin uniquement)")
 @handle_errors
 @rate_limit(cooldown=60)
+@log_command_usage
 async def sync_commands(interaction: discord.Interaction):
     user_id = interaction.user.id
     guild_id = interaction.guild.id if interaction.guild else None

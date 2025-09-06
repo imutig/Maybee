@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional
 import asyncio
 from i18n import _
@@ -15,31 +15,89 @@ class DMLogsConfigView(discord.ui.View):
         self.bot = bot
         self.user_id = user_id
         self.commands = self._get_available_commands()
-        self._create_buttons()
+    
+    async def initialize(self):
+        """Initialise la vue de manière asynchrone"""
+        await self._create_buttons()
     
     def _get_available_commands(self) -> List[str]:
         """Récupère la liste des commandes disponibles"""
         commands = []
-        # Récupérer toutes les commandes slash du bot
+        
+        # Récupérer toutes les commandes slash du bot (commandes globales)
         for command in self.bot.tree.get_commands():
             if isinstance(command, app_commands.Command):
                 commands.append(command.name)
-        return sorted(commands)
+        
+        # Récupérer aussi les commandes des cogs
+        for cog_name, cog in self.bot.cogs.items():
+            # Essayer différentes méthodes pour récupérer les commandes
+            if hasattr(cog, 'get_app_commands'):
+                try:
+                    cog_commands = cog.get_app_commands()
+                    for command in cog_commands:
+                        if isinstance(command, app_commands.Command):
+                            commands.append(command.name)
+                except Exception as e:
+                    print(f"❌ [DM LOGS] Erreur get_app_commands() pour {cog_name}: {e}")
+            
+            # Essayer de parcourir les attributs du cog
+            for attr_name in dir(cog):
+                attr = getattr(cog, attr_name)
+                if hasattr(attr, '__name__') and hasattr(attr, '__annotations__'):
+                    # Vérifier si c'est une commande app_commands
+                    if hasattr(attr, '_callback') or (hasattr(attr, '__wrapped__') and 'interaction' in str(attr.__annotations__)):
+                        commands.append(attr_name)
+        
+        # Supprimer les doublons et trier
+        unique_commands = sorted(list(set(commands)))
+        print(f"🔍 [DM LOGS] {len(unique_commands)} commandes détectées: {unique_commands}")
+        return unique_commands
     
-    def _create_buttons(self):
+    async def _create_buttons(self):
         """Crée les boutons pour chaque commande"""
         # Boutons principaux (ligne 0)
         self.add_item(EnableAllButton(self.bot, self.user_id))
         self.add_item(DisableAllButton(self.bot, self.user_id))
         self.add_item(CloseButton())
         
+        # S'assurer que toutes les commandes détectées sont dans la base de données
+        await self._ensure_commands_in_db()
+        
+        # Récupérer les états des commandes
+        enabled_commands = await self.bot.get_cog('DMLogsSystem')._get_enabled_commands(self.user_id)
+        
         # Boutons pour chaque commande (lignes 1-4, max 5 lignes)
-        commands_to_show = self.commands[:15]  # 15 commandes max pour éviter la limite de 25 composants
+        # Limite à 22 commandes pour laisser de la place aux 3 boutons principaux (25 max total)
+        commands_to_show = self.commands[:22]  # 22 commandes max pour éviter la limite de 25 composants
+        print(f"🔍 [DM LOGS] Commandes à afficher ({len(commands_to_show)}): {commands_to_show}")
         
         for i, command in enumerate(commands_to_show):
             row = (i // 5) + 1  # 5 boutons par ligne
             if row <= 4:  # Maximum 4 lignes de commandes
-                self.add_item(CommandToggleButton(self.bot, self.user_id, command, row))
+                initial_state = command in enabled_commands
+                self.add_item(CommandToggleButton(self.bot, self.user_id, command, row, initial_state))
+    
+    async def _ensure_commands_in_db(self):
+        """S'assure que toutes les commandes détectées sont dans la base de données"""
+        try:
+            for command_name in self.commands:
+                # Vérifier si la commande existe déjà pour cet utilisateur
+                existing = await self.bot.db.query(
+                    "SELECT id FROM dm_logs_commands WHERE user_id = %s AND command_name = %s",
+                    (self.user_id, command_name),
+                    fetchone=True
+                )
+                
+                # Si elle n'existe pas, l'ajouter avec l'état par défaut (désactivée)
+                if not existing:
+                    await self.bot.db.query(
+                        "INSERT INTO dm_logs_commands (user_id, command_name, enabled) VALUES (%s, %s, FALSE)",
+                        (self.user_id, command_name)
+                    )
+                    print(f"🔍 [DM LOGS] Commande '{command_name}' ajoutée à la DB pour l'utilisateur {self.user_id}")
+        except Exception as e:
+            print(f"❌ [DM LOGS] Erreur lors de l'ajout des commandes à la DB: {e}")
 
 
 class EnableAllButton(discord.ui.Button):
@@ -96,13 +154,20 @@ class DisableAllButton(discord.ui.Button):
 
 
 class CommandToggleButton(discord.ui.Button):
-    def __init__(self, bot, user_id: int, command_name: str, row: int = 1):
+    def __init__(self, bot, user_id: int, command_name: str, row: int = 1, initial_state: bool = False):
         self.bot = bot
         self.user_id = user_id
         self.command_name = command_name
         
-        # Déterminer le style et le label basé sur l'état actuel
-        super().__init__(label=f"🔄 {command_name}", style=discord.ButtonStyle.secondary, row=row)
+        # Déterminer le style et le label basé sur l'état initial
+        if initial_state:
+            label = f"✅ {command_name}"
+            style = discord.ButtonStyle.success
+        else:
+            label = f"❌ {command_name}"
+            style = discord.ButtonStyle.danger
+        
+        super().__init__(label=label, style=style, row=row)
     
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
@@ -134,13 +199,8 @@ class CommandToggleButton(discord.ui.Button):
             self.label = f"❌ {self.command_name}"
             self.style = discord.ButtonStyle.danger
         
-        # Envoyer une réponse temporaire
-        guild_id = interaction.guild.id if interaction.guild else None
-        status_text = _("commands.dmlogs.enabled", self.user_id, guild_id) if new_state else _("commands.dmlogs.disabled", self.user_id, guild_id)
-        await interaction.response.send_message(f"🔄 Commande `{self.command_name}` {status_text.lower()}", ephemeral=True)
-        
-        # Mettre à jour la vue
-        await interaction.edit_original_response(view=self.view)
+        # Mettre à jour directement le message original
+        await interaction.response.edit_message(view=self.view)
 
 
 class CloseButton(discord.ui.Button):
@@ -157,7 +217,6 @@ class DMLogsSystem(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.cooldowns: Dict[int, datetime] = {}  # Anti-spam
     
     @app_commands.command(
         name="dmlogs",
@@ -213,24 +272,47 @@ class DMLogsSystem(commands.Cog):
         
         # Créer la vue
         view = DMLogsConfigView(self.bot, user_id)
+        await view.initialize()
         
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     
     async def _get_enabled_commands(self, user_id: int) -> List[str]:
         """Récupère la liste des commandes activées pour un utilisateur"""
         try:
+            # D'abord, vérifier toutes les commandes pour cet utilisateur
+            all_results = await self.bot.db.query(
+                "SELECT command_name, enabled FROM dm_logs_commands WHERE user_id = %s",
+                (user_id,),
+                fetchall=True
+            )
+            print(f"🔍 [DM LOGS] Toutes les commandes pour {user_id}: {all_results}")
+            
+            # Ensuite, récupérer seulement celles qui sont activées
             results = await self.bot.db.query(
                 "SELECT command_name FROM dm_logs_commands WHERE user_id = %s AND enabled = TRUE",
-                (user_id,)
+                (user_id,),
+                fetchall=True
             )
-            return [result['command_name'] for result in results]
-        except Exception:
+            print(f"🔍 [DM LOGS] Résultats de la requête activée: {results}")
+            
+            # Vérifier si results n'est pas None
+            if results is None:
+                print(f"🔍 [DM LOGS] Aucune commande activée pour {user_id}")
+                return []
+            
+            commands = [result['command_name'] for result in results]
+            print(f"🔍 [DM LOGS] Commandes activées pour {user_id}: {commands}")
+            return commands
+        except Exception as e:
+            print(f"❌ [DM LOGS] Erreur lors de la récupération des commandes activées: {e}")
             return []
     
-    async def log_command_usage(self, command_name: str, executor: discord.Member, guild: discord.Guild = None):
+    async def log_command_usage(self, command_name: str, executor: discord.Member, guild: discord.Guild = None, extra_details: dict = None):
         """Log l'utilisation d'une commande pour tous les utilisateurs qui l'ont activée"""
         try:
-            # Récupérer tous les utilisateurs qui ont activé cette commande
+            print(f"🔍 [DM LOGS] Commande '{command_name}' utilisée par {executor.display_name} ({executor.id})")
+            
+            # Récupérer tous les utilisateurs qui ont activé cette commande (y compris l'exécuteur)
             results = await self.bot.db.query(
                 """SELECT DISTINCT dlp.user_id 
                    FROM dm_logs_preferences dlp
@@ -238,8 +320,16 @@ class DMLogsSystem(commands.Cog):
                    WHERE dlp.enabled = TRUE 
                    AND dlc.command_name = %s 
                    AND dlc.enabled = TRUE""",
-                (command_name,)
+                (command_name,),
+                fetchall=True
             )
+            
+            # Vérifier si results n'est pas None
+            if results is None:
+                print(f"🔍 [DM LOGS] Aucun utilisateur ne surveille la commande '{command_name}'")
+                return
+            
+            print(f"🔍 [DM LOGS] {len(results)} utilisateurs surveillent cette commande")
             
             if not results:
                 return
@@ -264,6 +354,33 @@ class DMLogsSystem(commands.Cog):
                     inline=True
                 )
             
+            # Ajouter les détails supplémentaires spécifiques à la commande
+            if extra_details:
+                details_text = ""
+                for key, value in extra_details.items():
+                    if value and value != "N/A":
+                        # Traduire les clés en français pour l'affichage
+                        key_translated = {
+                            "messages_deleted": "Messages supprimés",
+                            "channel": "Canal",
+                            "channel_id": "ID Canal",
+                            "warned_user": "Utilisateur averti",
+                            "reason": "Raison",
+                            "timed_out_user": "Utilisateur timeout",
+                            "duration_minutes": "Durée (minutes)",
+                            "target_user": "Utilisateur ciblé",
+                            "decision": "Décision",
+                            "message_length": "Longueur du message"
+                        }.get(key, key)
+                        
+                        if isinstance(value, int):
+                            details_text += f"**{key_translated}:** {value}\n"
+                        else:
+                            details_text += f"**{key_translated}:** {value}\n"
+                
+                if details_text:
+                    embed.add_field(name="📋 Détails", value=details_text.strip(), inline=False)
+            
             embed.add_field(
                 name="🆔 IDs",
                 value=f"User: {executor.id}\nGuild: {guild.id if guild else 'DM'}",
@@ -277,16 +394,10 @@ class DMLogsSystem(commands.Cog):
             for result in results:
                 user_id = result['user_id']
                 
-                # Vérifier le cooldown anti-spam (5 minutes)
-                if user_id in self.cooldowns:
-                    if datetime.utcnow() - self.cooldowns[user_id] < timedelta(minutes=5):
-                        continue
-                
                 try:
                     user = self.bot.get_user(user_id)
                     if user:
                         await user.send(embed=embed)
-                        self.cooldowns[user_id] = datetime.utcnow()
                         
                         # Enregistrer dans l'historique
                         await self.bot.db.query(

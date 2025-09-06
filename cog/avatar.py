@@ -13,6 +13,7 @@ class Avatar(commands.Cog):
     @app_commands.command(name="avatar",
                           description="Show a user's avatar")
     @app_commands.describe(user="The user whose avatar you want to see")
+    @log_command_usage
     async def avatar(self,
                      interaction: discord.Interaction,
                      user: discord.Member = None):

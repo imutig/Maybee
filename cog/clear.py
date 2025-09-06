@@ -13,6 +13,7 @@ class Clear(commands.Cog):
     @app_commands.command(name="clear",
                           description="Delete messages from the channel")
     @app_commands.describe(nombre="Number of messages to delete (max 100)")
+    @log_command_usage
     async def clear(self, interaction: discord.Interaction, nombre: int):
         user_id = interaction.user.id
         guild_id = interaction.guild.id if interaction.guild else None

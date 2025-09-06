@@ -32,6 +32,7 @@ class Confession(commands.Cog):
 
     @app_commands.command(name="confession", description="Envoyer une confession anonyme dans le canal prévu")
     @app_commands.describe(message="Le contenu de ta confession (anonyme)")
+    @log_command_usage
     async def confession(self, interaction: discord.Interaction, message: str):
         from i18n import _
         from .command_logger import log_command_usage

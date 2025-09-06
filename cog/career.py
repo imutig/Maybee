@@ -13,6 +13,7 @@ class Career(commands.Cog):
     @app_commands.command(
         name="career",
         description="Add a career decision for a member")
+    @log_command_usage
     @app_commands.describe(
         member="The member concerned",
         decision="Type of decision made", 
