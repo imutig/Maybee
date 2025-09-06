@@ -1,4 +1,5 @@
 import discord
+from .command_logger import log_command_usage
 from discord.ext import commands, tasks
 from discord import app_commands
 import logging

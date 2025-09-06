@@ -2,12 +2,14 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from i18n import _
+from .command_logger import log_command_usage
 
 class Ping(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @app_commands.command(name="ping", description="Show bot latency")
+    @log_command_usage
     async def ping(self, interaction: discord.Interaction):
         user_id = interaction.user.id
         guild_id = interaction.guild.id if interaction.guild else None

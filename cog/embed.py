@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from i18n import _
+from .command_logger import log_command_usage
 
 class EmbedModal(discord.ui.Modal, title="Create an embed"):
 

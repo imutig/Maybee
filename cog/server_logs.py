@@ -3,6 +3,7 @@ from discord.ext import commands
 from datetime import datetime
 import logging
 from i18n import _
+from .command_logger import log_command_usage
 
 logger = logging.getLogger(__name__)
 

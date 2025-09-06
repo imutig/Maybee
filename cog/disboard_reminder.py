@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 import asyncio
 import re
 from i18n import _
+from .command_logger import log_command_usage
 
 from services import handle_errors, rate_limit
 from monitoring import logger
@@ -478,6 +479,7 @@ class DisboardReminder(commands.Cog):
             )
 
     @app_commands.command(name="bumpstats", description="Afficher les statistiques de bump du serveur")
+    @log_command_usage
     async def bumpstats(self, interaction: discord.Interaction):
         """Display server bump statistics"""
         try:

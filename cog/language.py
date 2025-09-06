@@ -1,4 +1,5 @@
 import discord
+from .command_logger import log_command_usage
 from discord.ext import commands
 from discord import app_commands
 from i18n import i18n, _
@@ -86,6 +87,7 @@ class LanguageManager(commands.Cog):
                 )
     
     @app_commands.command(name="languages", description="Show available languages")
+    @log_command_usage
     async def show_languages(self, interaction: discord.Interaction):
         user_id = interaction.user.id
         guild_id = interaction.guild.id if interaction.guild else None

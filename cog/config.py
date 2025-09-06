@@ -5,6 +5,7 @@ from typing import Optional
 import logging
 from datetime import datetime
 from i18n import _
+from .command_logger import log_command_usage
 
 logger = logging.getLogger(__name__)
 
@@ -542,6 +543,7 @@ class ConfigCog(commands.Cog):
         logger.info("Config cog initialized")
 
     @app_commands.command(name="config", description="Configure bot settings")
+    @log_command_usage
     async def config(self, interaction: discord.Interaction):
         """Unified configuration command for all bot systems"""
         

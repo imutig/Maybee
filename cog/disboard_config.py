@@ -9,6 +9,7 @@ from discord import app_commands
 from typing import Optional
 from datetime import datetime, timezone
 from i18n import _
+from .command_logger import log_command_usage
 
 from services import handle_errors, rate_limit
 from monitoring import logger

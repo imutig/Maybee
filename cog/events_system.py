@@ -4,6 +4,7 @@ Automatically creates engaging events and challenges for server members
 """
 
 import discord
+from .command_logger import log_command_usage
 from discord.ext import commands, tasks
 from discord import app_commands
 from typing import Optional, Dict, List, Any

@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from i18n import _
+from .command_logger import log_command_usage
 
 
 class Career(commands.Cog):
@@ -25,6 +26,7 @@ class Career(commands.Cog):
         app_commands.Choice(name="Promotion", value="promotion"),
         app_commands.Choice(name="Exclusion", value="exclusion")
     ])
+    @log_command_usage
     async def career(self, interaction: discord.Interaction,
                      member: discord.Member,
                      decision: app_commands.Choice[str], reason: str,

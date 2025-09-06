@@ -6,6 +6,7 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Literal
 from i18n import _
+from .command_logger import log_command_usage
 
 class XPMultiplier:
     """XP multiplier system for events and boosts"""
@@ -846,6 +847,7 @@ class XPSystem(commands.Cog):
             )
 
     @app_commands.command(name="levelroles", description="Afficher la liste des rôles attribués par niveau")       
+    @log_command_usage
     async def levelroles(self, interaction: discord.Interaction):
         user_id = interaction.user.id
         guild_id = interaction.guild.id

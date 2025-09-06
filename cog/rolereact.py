@@ -4,6 +4,7 @@ from discord import app_commands
 import logging
 import asyncio
 from i18n import _
+from .command_logger import log_command_usage
 from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)

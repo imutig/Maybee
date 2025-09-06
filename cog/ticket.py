@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import asyncio
 from i18n import _
+from .command_logger import log_command_usage
 import json
 
 

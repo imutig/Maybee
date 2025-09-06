@@ -5,6 +5,7 @@ from typing import Optional, Union
 import asyncio
 from datetime import datetime, timedelta
 from i18n import _
+from .command_logger import log_command_usage
 from validation import InputValidator
 import logging
 
