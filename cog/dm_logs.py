@@ -20,25 +20,26 @@ class DMLogsConfigView(discord.ui.View):
     def _get_available_commands(self) -> List[str]:
         """Récupère la liste des commandes disponibles"""
         commands = []
-        for cog_name, cog in self.bot.cogs.items():
-            if hasattr(cog, 'get_commands'):
-                for command in cog.get_commands():
-                    if isinstance(command, app_commands.Command):
-                        commands.append(command.name)
+        # Récupérer toutes les commandes slash du bot
+        for command in self.bot.tree.get_commands():
+            if isinstance(command, app_commands.Command):
+                commands.append(command.name)
         return sorted(commands)
     
     def _create_buttons(self):
         """Crée les boutons pour chaque commande"""
-        # Bouton pour activer/désactiver tous les logs
+        # Boutons principaux (ligne 0)
         self.add_item(EnableAllButton(self.bot, self.user_id))
         self.add_item(DisableAllButton(self.bot, self.user_id))
-        
-        # Boutons pour chaque commande (maximum 20 boutons par vue)
-        for i, command in enumerate(self.commands[:17]):  # 17 + 3 boutons = 20 max
-            self.add_item(CommandToggleButton(self.bot, self.user_id, command))
-        
-        # Bouton pour fermer
         self.add_item(CloseButton())
+        
+        # Boutons pour chaque commande (lignes 1-4, max 5 lignes)
+        commands_to_show = self.commands[:15]  # 15 commandes max pour éviter la limite de 25 composants
+        
+        for i, command in enumerate(commands_to_show):
+            row = (i // 5) + 1  # 5 boutons par ligne
+            if row <= 4:  # Maximum 4 lignes de commandes
+                self.add_item(CommandToggleButton(self.bot, self.user_id, command, row))
 
 
 class EnableAllButton(discord.ui.Button):
@@ -95,17 +96,18 @@ class DisableAllButton(discord.ui.Button):
 
 
 class CommandToggleButton(discord.ui.Button):
-    def __init__(self, bot, user_id: int, command_name: str):
+    def __init__(self, bot, user_id: int, command_name: str, row: int = 1):
         self.bot = bot
         self.user_id = user_id
         self.command_name = command_name
         
         # Déterminer le style et le label basé sur l'état actuel
-        super().__init__(label=f"🔄 {command_name}", style=discord.ButtonStyle.secondary, row=1)
+        super().__init__(label=f"🔄 {command_name}", style=discord.ButtonStyle.secondary, row=row)
     
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ Vous n'êtes pas autorisé à utiliser ce menu.", ephemeral=True)
+            guild_id = interaction.guild.id if interaction.guild else None
+            await interaction.response.send_message(_("commands.dmlogs.unauthorized", self.user_id, guild_id), ephemeral=True)
             return
         
         # Vérifier l'état actuel
@@ -132,12 +134,18 @@ class CommandToggleButton(discord.ui.Button):
             self.label = f"❌ {self.command_name}"
             self.style = discord.ButtonStyle.danger
         
-        await interaction.response.edit_message(view=self.view)
+        # Envoyer une réponse temporaire
+        guild_id = interaction.guild.id if interaction.guild else None
+        status_text = _("commands.dmlogs.enabled", self.user_id, guild_id) if new_state else _("commands.dmlogs.disabled", self.user_id, guild_id)
+        await interaction.response.send_message(f"🔄 Commande `{self.command_name}` {status_text.lower()}", ephemeral=True)
+        
+        # Mettre à jour la vue
+        await interaction.edit_original_response(view=self.view)
 
 
 class CloseButton(discord.ui.Button):
     def __init__(self):
-        super().__init__(label="🔒 Fermer", style=discord.ButtonStyle.secondary, row=2)
+        super().__init__(label="🔒 Fermer", style=discord.ButtonStyle.secondary, row=0)
     
     async def callback(self, interaction: discord.Interaction):
         guild_id = interaction.guild.id if interaction.guild else None
@@ -183,6 +191,18 @@ class DMLogsSystem(commands.Cog):
             inline=False
         )
         
+        # Afficher quelques commandes populaires activées
+        enabled_commands = await self._get_enabled_commands(user_id)
+        if enabled_commands:
+            commands_text = ", ".join([f"`/{cmd}`" for cmd in enabled_commands[:5]])
+            if len(enabled_commands) > 5:
+                commands_text += f" et {len(enabled_commands) - 5} autres"
+            embed.add_field(
+                name="📋 Commandes surveillées",
+                value=commands_text,
+                inline=False
+            )
+        
         embed.add_field(
             name=_("commands.dmlogs.how_it_works", user_id, guild_id),
             value=_("commands.dmlogs.how_it_works_text", user_id, guild_id),
@@ -195,6 +215,17 @@ class DMLogsSystem(commands.Cog):
         view = DMLogsConfigView(self.bot, user_id)
         
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    
+    async def _get_enabled_commands(self, user_id: int) -> List[str]:
+        """Récupère la liste des commandes activées pour un utilisateur"""
+        try:
+            results = await self.bot.db.query(
+                "SELECT command_name FROM dm_logs_commands WHERE user_id = %s AND enabled = TRUE",
+                (user_id,)
+            )
+            return [result['command_name'] for result in results]
+        except Exception:
+            return []
     
     async def log_command_usage(self, command_name: str, executor: discord.Member, guild: discord.Guild = None):
         """Log l'utilisation d'une commande pour tous les utilisateurs qui l'ont activée"""
