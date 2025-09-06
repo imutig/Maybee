@@ -34,7 +34,7 @@ class Confession(commands.Cog):
     @app_commands.describe(message="Le contenu de ta confession (anonyme)")
     async def confession(self, interaction: discord.Interaction, message: str):
         from i18n import _
-from .command_logger import log_command_usage
+        from .command_logger import log_command_usage
         
         user_id = interaction.user.id
         guild_id = interaction.guild.id

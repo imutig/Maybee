@@ -154,7 +154,7 @@ async def load_extensions():
         "cog.avatar", "cog.roll", "cog.confession", "cog.embed", "cog.XPSystem",
         "cog.role", "cog.welcome", "cog.role_menus", "cog.ticket", "cog.clear",
         "cog.language", "cog.config", "cog.moderation", "cog.server_logs", "cog.feedback",
-        "cog.disboard_reminder", "cog.disboard_config"
+        "cog.disboard_reminder", "cog.disboard_config", "cog.dm_logs"
     ]
     
     for extension in extensions:

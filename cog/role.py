@@ -15,7 +15,7 @@ class RoleRequestView(View):
     async def interaction_check(self, interaction: Interaction) -> bool:
         if not interaction.user.guild_permissions.administrator:
             from i18n import _
-from .command_logger import log_command_usage
+            from .command_logger import log_command_usage
             user_id = interaction.user.id
             guild_id = interaction.guild.id if interaction.guild else None
             await interaction.response.send_message(
