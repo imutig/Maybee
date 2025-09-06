@@ -102,7 +102,7 @@ class DMLogsConfigView(discord.ui.View):
 
 class EnableAllButton(discord.ui.Button):
     def __init__(self, bot, user_id: int):
-        super().__init__(label="✅ Activer Tout", style=discord.ButtonStyle.success, row=0)
+        super().__init__(label="🔔 Activer", style=discord.ButtonStyle.success, row=0)
         self.bot = bot
         self.user_id = user_id
     
@@ -134,7 +134,7 @@ class EnableAllButton(discord.ui.Button):
 
 class DisableAllButton(discord.ui.Button):
     def __init__(self, bot, user_id: int):
-        super().__init__(label="❌ Désactiver Tout", style=discord.ButtonStyle.danger, row=0)
+        super().__init__(label="🔕 Désactiver", style=discord.ButtonStyle.danger, row=0)
         self.bot = bot
         self.user_id = user_id
     
@@ -331,6 +331,10 @@ class DMLogsSystem(commands.Cog):
             
             print(f"🔍 [DM LOGS] {len(results)} utilisateurs surveillent cette commande")
             
+            # Debug: lister tous les utilisateurs qui surveillent cette commande
+            user_ids = [result['user_id'] for result in results]
+            print(f"🔍 [DM LOGS] Utilisateurs surveillant '{command_name}': {user_ids}")
+            
             if not results:
                 return
             
@@ -393,23 +397,34 @@ class DMLogsSystem(commands.Cog):
             # Envoyer à tous les utilisateurs concernés
             for result in results:
                 user_id = result['user_id']
+                print(f"🔍 [DM LOGS] Tentative d'envoi DM à l'utilisateur {user_id}")
                 
                 try:
                     user = self.bot.get_user(user_id)
                     if user:
+                        print(f"🔍 [DM LOGS] Utilisateur {user_id} trouvé: {user.display_name}")
                         await user.send(embed=embed)
+                        print(f"✅ [DM LOGS] DM envoyé avec succès à {user.display_name} ({user_id})")
                         
                         # Enregistrer dans l'historique
                         await self.bot.db.query(
                             "INSERT INTO dm_logs_history (user_id, command_name, executor_id, guild_id) VALUES (%s, %s, %s, %s)",
                             (user_id, command_name, executor.id, guild.id if guild else None)
                         )
+                    else:
+                        print(f"❌ [DM LOGS] Utilisateur {user_id} introuvable dans le cache du bot")
+                        # Essayer de fetch l'utilisateur depuis Discord
+                        try:
+                            user = await self.bot.fetch_user(user_id)
+                            await user.send(embed=embed)
+                            print(f"✅ [DM LOGS] DM envoyé avec succès à {user.display_name} ({user_id}) via fetch")
+                        except Exception as fetch_e:
+                            print(f"❌ [DM LOGS] Impossible de fetch l'utilisateur {user_id}: {fetch_e}")
                         
                 except discord.Forbidden:
-                    # L'utilisateur a désactivé les DMs
-                    pass
+                    print(f"❌ [DM LOGS] Impossible d'envoyer DM à {user_id}: DMs bloqués")
                 except Exception as e:
-                    print(f"Erreur lors de l'envoi du log DM à {user_id}: {e}")
+                    print(f"❌ [DM LOGS] Erreur lors de l'envoi du log DM à {user_id}: {e}")
                     
         except Exception as e:
             print(f"Erreur dans log_command_usage: {e}")
