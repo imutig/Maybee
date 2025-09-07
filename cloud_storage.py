@@ -26,6 +26,13 @@ class GoogleDriveStorage:
         self.folder_id = None
         self._service = None
         
+        # Support des variables d'environnement pour Railway et BisectHosting
+        self.use_env_vars = (
+            os.getenv('RAILWAY_ENVIRONMENT') is not None or  # Railway
+            os.getenv('BISECT_HOSTING') is not None or        # BisectHosting
+            os.getenv('GOOGLE_CLIENT_ID') is not None         # Variables présentes
+        )
+        
     async def initialize(self):
         """Initialise la connexion Google Drive"""
         try:
@@ -37,27 +44,36 @@ class GoogleDriveStorage:
             
             creds = None
             
-            # Charger les tokens existants
-            if os.path.exists(self.token_file):
-                with open(self.token_file, 'rb') as token:
-                    creds = pickle.load(token)
-            
-            # Si pas de credentials valides, demander l'autorisation
-            if not creds or not creds.valid:
-                if creds and creds.expired and creds.refresh_token:
-                    creds.refresh(Request())
-                else:
-                    if not os.path.exists(self.credentials_file):
-                        logger.error(f"Fichier credentials.json manquant: {self.credentials_file}")
-                        return False
-                    
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        self.credentials_file, self.scopes)
-                    creds = flow.run_local_server(port=0)
+            if self.use_env_vars:
+                # Mode Railway - utiliser les variables d'environnement
+                creds = await self._load_credentials_from_env()
+            else:
+                # Mode local - utiliser les fichiers
+                # Charger les tokens existants
+                if os.path.exists(self.token_file):
+                    with open(self.token_file, 'rb') as token:
+                        creds = pickle.load(token)
                 
-                # Sauvegarder les credentials
-                with open(self.token_file, 'wb') as token:
-                    pickle.dump(creds, token)
+                # Si pas de credentials valides, demander l'autorisation
+                if not creds or not creds.valid:
+                    if creds and creds.expired and creds.refresh_token:
+                        creds.refresh(Request())
+                    else:
+                        if not os.path.exists(self.credentials_file):
+                            logger.error(f"Fichier credentials.json manquant: {self.credentials_file}")
+                            return False
+                        
+                        flow = InstalledAppFlow.from_client_secrets_file(
+                            self.credentials_file, self.scopes)
+                        creds = flow.run_local_server(port=0)
+                    
+                    # Sauvegarder les credentials
+                    with open(self.token_file, 'wb') as token:
+                        pickle.dump(creds, token)
+            
+            if not creds:
+                logger.error("Impossible d'obtenir les credentials")
+                return False
             
             self._service = build('drive', 'v3', credentials=creds)
             
@@ -70,6 +86,40 @@ class GoogleDriveStorage:
         except Exception as e:
             logger.error(f"Erreur lors de l'initialisation Google Drive: {e}")
             return False
+    
+    async def _load_credentials_from_env(self):
+        """Charge les credentials depuis les variables d'environnement (Railway)"""
+        try:
+            from google.oauth2.credentials import Credentials
+            
+            # Récupérer les variables d'environnement
+            client_id = os.getenv('GOOGLE_CLIENT_ID')
+            client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
+            refresh_token = os.getenv('GOOGLE_REFRESH_TOKEN')
+            
+            if not all([client_id, client_secret, refresh_token]):
+                logger.error("Variables d'environnement Google manquantes")
+                return None
+            
+            # Créer les credentials
+            creds = Credentials(
+                token=None,
+                refresh_token=refresh_token,
+                token_uri='https://oauth2.googleapis.com/token',
+                client_id=client_id,
+                client_secret=client_secret,
+                scopes=self.scopes
+            )
+            
+            # Rafraîchir le token
+            from google.auth.transport.requests import Request
+            creds.refresh(Request())
+            
+            return creds
+            
+        except Exception as e:
+            logger.error(f"Erreur lors du chargement des credentials depuis l'environnement: {e}")
+            return None
     
     async def _ensure_logs_folder(self):
         """Crée le dossier de logs s'il n'existe pas"""
