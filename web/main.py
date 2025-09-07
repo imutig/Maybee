@@ -4576,6 +4576,121 @@ async def delete_saved_embed(
         print(f"Delete embed config error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Ticket Logs API Endpoints
+@app.get("/api/ticket-logs/search-users")
+async def search_users(
+    query: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Search for users in the current guild"""
+    try:
+        # Get current guild from session
+        guild_id = request.session.get('current_guild_id')
+        if not guild_id:
+            raise HTTPException(status_code=400, detail="No guild selected")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Search for users in the guild
+        users = await database.fetch_all(
+            """SELECT DISTINCT u.user_id as id, u.username, u.discriminator, u.avatar_url
+               FROM active_tickets t
+               JOIN users u ON t.user_id = u.user_id
+               WHERE t.guild_id = %s 
+               AND (u.username LIKE %s OR u.user_id LIKE %s)
+               LIMIT 10""",
+            (guild_id, f"%{query}%", f"%{query}%")
+        )
+        
+        return {"users": [dict(user) for user in users]}
+        
+    except Exception as e:
+        print(f"Search users error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/ticket-logs/user-tickets/{user_id}")
+async def get_user_tickets(
+    user_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get all tickets for a specific user"""
+    try:
+        # Get current guild from session
+        guild_id = request.session.get('current_guild_id')
+        if not guild_id:
+            raise HTTPException(status_code=400, detail="No guild selected")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get user info
+        user = await database.fetch_one(
+            """SELECT user_id as id, username, discriminator, avatar_url
+               FROM users WHERE user_id = %s""",
+            (user_id,)
+        )
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get user's tickets
+        tickets = await database.fetch_all(
+            """SELECT ticket_id, file_id, status, created_at, closed_at
+               FROM active_tickets 
+               WHERE guild_id = %s AND user_id = %s
+               ORDER BY created_at DESC""",
+            (guild_id, user_id)
+        )
+        
+        return {
+            "user": dict(user),
+            "tickets": [dict(ticket) for ticket in tickets]
+        }
+        
+    except Exception as e:
+        print(f"Get user tickets error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/ticket-logs/ticket-details/{file_id}")
+async def get_ticket_details(
+    file_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get detailed ticket information from Google Drive"""
+    try:
+        # Get current guild from session
+        guild_id = request.session.get('current_guild_id')
+        if not guild_id:
+            raise HTTPException(status_code=400, detail="No guild selected")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Import GoogleDriveStorage
+        import sys
+        sys.path.append('..')
+        from cloud_storage import GoogleDriveStorage
+        
+        # Initialize Google Drive storage
+        storage = GoogleDriveStorage()
+        await storage.initialize()
+        
+        # Download ticket logs from Google Drive
+        ticket_data = await storage.download_ticket_logs(file_id)
+        
+        if not ticket_data:
+            raise HTTPException(status_code=404, detail="Ticket logs not found")
+        
+        return ticket_data
+        
+    except Exception as e:
+        print(f"Get ticket details error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Production server startup
 if __name__ == "__main__":
     # Get port from environment variable (Railway sets this)

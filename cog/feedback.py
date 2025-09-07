@@ -96,40 +96,7 @@ class Feedback(commands.Cog):
         
         await interaction.response.send_message(embed=thank_you_embed, ephemeral=True)
     
-    @app_commands.command(name="suggest", description="Quick feature suggestion")
-    @app_commands.describe(suggestion="What feature would you like to see?")
-    async def suggest(self, interaction: discord.Interaction, suggestion: str):
-        """Quick suggestion shortcut"""
-        
-        embed = discord.Embed(
-            title="💡 Feature Suggestion",
-            description=suggestion,
-            color=discord.Color.yellow(),
-            timestamp=datetime.now()
-        )
-        
-        embed.add_field(
-            name="👤 Suggested by",
-            value=f"{interaction.user.mention} in {interaction.guild.name}",
-            inline=False
-        )
-        
-        # Log suggestion
-        print(f"💡 SUGGESTION: {suggestion} - From {interaction.user} in {interaction.guild.name}")
-        
-        # Send to feedback channel if configured
-        if self.feedback_channel_id:
-            try:
-                feedback_channel = self.bot.get_channel(self.feedback_channel_id)
-                if feedback_channel:
-                    await feedback_channel.send(embed=embed)
-            except:
-                pass
-        
-        await interaction.response.send_message(
-            "💡 Thanks for the suggestion! We'll consider it for future updates.",
-            ephemeral=True
-        )
+    # suggest command removed - use /feedback instead
 
 async def setup(bot):
     await bot.add_cog(Feedback(bot))

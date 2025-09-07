@@ -549,28 +549,6 @@
     "support_role_set": "✅ Rôle de support défini sur {role} !",
     "disabled": "✅ Système de tickets désactivé !"
   },
-  "career_system": {
-    "command": {
-      "description": "Ajoute une décision de carrière pour un membre",
-      "member_param": "Le membre concerné",
-      "decision_param": "Type de décision prise",
-      "reason_param": "La raison de cette décision",
-      "decided_by_param": "Mentionne les rôles qui ont pris la décision (séparés par des virgules ou espaces)",
-      "choices": {
-        "warning": "Avertissement",
-        "blame": "Blâme",
-        "demotion": "Rétrogradation",
-        "promotion": "Promotion",
-        "exclusion": "Exclusion"
-      },
-      "embed_title": "📋 Décision de Carrière",
-      "member_field": "👤 Membre",
-      "decision_field": "📌 Décision",
-      "reason_field": "📝 Raison",
-      "decided_by_field": "🧑‍⚖️ Décidé par",
-      "footer": "Décision enregistrée par {user}"
-    }
-  },
   "language_system": {
     "command": {
       "description": "Changer votre préférence de langue",
@@ -1005,6 +983,38 @@
         "category_set": "✅ Catégorie de tickets définie sur {category} !",
         "support_role_set": "✅ Rôle de support défini sur {role} !",
         "disabled": "✅ Système de tickets désactivé !",
+        "close": {
+          "closing": "🔒 Fermeture du ticket en cours...",
+          "closed_title": "🔒 Ticket fermé",
+          "closed_description": "Le ticket a été fermé par **{user}**",
+          "confirm_delete": "🗑️ Supprimer définitivement",
+          "reopen": "🔓 Rouvrir le ticket",
+          "reopened_title": "🔓 Ticket rouvert",
+          "reopened_description": "Le ticket a été rouvert par **{user}**"
+        },
+        "logs": {
+          "no_permission": "❌ Vous n'avez pas la permission de consulter les logs de tickets.",
+          "no_logs_found": "📋 Aucun log de ticket trouvé pour {user}.",
+          "logs_title": "📋 Logs de tickets - {user}",
+          "logs_description": "Voici les logs de tickets pour {user} :",
+          "statistics": "📊 Statistiques",
+          "ticket_count": "Nombre de tickets : {count}",
+          "user_info": "Utilisateur : {user}",
+          "user_id": "ID : {id}",
+          "ticket_info": "🎫 Ticket #{number} (ID: {id})",
+          "created_at": "Créé : {timestamp}",
+          "message_count": "Messages : {count}",
+          "event_count": "Événements : {count}",
+          "more_tickets": "Et {count} autres tickets...",
+          "details_title": "📋 Détails du ticket #{id}",
+          "general_info": "📊 Informations générales",
+          "ticket_id": "ID du ticket : {id}",
+          "created_on": "Créé le : {timestamp}",
+          "recent_messages": "💬 Derniers messages",
+          "recent_events": "📝 Événements récents",
+          "no_message": "Aucun message",
+          "no_event": "Aucun événement"
+        },
         "setup": {
           "description": "Configurer le système de ticket",
           "success": "Système de ticket configuré dans {category} !"

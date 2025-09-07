@@ -145,15 +145,7 @@ class RoleRequest(commands.Cog):
             (guild_id, channel_id, channel_id)
         )
 
-    role_group = app_commands.Group(name="role", description="Demande un role")
-
-    @role_group.command(name="add", description="Demande a ajouter un role")
-    async def role_add(self, interaction: Interaction, role: discord.Role):
-        await self.handle_request(interaction, role, "add")
-
-    @role_group.command(name="remove", description="Demande a retirer un role")
-    async def role_remove(self, interaction: Interaction, role: discord.Role):
-        await self.handle_request(interaction, role, "remove")
+    # Role commands removed - use role menus instead
 
     async def handle_request(self, interaction: Interaction, role: discord.Role, action: str):
         from i18n import _

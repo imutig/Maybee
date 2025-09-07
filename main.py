@@ -151,7 +151,7 @@ bot = MyBot(config)
 
 async def load_extensions():
     extensions = [
-        "cog.rename", "cog.career", "cog.scan", "cog.ping",
+        "cog.rename", "cog.scan", "cog.ping",
         "cog.avatar", "cog.roll", "cog.confession", "cog.embed", "cog.XPSystem",
         "cog.role", "cog.welcome", "cog.role_menus", "cog.ticket", "cog.clear",
         "cog.language", "cog.config", "cog.moderation", "cog.server_logs", "cog.feedback",

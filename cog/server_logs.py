@@ -43,7 +43,12 @@ class ServerLogsCog(commands.Cog):
                     'log_role_changes': True,
                     'log_nickname_changes': True,
                     'log_channel_create': True,
-                    'log_channel_delete': True
+                    'log_channel_delete': True,
+                    'log_role_create': True,
+                    'log_role_delete': True,
+                    'log_role_update': True,
+                    'log_channel_update': True,
+                    'log_voice_state_changes': True
                 }
         
         return result
@@ -153,7 +158,7 @@ class ServerLogsCog(commands.Cog):
     
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        """Log voice channel joins and leaves"""
+        """Log voice channel joins, leaves, and voice state changes"""
         config = await self.get_log_config(member.guild.id)
         
         if not config:
@@ -245,6 +250,84 @@ class ServerLogsCog(commands.Cog):
                     name=_("config_system.server_logs.embed_fields.from_to", 0, member.guild.id),
                     value=f"{before.channel.mention}\n↓\n{after.channel.mention}",
                     inline=True
+                )
+                
+                embed.set_thumbnail(url=member.display_avatar.url)
+                embed.set_footer(text=f"User ID: {member.id}")
+                
+                await self.send_log(member.guild.id, embed)
+        
+        # Voice state changes (mute, deaf, etc.)
+        elif before.channel == after.channel and before.channel is not None:
+            voice_changes = []
+            
+            # Check for mute changes
+            if before.mute != after.mute:
+                if after.mute:
+                    voice_changes.append("🔇 Muted")
+                else:
+                    voice_changes.append("🔊 Unmuted")
+            
+            # Check for deaf changes
+            if before.deaf != after.deaf:
+                if after.deaf:
+                    voice_changes.append("🔇 Deafened")
+                else:
+                    voice_changes.append("🔊 Undeafened")
+            
+            # Check for self mute changes
+            if before.self_mute != after.self_mute:
+                if after.self_mute:
+                    voice_changes.append("🔇 Self-muted")
+                else:
+                    voice_changes.append("🔊 Self-unmuted")
+            
+            # Check for self deaf changes
+            if before.self_deaf != after.self_deaf:
+                if after.self_deaf:
+                    voice_changes.append("🔇 Self-deafened")
+                else:
+                    voice_changes.append("🔊 Self-undeafened")
+            
+            # Check for stream changes
+            if before.self_stream != after.self_stream:
+                if after.self_stream:
+                    voice_changes.append("📺 Started streaming")
+                else:
+                    voice_changes.append("📺 Stopped streaming")
+            
+            # Check for video changes
+            if before.self_video != after.self_video:
+                if after.self_video:
+                    voice_changes.append("📹 Started video")
+                else:
+                    voice_changes.append("📹 Stopped video")
+            
+            # Log voice state changes if any
+            if voice_changes and config.get('log_voice_state_changes', True):
+                embed = discord.Embed(
+                    title=f"🎤 Voice State Changed",
+                    description=f"{member.mention} changed voice state in {after.channel.mention}",
+                    color=discord.Color.cyan(),
+                    timestamp=datetime.utcnow()
+                )
+                
+                embed.add_field(
+                    name=_("config_system.server_logs.embed_fields.member", 0, member.guild.id),
+                    value=f"**{member.display_name}** ({member.name})",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name=_("config_system.server_logs.embed_fields.channel", 0, member.guild.id),
+                    value=f"{after.channel.mention}\n({after.channel.name})",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="Changes",
+                    value="\n".join(voice_changes),
+                    inline=False
                 )
                 
                 embed.set_thumbnail(url=member.display_avatar.url)
@@ -471,7 +554,7 @@ class ServerLogsCog(commands.Cog):
             await self.send_log(before.guild.id, embed)
         
         # Role changes
-        if before.roles != after.roles and config['log_role_changes']:
+        if before.roles != after.roles and config.get('log_role_changes', True):
             added_roles = [role for role in after.roles if role not in before.roles]
             removed_roles = [role for role in before.roles if role not in after.roles]
             
@@ -503,6 +586,21 @@ class ServerLogsCog(commands.Cog):
                         value=roles_text,
                         inline=False
                     )
+                
+                # Try to find who made the change by checking audit logs
+                try:
+                    async for entry in before.guild.audit_logs(limit=5, action=discord.AuditLogAction.member_role_update):
+                        if entry.target and entry.target.id == after.id:
+                            # Check if the change happened recently (within last 10 seconds)
+                            if (datetime.utcnow() - entry.created_at).total_seconds() < 10:
+                                embed.add_field(
+                                    name="👤 Modified by",
+                                    value=f"{entry.user.mention}\n({entry.user.display_name})",
+                                    inline=True
+                                )
+                                break
+                except Exception as e:
+                    logger.warning(f"Could not fetch audit log for role change: {e}")
                 
                 embed.set_thumbnail(url=after.display_avatar.url)
                 embed.set_footer(text=f"User ID: {after.id}")
@@ -582,6 +680,263 @@ class ServerLogsCog(commands.Cog):
         embed.set_footer(text=f"Channel ID: {channel.id}")
         
         await self.send_log(channel.guild.id, embed)
+    
+    @commands.Cog.listener()
+    async def on_guild_role_create(self, role):
+        """Log when a role is created"""
+        config = await self.get_log_config(role.guild.id)
+        
+        if not config or not config.get('log_role_create', True):
+            return
+        
+        embed = discord.Embed(
+            title=f"🎭 Role Created",
+            description=f"Role **{role.name}** was created",
+            color=discord.Color.green(),
+            timestamp=datetime.utcnow()
+        )
+        
+        embed.add_field(
+            name="Role",
+            value=f"{role.mention}\n({role.name})",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="Color",
+            value=f"#{role.color.value:06x}" if role.color.value != 0 else "Default",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="Position",
+            value=f"{role.position}",
+            inline=True
+        )
+        
+        # Try to find who created the role
+        try:
+            async for entry in role.guild.audit_logs(limit=5, action=discord.AuditLogAction.role_create):
+                if entry.target and entry.target.id == role.id:
+                    # Check if the change happened recently (within last 10 seconds)
+                    if (datetime.utcnow() - entry.created_at).total_seconds() < 10:
+                        embed.add_field(
+                            name="👤 Created by",
+                            value=f"{entry.user.mention}\n({entry.user.display_name})",
+                            inline=True
+                        )
+                        break
+        except Exception as e:
+            logger.warning(f"Could not fetch audit log for role creation: {e}")
+        
+        embed.set_footer(text=f"Role ID: {role.id}")
+        
+        await self.send_log(role.guild.id, embed)
+    
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role):
+        """Log when a role is deleted"""
+        config = await self.get_log_config(role.guild.id)
+        
+        if not config or not config.get('log_role_delete', True):
+            return
+        
+        embed = discord.Embed(
+            title=f"🗑️ Role Deleted",
+            description=f"Role **{role.name}** was deleted",
+            color=discord.Color.red(),
+            timestamp=datetime.utcnow()
+        )
+        
+        embed.add_field(
+            name="Role",
+            value=f"**{role.name}**",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="Color",
+            value=f"#{role.color.value:06x}" if role.color.value != 0 else "Default",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="Position",
+            value=f"{role.position}",
+            inline=True
+        )
+        
+        # Try to find who deleted the role
+        try:
+            async for entry in role.guild.audit_logs(limit=5, action=discord.AuditLogAction.role_delete):
+                if entry.target and entry.target.id == role.id:
+                    # Check if the change happened recently (within last 10 seconds)
+                    if (datetime.utcnow() - entry.created_at).total_seconds() < 10:
+                        embed.add_field(
+                            name="👤 Deleted by",
+                            value=f"{entry.user.mention}\n({entry.user.display_name})",
+                            inline=True
+                        )
+                        break
+        except Exception as e:
+            logger.warning(f"Could not fetch audit log for role deletion: {e}")
+        
+        embed.set_footer(text=f"Role ID: {role.id}")
+        
+        await self.send_log(role.guild.id, embed)
+    
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before, after):
+        """Log when a role is updated"""
+        config = await self.get_log_config(after.guild.id)
+        
+        if not config or not config.get('log_role_update', True):
+            return
+        
+        changes = []
+        
+        # Check for name changes
+        if before.name != after.name:
+            changes.append(f"**Name:** {before.name} → {after.name}")
+        
+        # Check for color changes
+        if before.color != after.color:
+            before_color = f"#{before.color.value:06x}" if before.color.value != 0 else "Default"
+            after_color = f"#{after.color.value:06x}" if after.color.value != 0 else "Default"
+            changes.append(f"**Color:** {before_color} → {after_color}")
+        
+        # Check for permission changes
+        if before.permissions != after.permissions:
+            changes.append("**Permissions:** Modified")
+        
+        # Check for position changes
+        if before.position != after.position:
+            changes.append(f"**Position:** {before.position} → {after.position}")
+        
+        # Check for mentionable changes
+        if before.mentionable != after.mentionable:
+            changes.append(f"**Mentionable:** {before.mentionable} → {after.mentionable}")
+        
+        # Check for hoist changes
+        if before.hoist != after.hoist:
+            changes.append(f"**Hoist:** {before.hoist} → {after.hoist}")
+        
+        # Only log if there are actual changes
+        if changes:
+            embed = discord.Embed(
+                title=f"✏️ Role Updated",
+                description=f"Role {after.mention} was updated",
+                color=discord.Color.yellow(),
+                timestamp=datetime.utcnow()
+            )
+            
+            embed.add_field(
+                name="Role",
+                value=f"{after.mention}\n({after.name})",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="Changes",
+                value="\n".join(changes),
+                inline=False
+            )
+            
+            # Try to find who updated the role
+            try:
+                async for entry in after.guild.audit_logs(limit=5, action=discord.AuditLogAction.role_update):
+                    if entry.target and entry.target.id == after.id:
+                        # Check if the change happened recently (within last 10 seconds)
+                        if (datetime.utcnow() - entry.created_at).total_seconds() < 10:
+                            embed.add_field(
+                                name="👤 Updated by",
+                                value=f"{entry.user.mention}\n({entry.user.display_name})",
+                                inline=True
+                            )
+                            break
+            except Exception as e:
+                logger.warning(f"Could not fetch audit log for role update: {e}")
+            
+            embed.set_footer(text=f"Role ID: {after.id}")
+            
+            await self.send_log(after.guild.id, embed)
+    
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, before, after):
+        """Log when a channel is updated"""
+        config = await self.get_log_config(after.guild.id)
+        
+        if not config or not config.get('log_channel_update', True):
+            return
+        
+        changes = []
+        
+        # Check for name changes
+        if before.name != after.name:
+            changes.append(f"**Name:** {before.name} → {after.name}")
+        
+        # Check for topic changes (text channels)
+        if hasattr(before, 'topic') and hasattr(after, 'topic'):
+            if before.topic != after.topic:
+                before_topic = before.topic[:50] + "..." if before.topic and len(before.topic) > 50 else before.topic or "None"
+                after_topic = after.topic[:50] + "..." if after.topic and len(after.topic) > 50 else after.topic or "None"
+                changes.append(f"**Topic:** {before_topic} → {after_topic}")
+        
+        # Check for category changes
+        if before.category != after.category:
+            before_cat = before.category.name if before.category else "None"
+            after_cat = after.category.name if after.category else "None"
+            changes.append(f"**Category:** {before_cat} → {after_cat}")
+        
+        # Check for permission changes
+        if before.overwrites != after.overwrites:
+            changes.append("**Permissions:** Modified")
+        
+        # Only log if there are actual changes
+        if changes:
+            embed = discord.Embed(
+                title=f"✏️ Channel Updated",
+                description=f"Channel {after.mention} was updated",
+                color=discord.Color.yellow(),
+                timestamp=datetime.utcnow()
+            )
+            
+            embed.add_field(
+                name="Channel",
+                value=f"{after.mention}\n({after.name})",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="Type",
+                value=f"{after.type}".replace("_", " ").title(),
+                inline=True
+            )
+            
+            embed.add_field(
+                name="Changes",
+                value="\n".join(changes),
+                inline=False
+            )
+            
+            # Try to find who updated the channel
+            try:
+                async for entry in after.guild.audit_logs(limit=5, action=discord.AuditLogAction.channel_update):
+                    if entry.target and entry.target.id == after.id:
+                        # Check if the change happened recently (within last 10 seconds)
+                        if (datetime.utcnow() - entry.created_at).total_seconds() < 10:
+                            embed.add_field(
+                                name="👤 Updated by",
+                                value=f"{entry.user.mention}\n({entry.user.display_name})",
+                                inline=True
+                            )
+                            break
+            except Exception as e:
+                logger.warning(f"Could not fetch audit log for channel update: {e}")
+            
+            embed.set_footer(text=f"Channel ID: {after.id}")
+            
+            await self.send_log(after.guild.id, embed)
 
 async def setup(bot):
     await bot.add_cog(ServerLogsCog(bot))

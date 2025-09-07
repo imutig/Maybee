@@ -508,6 +508,11 @@ class Database:
                 log_nickname_changes BOOLEAN DEFAULT TRUE,
                 log_channel_create BOOLEAN DEFAULT TRUE,
                 log_channel_delete BOOLEAN DEFAULT TRUE,
+                log_role_create BOOLEAN DEFAULT TRUE,
+                log_role_delete BOOLEAN DEFAULT TRUE,
+                log_role_update BOOLEAN DEFAULT TRUE,
+                log_channel_update BOOLEAN DEFAULT TRUE,
+                log_voice_state_changes BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )

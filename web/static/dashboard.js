@@ -3751,6 +3751,248 @@ class Dashboard {
         
         console.log('✅ Member selector populated with', membersToShow.length, 'members');
     }
+
+    // Ticket Logs Methods
+    async initTicketLogs() {
+        console.log('📋 Initializing ticket logs system...');
+        
+        // Clear previous state
+        this.selectedUser = null;
+        this.userTickets = [];
+        
+        // Hide sections initially
+        document.getElementById('userResultsSection').style.display = 'none';
+        document.getElementById('userTicketsSection').style.display = 'none';
+        
+        // Setup search input event listener
+        const searchInput = document.getElementById('userSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.searchUser();
+                }
+            });
+        }
+        
+        console.log('✅ Ticket logs system initialized');
+    }
+
+    async searchUser() {
+        const searchInput = document.getElementById('userSearchInput');
+        const query = searchInput.value.trim();
+        
+        if (!query) {
+            this.showError('Veuillez entrer un nom d\'utilisateur ou un ID Discord');
+            return;
+        }
+        
+        try {
+            this.showLoading('userResultsList', 'Recherche d\'utilisateurs...');
+            
+            const response = await this.apiCall(`/ticket-logs/search-users?query=${encodeURIComponent(query)}`);
+            
+            if (response.users && response.users.length > 0) {
+                this.displayUserResults(response.users);
+                document.getElementById('userResultsSection').style.display = 'block';
+            } else {
+                document.getElementById('userResultsSection').style.display = 'none';
+                this.showError('Aucun utilisateur trouvé');
+            }
+            
+        } catch (error) {
+            console.error('Error searching users:', error);
+            this.showError('Erreur lors de la recherche d\'utilisateurs');
+        }
+    }
+
+    displayUserResults(users) {
+        const resultsList = document.getElementById('userResultsList');
+        resultsList.innerHTML = '';
+        
+        users.forEach(user => {
+            const userItem = document.createElement('div');
+            userItem.className = 'user-item';
+            userItem.innerHTML = `
+                <img src="${user.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                     alt="Avatar" class="user-avatar">
+                <div class="user-info">
+                    <div class="user-name">${user.username}#${user.discriminator}</div>
+                    <div class="user-id">ID: ${user.id}</div>
+                </div>
+                <button class="user-select-btn" onclick="dashboard.selectUser('${user.id}')">
+                    Sélectionner
+                </button>
+            `;
+            resultsList.appendChild(userItem);
+        });
+    }
+
+    async selectUser(userId) {
+        try {
+            this.showLoading('userTicketsList', 'Chargement des tickets...');
+            
+            const response = await this.apiCall(`/ticket-logs/user-tickets/${userId}`);
+            
+            this.selectedUser = response.user;
+            this.userTickets = response.tickets || [];
+            
+            this.displaySelectedUser();
+            this.displayUserTickets();
+            
+            document.getElementById('userTicketsSection').style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error loading user tickets:', error);
+            this.showError('Erreur lors du chargement des tickets');
+        }
+    }
+
+    displaySelectedUser() {
+        const userInfo = document.getElementById('selectedUserInfo');
+        userInfo.innerHTML = `
+            <img src="${this.selectedUser.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                 alt="Avatar" class="user-avatar">
+            <div class="user-info">
+                <div class="user-name">${this.selectedUser.username}#${this.selectedUser.discriminator}</div>
+                <div class="user-id">ID: ${this.selectedUser.id}</div>
+            </div>
+        `;
+    }
+
+    displayUserTickets() {
+        const ticketsList = document.getElementById('userTicketsList');
+        const noTicketsState = document.getElementById('noTicketsState');
+        
+        if (this.userTickets.length === 0) {
+            ticketsList.style.display = 'none';
+            noTicketsState.style.display = 'block';
+            return;
+        }
+        
+        ticketsList.style.display = 'block';
+        noTicketsState.style.display = 'none';
+        ticketsList.innerHTML = '';
+        
+        this.userTickets.forEach(ticket => {
+            const ticketItem = document.createElement('div');
+            ticketItem.className = 'ticket-item';
+            
+            const createdDate = new Date(ticket.created_at).toLocaleDateString('fr-FR');
+            const statusClass = ticket.status === 'open' ? 'open' : 'closed';
+            
+            ticketItem.innerHTML = `
+                <div class="ticket-info">
+                    <div class="ticket-id">Ticket #${ticket.ticket_id}</div>
+                    <div class="ticket-meta">
+                        <span>Créé le: ${createdDate}</span>
+                        <span class="ticket-status ${statusClass}">${ticket.status === 'open' ? 'Ouvert' : 'Fermé'}</span>
+                    </div>
+                </div>
+                <button class="ticket-view-btn" onclick="dashboard.viewTicketDetails('${ticket.file_id}')">
+                    Voir les détails
+                </button>
+            `;
+            ticketsList.appendChild(ticketItem);
+        });
+    }
+
+    async viewTicketDetails(fileId) {
+        try {
+            this.showLoading('ticketDetailsContent', 'Chargement des détails du ticket...');
+            
+            const response = await this.apiCall(`/ticket-logs/ticket-details/${fileId}`);
+            
+            this.displayTicketDetails(response);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('ticketDetailsModal'));
+            modal.show();
+            
+        } catch (error) {
+            console.error('Error loading ticket details:', error);
+            this.showError('Erreur lors du chargement des détails du ticket');
+        }
+    }
+
+    displayTicketDetails(ticketData) {
+        const content = document.getElementById('ticketDetailsContent');
+        const modalTitle = document.getElementById('ticketDetailsModalTitle');
+        
+        modalTitle.textContent = `Ticket #${ticketData.ticket_id}`;
+        
+        const createdDate = new Date(ticketData.created_at).toLocaleString('fr-FR');
+        const statusClass = ticketData.status === 'open' ? 'open' : 'closed';
+        
+        let html = `
+            <div class="ticket-header">
+                <div>
+                    <h4 class="ticket-title">Ticket #${ticketData.ticket_id}</h4>
+                    <div class="ticket-meta">
+                        <span>Créé le: ${createdDate}</span>
+                        <span class="ticket-status ${statusClass}">${ticketData.status === 'open' ? 'Ouvert' : 'Fermé'}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        if (ticketData.messages && ticketData.messages.length > 0) {
+            html += '<div class="ticket-messages">';
+            
+            ticketData.messages.forEach((message, index) => {
+                const messageDate = new Date(message.timestamp).toLocaleString('fr-FR');
+                html += `
+                    <div class="message-item">
+                        <div class="message-header">
+                            <span class="message-author">${message.author_name}</span>
+                            <span class="message-time">${messageDate}</span>
+                        </div>
+                        <div class="message-content">${message.content}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        } else {
+            html += '<div class="empty-state"><p>Aucun message trouvé dans ce ticket</p></div>';
+        }
+        
+        content.innerHTML = html;
+    }
+
+    showLoading(elementId, message = 'Chargement...') {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 1rem; color: var(--text-secondary);">${message}</p>
+                </div>
+            `;
+        }
+    }
+
+    showError(message) {
+        // Create a simple toast notification
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--error);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            z-index: 9999;
+            box-shadow: var(--shadow-lg);
+        `;
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 5000);
+    }
 }
 
 // Setup modern navigation for the new sidebar
@@ -4247,6 +4489,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 dashboard.dataLoaded.embed = true;
                 
                 console.log('✅ Embed creator click initialization complete');
+            }, 100);
+        });
+    }
+
+    // Setup ticket logs tab listener
+    const ticketLogsTab = document.getElementById('ticket-logs');
+    if (ticketLogsTab) {
+        ticketLogsTab.addEventListener('shown.bs.tab', async () => {
+            console.log('📋 Ticket logs tab shown - initializing...');
+            await dashboard.initTicketLogs();
+        });
+    }
+
+    // Also listen for ticket logs navigation clicks
+    const ticketLogsNavLink = document.querySelector('a[href="#ticket-logs"]');
+    if (ticketLogsNavLink) {
+        ticketLogsNavLink.addEventListener('click', async () => {
+            console.log('📋 Ticket logs nav clicked - initializing...');
+            setTimeout(async () => {
+                await dashboard.initTicketLogs();
             }, 100);
         });
     }

@@ -253,62 +253,7 @@ class RoleMenus(commands.Cog):
         """Wait for bot to be ready before starting the task"""
         await self.bot.wait_until_ready()
 
-    @app_commands.command(name="sync_role_menus", description="Sync role menus from database to Discord (Admin only)")
-    @app_commands.default_permissions(administrator=True)
-    async def sync_role_menus(self, interaction: discord.Interaction):
-        """Sync role menus that exist in database but not in Discord"""
-        try:
-            print(f"🔄 Sync command started by {interaction.user} in guild {interaction.guild.id}")
-            await interaction.response.defer()
-            
-            # Get role menus without message_id (created from dashboard but no Discord message)
-            menus = await self.bot.db.query(
-                "SELECT * FROM role_menus WHERE guild_id = %s AND message_id IS NULL",
-                params=(interaction.guild.id,),
-                fetchall=True
-            )
-            
-            print(f"🔍 Found {len(menus) if menus else 0} role menus to sync")
-            
-            if not menus:
-                await interaction.followup.send("✅ All role menus are already synced!", ephemeral=True)
-                return
-            
-            synced_count = 0
-            for menu in menus:
-                print(f"🔄 Processing menu ID {menu['id']}: {menu['title']}")
-                # Get menu options
-                options = await self.bot.db.query(
-                    "SELECT * FROM role_menu_options WHERE menu_id = %s ORDER BY position",
-                    params=(menu['id'],),
-                    fetchall=True
-                )
-                
-                print(f"🔍 Found {len(options) if options else 0} options for menu {menu['id']}")
-                
-                if options:
-                    message = await self.create_or_update_menu_message(menu, options)
-                    if message:
-                        synced_count += 1
-                        print(f"✅ Created message {message.id} for menu {menu['id']}")
-                        # Add the view to bot for persistence
-                        view = RoleMenuView(self.bot, menu, options)
-                        self.bot.add_view(view, message_id=message.id)
-                    else:
-                        print(f"❌ Failed to create message for menu {menu['id']}")
-            
-            print(f"✅ Sync completed: {synced_count} menus synced")
-            await interaction.followup.send(
-                f"✅ Synced {synced_count} role menu(s) to Discord!", 
-                ephemeral=True
-            )
-            
-        except Exception as e:
-            logger.error(f"Error syncing role menus: {e}")
-            await interaction.followup.send(
-                f"❌ Error syncing role menus: {str(e)}", 
-                ephemeral=True
-            )
+    # sync_role_menus command removed - automatic sync is now handled by background task
     
     async def create_or_update_menu_message(self, menu_data: Dict, options_data: List[Dict]) -> Optional[discord.Message]:
         """Create or update a role menu message"""

@@ -104,3 +104,12 @@ yarn-error.log*
 # Windows
 desktop.ini
 $RECYCLE.BIN/
+
+# Google Drive API Credentials (NEVER COMMIT THESE!)
+credentials.json
+token.json
+*.json
+!requirements.json
+!package.json
+!languages/*.json
+!web/languages/*.json

@@ -491,6 +491,38 @@
       "panel_description": "Click the button below to create a ticket.",
       "create_button": "Create a ticket"
     },
+    "close": {
+      "closing": "🔒 Closing ticket...",
+      "closed_title": "🔒 Ticket closed",
+      "closed_description": "The ticket has been closed by **{user}**",
+      "confirm_delete": "🗑️ Delete permanently",
+      "reopen": "🔓 Reopen ticket",
+      "reopened_title": "🔓 Ticket reopened",
+      "reopened_description": "The ticket has been reopened by **{user}**"
+    },
+    "logs": {
+      "no_permission": "❌ You don't have permission to view ticket logs.",
+      "no_logs_found": "📋 No ticket logs found for {user}.",
+      "logs_title": "📋 Ticket logs - {user}",
+      "logs_description": "Here are the ticket logs for {user}:",
+      "statistics": "📊 Statistics",
+      "ticket_count": "Number of tickets: {count}",
+      "user_info": "User: {user}",
+      "user_id": "ID: {id}",
+      "ticket_info": "🎫 Ticket #{number} (ID: {id})",
+      "created_at": "Created: {timestamp}",
+      "message_count": "Messages: {count}",
+      "event_count": "Events: {count}",
+      "more_tickets": "And {count} more tickets...",
+      "details_title": "📋 Ticket details #{id}",
+      "general_info": "📊 General information",
+      "ticket_id": "Ticket ID: {id}",
+      "created_on": "Created on: {timestamp}",
+      "recent_messages": "💬 Recent messages",
+      "recent_events": "📝 Recent events",
+      "no_message": "No messages",
+      "no_event": "No events"
+    },
     "create": {
       "category_not_found": "❌ The ticket category hasn't been created yet. Please use /setup_ticket to create it.",
       "already_exists": "You already have an open ticket in the Tickets category!",
@@ -511,28 +543,6 @@
       "category_set": "✅ Ticket category set to {category}!",
       "support_role_set": "✅ Support role set to {role}!",
       "disabled": "✅ Ticket system disabled!"
-    }
-  },
-  "career_system": {
-    "command": {
-      "description": "Add a career decision for a member",
-      "member_param": "The concerned member",
-      "decision_param": "Type of decision made",
-      "reason_param": "The reason for this decision",
-      "decided_by_param": "Mention the roles that made the decision (separated by commas or spaces)",
-      "choices": {
-        "warning": "Warning",
-        "blame": "Blame",
-        "demotion": "Demotion",
-        "promotion": "Promotion",
-        "exclusion": "Exclusion"
-      },
-      "embed_title": "📋 Career Decision",
-      "member_field": "👤 Member",
-      "decision_field": "📌 Decision",
-      "reason_field": "📝 Reason",
-      "decided_by_field": "🧑‍⚖️ Decided by",
-      "footer": "Decision recorded by {user}"
     }
   },
   "language_system": {
