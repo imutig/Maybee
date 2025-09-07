@@ -516,6 +516,28 @@ class Database:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS active_tickets (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL,
+                ticket_id BIGINT NOT NULL,
+                channel_id BIGINT NOT NULL,
+                file_id VARCHAR(255) DEFAULT NULL,
+                status ENUM('open', 'closed', 'deleted') DEFAULT 'open',
+                closed_by BIGINT DEFAULT NULL,
+                closed_at TIMESTAMP NULL,
+                reopened_by BIGINT DEFAULT NULL,
+                reopened_at TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_guild_id (guild_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_ticket_id (ticket_id),
+                INDEX idx_status (status),
+                INDEX idx_user_guild (user_id, guild_id)
+            )
             """
         ]
         

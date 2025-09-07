@@ -3780,6 +3780,9 @@ class Dashboard {
         // Load initial suggestions
         await this.loadSearchSuggestions();
         
+        // Debug: Check if we have data
+        await this.debugTicketLogs();
+        
         console.log('✅ Ticket logs system initialized');
     }
     
@@ -3886,7 +3889,7 @@ class Dashboard {
             
             searchTimeout = setTimeout(async () => {
                 try {
-                    const response = await this.apiCall(`/ticket-logs/search-users?query=${encodeURIComponent(query)}`);
+                    const response = await this.apiCall(`/ticket-logs/search-users?query=${encodeURIComponent(query)}&guild_id=${this.currentGuild}`);
                     showSuggestions(response.users || []);
                 } catch (error) {
                     console.error('Error getting suggestions:', error);
@@ -3910,7 +3913,7 @@ class Dashboard {
     
     async loadSearchSuggestions() {
         try {
-            const response = await this.apiCall('/ticket-logs/search-suggestions');
+            const response = await this.apiCall(`/ticket-logs/search-suggestions?guild_id=${this.currentGuild}`);
             const suggestions = response.suggestions || [];
             
             if (suggestions.length > 0) {
@@ -3982,6 +3985,30 @@ class Dashboard {
         
         searchSection.appendChild(suggestionsDiv);
     }
+    
+    async debugTicketLogs() {
+        try {
+            const response = await this.apiCall(`/ticket-logs/debug?guild_id=${this.currentGuild}`);
+            console.log('🔍 Ticket Logs Debug Info:', response);
+            
+            if (response.google_drive_connected) {
+                console.log(`✅ Google Drive connected`);
+                console.log(`📊 Found ${response.total_logs} total logs`);
+                console.log(`👥 ${response.unique_users} unique users`);
+                console.log(`🎫 ${response.unique_tickets} unique tickets`);
+                
+                if (response.total_logs === 0) {
+                    console.log('⚠️ No ticket logs found in Google Drive');
+                    console.log('💡 Create and close some tickets to generate logs');
+                }
+            } else {
+                console.log('❌ Google Drive connection failed');
+                console.log('🔧 Check your Google Drive credentials');
+            }
+        } catch (error) {
+            console.error('Debug ticket logs error:', error);
+        }
+    }
 
     async searchUser() {
         const searchInput = document.getElementById('userSearchInput');
@@ -3995,7 +4022,7 @@ class Dashboard {
         try {
             this.showLoading('userResultsList', 'Recherche d\'utilisateurs...');
             
-            const response = await this.apiCall(`/ticket-logs/search-users?query=${encodeURIComponent(query)}`);
+            const response = await this.apiCall(`/ticket-logs/search-users?query=${encodeURIComponent(query)}&guild_id=${this.currentGuild}`);
             
             if (response.users && response.users.length > 0) {
                 this.displayUserResults(response.users);
@@ -4037,7 +4064,7 @@ class Dashboard {
         try {
             this.showLoading('userTicketsList', 'Chargement des tickets...');
             
-            const response = await this.apiCall(`/ticket-logs/user-tickets/${userId}`);
+            const response = await this.apiCall(`/ticket-logs/user-tickets/${userId}?guild_id=${this.currentGuild}`);
             
             this.selectedUser = response.user;
             this.userTickets = response.tickets || [];
@@ -4106,7 +4133,7 @@ class Dashboard {
         try {
             this.showLoading('ticketDetailsContent', 'Chargement des détails du ticket...');
             
-            const response = await this.apiCall(`/ticket-logs/ticket-details/${fileId}`);
+            const response = await this.apiCall(`/ticket-logs/ticket-details/${fileId}?guild_id=${this.currentGuild}`);
             
             this.displayTicketDetails(response);
             

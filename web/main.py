@@ -120,6 +120,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Session middleware for storing user sessions
+from starlette.middleware.sessions import SessionMiddleware
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "your-secret-key-change-in-production"))
+
 # Templates and static files
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -4580,13 +4584,11 @@ async def delete_saved_embed(
 @app.get("/api/ticket-logs/search-users")
 async def search_users(
     query: str,
-    request: Request,
+    guild_id: str,
     current_user: str = Depends(get_current_user)
 ):
-    """Search for users in the current guild"""
+    """Search for users in the current guild from Google Drive logs"""
     try:
-        # Get current guild from session
-        guild_id = request.session.get('current_guild_id')
         if not guild_id:
             raise HTTPException(status_code=400, detail="No guild selected")
         
@@ -4594,18 +4596,48 @@ async def search_users(
         if not await verify_guild_access(guild_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this guild")
         
-        # Search for users in the guild
-        users = await database.fetch_all(
-            """SELECT DISTINCT u.user_id as id, u.username, u.discriminator, u.avatar_url
-               FROM active_tickets t
-               JOIN users u ON t.user_id = u.user_id
-               WHERE t.guild_id = %s 
-               AND (u.username LIKE %s OR u.user_id LIKE %s)
-               LIMIT 10""",
-            (guild_id, f"%{query}%", f"%{query}%")
-        )
+        # Import GoogleDriveStorage
+        import sys
+        sys.path.append('..')
+        from cloud_storage import GoogleDriveStorage
         
-        return {"users": [dict(user) for user in users]}
+        # Initialize Google Drive storage
+        storage = GoogleDriveStorage()
+        await storage.initialize()
+        
+        # Get all ticket logs from Google Drive
+        all_logs = await storage.list_user_ticket_logs(guild_id)
+        
+        # Filter users based on query
+        matching_users = []
+        seen_users = set()
+        
+        for log_data in all_logs:
+            user_id = log_data.get('user_id')
+            username = log_data.get('username', '')
+            discriminator = log_data.get('discriminator', '')
+            
+            if not user_id or user_id in seen_users:
+                continue
+            
+            # Check if user matches query
+            if (query.lower() in username.lower() or 
+                query.lower() in discriminator.lower() or 
+                query in str(user_id)):
+                
+                matching_users.append({
+                    'id': user_id,
+                    'username': username,
+                    'discriminator': discriminator,
+                    'avatar_url': log_data.get('avatar_url')
+                })
+                seen_users.add(user_id)
+                
+                # Limit to 10 results
+                if len(matching_users) >= 10:
+                    break
+        
+        return {"users": matching_users}
         
     except Exception as e:
         print(f"Search users error: {e}")
@@ -4613,13 +4645,11 @@ async def search_users(
 
 @app.get("/api/ticket-logs/search-suggestions")
 async def get_search_suggestions(
-    request: Request,
+    guild_id: str,
     current_user: str = Depends(get_current_user)
 ):
-    """Get search suggestions for users with recent tickets"""
+    """Get search suggestions for users with recent tickets from Google Drive"""
     try:
-        # Get current guild from session
-        guild_id = request.session.get('current_guild_id')
         if not guild_id:
             raise HTTPException(status_code=400, detail="No guild selected")
         
@@ -4627,22 +4657,51 @@ async def get_search_suggestions(
         if not await verify_guild_access(guild_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this guild")
         
-        # Get recent users with tickets (last 30 days)
-        users = await database.fetch_all(
-            """SELECT DISTINCT u.user_id as id, u.username, u.discriminator, u.avatar_url,
-                      COUNT(t.ticket_id) as ticket_count,
-                      MAX(t.created_at) as last_ticket_date
-               FROM active_tickets t
-               JOIN users u ON t.user_id = u.user_id
-               WHERE t.guild_id = %s 
-               AND t.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-               GROUP BY u.user_id, u.username, u.discriminator, u.avatar_url
-               ORDER BY last_ticket_date DESC
-               LIMIT 10""",
-            (guild_id,)
-        )
+        # Import GoogleDriveStorage
+        import sys
+        sys.path.append('..')
+        from cloud_storage import GoogleDriveStorage
         
-        return {"suggestions": [dict(user) for user in users]}
+        # Initialize Google Drive storage
+        storage = GoogleDriveStorage()
+        await storage.initialize()
+        
+        # Get all ticket logs from Google Drive
+        all_logs = await storage.list_user_ticket_logs(guild_id)
+        
+        # Process logs to create suggestions
+        user_stats = {}
+        for log_data in all_logs:
+            user_id = log_data.get('user_id')
+            if not user_id:
+                continue
+                
+            if user_id not in user_stats:
+                user_stats[user_id] = {
+                    'id': user_id,
+                    'username': log_data.get('username', 'Unknown'),
+                    'discriminator': log_data.get('discriminator', '0000'),
+                    'avatar_url': log_data.get('avatar_url'),
+                    'ticket_count': 0,
+                    'last_ticket_date': None
+                }
+            
+            user_stats[user_id]['ticket_count'] += 1
+            
+            # Update last ticket date
+            created_at = log_data.get('created_at')
+            if created_at:
+                if not user_stats[user_id]['last_ticket_date'] or created_at > user_stats[user_id]['last_ticket_date']:
+                    user_stats[user_id]['last_ticket_date'] = created_at
+        
+        # Convert to list and sort by last ticket date
+        suggestions = list(user_stats.values())
+        suggestions.sort(key=lambda x: x['last_ticket_date'] or '', reverse=True)
+        
+        # Limit to 10 suggestions
+        suggestions = suggestions[:10]
+        
+        return {"suggestions": suggestions}
         
     except Exception as e:
         print(f"Search suggestions error: {e}")
@@ -4651,13 +4710,11 @@ async def get_search_suggestions(
 @app.get("/api/ticket-logs/user-tickets/{user_id}")
 async def get_user_tickets(
     user_id: str,
-    request: Request,
+    guild_id: str,
     current_user: str = Depends(get_current_user)
 ):
-    """Get all tickets for a specific user"""
+    """Get all tickets for a specific user from Google Drive logs"""
     try:
-        # Get current guild from session
-        guild_id = request.session.get('current_guild_id')
         if not guild_id:
             raise HTTPException(status_code=400, detail="No guild selected")
         
@@ -4665,28 +4722,49 @@ async def get_user_tickets(
         if not await verify_guild_access(guild_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this guild")
         
-        # Get user info
-        user = await database.fetch_one(
-            """SELECT user_id as id, username, discriminator, avatar_url
-               FROM users WHERE user_id = %s""",
-            (user_id,)
-        )
+        # Import GoogleDriveStorage
+        import sys
+        sys.path.append('..')
+        from cloud_storage import GoogleDriveStorage
         
-        if not user:
+        # Initialize Google Drive storage
+        storage = GoogleDriveStorage()
+        await storage.initialize()
+        
+        # Get all ticket logs from Google Drive
+        all_logs = await storage.list_user_ticket_logs(guild_id)
+        
+        # Filter tickets for this user
+        user_tickets = []
+        user_info = None
+        
+        for log_data in all_logs:
+            if log_data.get('user_id') == user_id:
+                if not user_info:
+                    user_info = {
+                        'id': user_id,
+                        'username': log_data.get('username', 'Unknown'),
+                        'discriminator': log_data.get('discriminator', '0000'),
+                        'avatar_url': log_data.get('avatar_url')
+                    }
+                
+                user_tickets.append({
+                    'ticket_id': log_data.get('ticket_id'),
+                    'file_id': log_data.get('file_id'),
+                    'status': log_data.get('status', 'closed'),
+                    'created_at': log_data.get('created_at'),
+                    'closed_at': log_data.get('closed_at')
+                })
+        
+        if not user_info:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Get user's tickets
-        tickets = await database.fetch_all(
-            """SELECT ticket_id, file_id, status, created_at, closed_at
-               FROM active_tickets 
-               WHERE guild_id = %s AND user_id = %s
-               ORDER BY created_at DESC""",
-            (guild_id, user_id)
-        )
+        # Sort tickets by creation date (newest first)
+        user_tickets.sort(key=lambda x: x['created_at'] or '', reverse=True)
         
         return {
-            "user": dict(user),
-            "tickets": [dict(ticket) for ticket in tickets]
+            "user": user_info,
+            "tickets": user_tickets
         }
         
     except Exception as e:
@@ -4696,13 +4774,11 @@ async def get_user_tickets(
 @app.get("/api/ticket-logs/ticket-details/{file_id}")
 async def get_ticket_details(
     file_id: str,
-    request: Request,
+    guild_id: str,
     current_user: str = Depends(get_current_user)
 ):
     """Get detailed ticket information from Google Drive"""
     try:
-        # Get current guild from session
-        guild_id = request.session.get('current_guild_id')
         if not guild_id:
             raise HTTPException(status_code=400, detail="No guild selected")
         
@@ -4730,6 +4806,62 @@ async def get_ticket_details(
     except Exception as e:
         print(f"Get ticket details error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/ticket-logs/debug")
+async def debug_ticket_logs(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Debug endpoint to check ticket logs data from Google Drive"""
+    try:
+        if not guild_id:
+            raise HTTPException(status_code=400, detail="No guild selected")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Import GoogleDriveStorage
+        import sys
+        sys.path.append('..')
+        from cloud_storage import GoogleDriveStorage
+        
+        # Initialize Google Drive storage
+        storage = GoogleDriveStorage()
+        await storage.initialize()
+        
+        # Get all ticket logs from Google Drive
+        all_logs = await storage.list_user_ticket_logs(guild_id)
+        
+        # Count unique users and tickets
+        unique_users = set()
+        unique_tickets = set()
+        
+        for log_data in all_logs:
+            if log_data.get('user_id'):
+                unique_users.add(log_data['user_id'])
+            if log_data.get('ticket_id'):
+                unique_tickets.add(log_data['ticket_id'])
+        
+        # Get sample data (first 5 logs)
+        sample_logs = all_logs[:5] if all_logs else []
+        
+        return {
+            "guild_id": guild_id,
+            "total_logs": len(all_logs),
+            "unique_users": len(unique_users),
+            "unique_tickets": len(unique_tickets),
+            "sample_logs": sample_logs,
+            "google_drive_connected": True
+        }
+        
+    except Exception as e:
+        print(f"Debug ticket logs error: {e}")
+        return {
+            "guild_id": guild_id,
+            "error": str(e),
+            "google_drive_connected": False
+        }
 
 # Production server startup
 if __name__ == "__main__":
