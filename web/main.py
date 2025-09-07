@@ -4606,7 +4606,7 @@ async def search_users(
         await storage.initialize()
         
         # Get all ticket logs from Google Drive
-        all_logs = await storage.list_user_ticket_logs(guild_id)
+        all_logs = await storage.list_all_ticket_logs(guild_id)
         
         # Filter users based on query
         matching_users = []
@@ -4667,7 +4667,7 @@ async def get_search_suggestions(
         await storage.initialize()
         
         # Get all ticket logs from Google Drive
-        all_logs = await storage.list_user_ticket_logs(guild_id)
+        all_logs = await storage.list_all_ticket_logs(guild_id)
         
         # Process logs to create suggestions
         user_stats = {}
@@ -4731,30 +4731,29 @@ async def get_user_tickets(
         storage = GoogleDriveStorage()
         await storage.initialize()
         
-        # Get all ticket logs from Google Drive
-        all_logs = await storage.list_user_ticket_logs(guild_id)
+        # Get ticket logs for this specific user from Google Drive
+        user_logs = await storage.list_user_ticket_logs(guild_id, user_id)
         
-        # Filter tickets for this user
+        # Process logs to create user info and tickets list
         user_tickets = []
         user_info = None
         
-        for log_data in all_logs:
-            if log_data.get('user_id') == user_id:
-                if not user_info:
-                    user_info = {
-                        'id': user_id,
-                        'username': log_data.get('username', 'Unknown'),
-                        'discriminator': log_data.get('discriminator', '0000'),
-                        'avatar_url': log_data.get('avatar_url')
-                    }
-                
-                user_tickets.append({
-                    'ticket_id': log_data.get('ticket_id'),
-                    'file_id': log_data.get('file_id'),
-                    'status': log_data.get('status', 'closed'),
-                    'created_at': log_data.get('created_at'),
-                    'closed_at': log_data.get('closed_at')
-                })
+        for log_data in user_logs:
+            if not user_info:
+                user_info = {
+                    'id': user_id,
+                    'username': log_data.get('username', 'Unknown'),
+                    'discriminator': log_data.get('discriminator', '0000'),
+                    'avatar_url': log_data.get('avatar_url')
+                }
+            
+            user_tickets.append({
+                'ticket_id': log_data.get('ticket_id'),
+                'file_id': log_data.get('file_id'),
+                'status': log_data.get('status', 'closed'),
+                'created_at': log_data.get('created_at'),
+                'closed_at': log_data.get('closed_at')
+            })
         
         if not user_info:
             raise HTTPException(status_code=404, detail="User not found")
@@ -4831,7 +4830,7 @@ async def debug_ticket_logs(
         await storage.initialize()
         
         # Get all ticket logs from Google Drive
-        all_logs = await storage.list_user_ticket_logs(guild_id)
+        all_logs = await storage.list_all_ticket_logs(guild_id)
         
         # Count unique users and tickets
         unique_users = set()

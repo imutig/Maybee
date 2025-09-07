@@ -301,6 +301,62 @@ class GoogleDriveStorage:
         except Exception as e:
             logger.error(f"Erreur lors de la liste des logs: {e}")
             return []
+
+    async def list_all_ticket_logs(self, guild_id: int) -> List[Dict]:
+        """Liste tous les logs de tickets d'un serveur"""
+        try:
+            if not self._service or not self.folder_id:
+                return []
+            
+            # Chercher les fichiers de logs pour ce serveur
+            query = f"'{self.folder_id}' in parents and name contains 'ticket_{guild_id}_' and mimeType='application/zip'"
+            
+            results = self._service.files().list(
+                q=query,
+                fields="files(id, name, createdTime, size)",
+                orderBy="createdTime desc"
+            ).execute()
+            
+            files = results.get('files', [])
+            all_logs = []
+            
+            for file in files:
+                try:
+                    # Télécharger et analyser les métadonnées
+                    logs_data = await self.download_ticket_logs(file['id'])
+                    if logs_data:
+                        # Ajouter les données complètes du ticket
+                        ticket_data = {
+                            'file_id': file['id'],
+                            'filename': file['name'],
+                            'created_time': file['createdTime'],
+                            'size': file.get('size', 0),
+                            'message_count': len(logs_data.get('messages', [])),
+                            'event_count': len(logs_data.get('events', [])),
+                            # Ajouter les données principales pour compatibilité
+                            'ticket_id': logs_data.get('ticket_id', 'Inconnu'),
+                            'user_id': logs_data.get('user_id', 'Inconnu'),
+                            'username': logs_data.get('username', 'Inconnu'),
+                            'discriminator': logs_data.get('discriminator', '0000'),
+                            'avatar_url': logs_data.get('avatar_url'),
+                            'created_at': logs_data.get('created_at', 'Inconnu'),
+                            'status': logs_data.get('status', 'closed'),
+                            'closed_at': logs_data.get('closed_at'),
+                            'messages': logs_data.get('messages', []),
+                            'events': logs_data.get('events', [])
+                        }
+                        all_logs.append(ticket_data)
+                
+                except Exception as e:
+                    logger.error(f"Erreur lors de l'analyse du fichier {file['name']}: {e}")
+                    continue
+            
+            logger.info(f"Récupéré {len(all_logs)} logs de tickets pour le serveur {guild_id}")
+            return all_logs
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des logs du serveur: {e}")
+            return []
     
     async def cleanup_old_logs(self, days: int = 30):
         """Nettoie les anciens logs (plus de X jours)"""
