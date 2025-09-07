@@ -3772,9 +3772,215 @@ class Dashboard {
                     this.searchUser();
                 }
             });
+            
+            // Setup suggestions dropdown
+            this.setupSearchSuggestions(searchInput);
         }
         
+        // Load initial suggestions
+        await this.loadSearchSuggestions();
+        
         console.log('✅ Ticket logs system initialized');
+    }
+    
+    setupSearchSuggestions(searchInput) {
+        let suggestionsContainer = null;
+        let currentSuggestions = [];
+        
+        // Create suggestions container
+        const createSuggestionsContainer = () => {
+            if (suggestionsContainer) return;
+            
+            suggestionsContainer = document.createElement('div');
+            suggestionsContainer.className = 'search-suggestions';
+            suggestionsContainer.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--surface-dark);
+                border: 1px solid var(--border-subtle);
+                border-radius: 8px;
+                box-shadow: var(--shadow-lg);
+                z-index: 1000;
+                max-height: 200px;
+                overflow-y: auto;
+                display: none;
+            `;
+            
+            searchInput.parentElement.style.position = 'relative';
+            searchInput.parentElement.appendChild(suggestionsContainer);
+        };
+        
+        // Show suggestions
+        const showSuggestions = (suggestions) => {
+            createSuggestionsContainer();
+            currentSuggestions = suggestions;
+            
+            if (suggestions.length === 0) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+            
+            suggestionsContainer.innerHTML = '';
+            
+            suggestions.forEach(user => {
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'suggestion-item';
+                suggestionItem.style.cssText = `
+                    padding: 0.75rem;
+                    cursor: pointer;
+                    border-bottom: 1px solid var(--border-subtle);
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                `;
+                
+                suggestionItem.innerHTML = `
+                    <img src="${user.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                         alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%;">
+                    <div>
+                        <div style="font-weight: 600; color: var(--text-primary);">${user.username}#${user.discriminator}</div>
+                        <div style="font-size: 0.875rem; color: var(--text-secondary);">ID: ${user.id}</div>
+                    </div>
+                `;
+                
+                suggestionItem.addEventListener('click', () => {
+                    searchInput.value = user.username;
+                    suggestionsContainer.style.display = 'none';
+                    this.selectUser(user.id);
+                });
+                
+                suggestionItem.addEventListener('mouseenter', () => {
+                    suggestionItem.style.background = 'var(--surface-lighter)';
+                });
+                
+                suggestionItem.addEventListener('mouseleave', () => {
+                    suggestionItem.style.background = 'transparent';
+                });
+                
+                suggestionsContainer.appendChild(suggestionItem);
+            });
+            
+            suggestionsContainer.style.display = 'block';
+        };
+        
+        // Hide suggestions
+        const hideSuggestions = () => {
+            if (suggestionsContainer) {
+                suggestionsContainer.style.display = 'none';
+            }
+        };
+        
+        // Input event listener
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            
+            clearTimeout(searchTimeout);
+            
+            if (query.length < 2) {
+                hideSuggestions();
+                return;
+            }
+            
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await this.apiCall(`/ticket-logs/search-users?query=${encodeURIComponent(query)}`);
+                    showSuggestions(response.users || []);
+                } catch (error) {
+                    console.error('Error getting suggestions:', error);
+                    hideSuggestions();
+                }
+            }, 300);
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.parentElement.contains(e.target)) {
+                hideSuggestions();
+            }
+        });
+        
+        // Hide suggestions on focus out
+        searchInput.addEventListener('blur', () => {
+            setTimeout(hideSuggestions, 200);
+        });
+    }
+    
+    async loadSearchSuggestions() {
+        try {
+            const response = await this.apiCall('/ticket-logs/search-suggestions');
+            const suggestions = response.suggestions || [];
+            
+            if (suggestions.length > 0) {
+                this.displaySearchSuggestions(suggestions);
+            }
+        } catch (error) {
+            console.error('Error loading search suggestions:', error);
+        }
+    }
+    
+    displaySearchSuggestions(suggestions) {
+        const searchSection = document.querySelector('#ticket-logs .settings-section');
+        if (!searchSection) return;
+        
+        // Remove existing suggestions if any
+        const existingSuggestions = document.getElementById('searchSuggestions');
+        if (existingSuggestions) {
+            existingSuggestions.remove();
+        }
+        
+        const suggestionsDiv = document.createElement('div');
+        suggestionsDiv.id = 'searchSuggestions';
+        suggestionsDiv.style.cssText = `
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--surface-dark);
+            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+        `;
+        
+        suggestionsDiv.innerHTML = `
+            <h5 style="margin: 0 0 0.75rem 0; color: var(--text-primary); font-size: 0.875rem;">
+                <i class="fas fa-clock me-2"></i>Utilisateurs récents avec tickets
+            </h5>
+            <div class="suggestions-grid" style="display: grid; gap: 0.5rem;">
+                ${suggestions.map(user => `
+                    <div class="suggestion-chip" style="
+                        padding: 0.5rem 0.75rem;
+                        background: var(--surface-lighter);
+                        border-radius: 6px;
+                        cursor: pointer;
+                        transition: var(--transition-fast);
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                    " onclick="dashboard.selectUser('${user.id}')">
+                        <img src="${user.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                             alt="Avatar" style="width: 24px; height: 24px; border-radius: 50%;">
+                        <span style="font-size: 0.875rem; color: var(--text-primary);">${user.username}</span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">(${user.ticket_count} tickets)</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        // Add hover effects
+        const chips = suggestionsDiv.querySelectorAll('.suggestion-chip');
+        chips.forEach(chip => {
+            chip.addEventListener('mouseenter', () => {
+                chip.style.background = 'var(--primary-yellow)';
+                chip.style.color = 'var(--background-dark)';
+            });
+            
+            chip.addEventListener('mouseleave', () => {
+                chip.style.background = 'var(--surface-lighter)';
+                chip.style.color = '';
+            });
+        });
+        
+        searchSection.appendChild(suggestionsDiv);
     }
 
     async searchUser() {

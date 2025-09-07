@@ -4580,6 +4580,7 @@ async def delete_saved_embed(
 @app.get("/api/ticket-logs/search-users")
 async def search_users(
     query: str,
+    request: Request,
     current_user: str = Depends(get_current_user)
 ):
     """Search for users in the current guild"""
@@ -4610,9 +4611,47 @@ async def search_users(
         print(f"Search users error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/ticket-logs/search-suggestions")
+async def get_search_suggestions(
+    request: Request,
+    current_user: str = Depends(get_current_user)
+):
+    """Get search suggestions for users with recent tickets"""
+    try:
+        # Get current guild from session
+        guild_id = request.session.get('current_guild_id')
+        if not guild_id:
+            raise HTTPException(status_code=400, detail="No guild selected")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get recent users with tickets (last 30 days)
+        users = await database.fetch_all(
+            """SELECT DISTINCT u.user_id as id, u.username, u.discriminator, u.avatar_url,
+                      COUNT(t.ticket_id) as ticket_count,
+                      MAX(t.created_at) as last_ticket_date
+               FROM active_tickets t
+               JOIN users u ON t.user_id = u.user_id
+               WHERE t.guild_id = %s 
+               AND t.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+               GROUP BY u.user_id, u.username, u.discriminator, u.avatar_url
+               ORDER BY last_ticket_date DESC
+               LIMIT 10""",
+            (guild_id,)
+        )
+        
+        return {"suggestions": [dict(user) for user in users]}
+        
+    except Exception as e:
+        print(f"Search suggestions error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/ticket-logs/user-tickets/{user_id}")
 async def get_user_tickets(
     user_id: str,
+    request: Request,
     current_user: str = Depends(get_current_user)
 ):
     """Get all tickets for a specific user"""
@@ -4657,6 +4696,7 @@ async def get_user_tickets(
 @app.get("/api/ticket-logs/ticket-details/{file_id}")
 async def get_ticket_details(
     file_id: str,
+    request: Request,
     current_user: str = Depends(get_current_user)
 ):
     """Get detailed ticket information from Google Drive"""
