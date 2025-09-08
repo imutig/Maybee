@@ -183,7 +183,19 @@ class GoogleDriveStorage:
                 }
                 
                 # Ajouter les informations utilisateur si disponibles
-                if logs_data.get("messages"):
+                # Essayer d'abord d'utiliser les données du ticket depuis la base de données
+                ticket_user_id = logs_data.get("ticket_user_id")
+                if ticket_user_id:
+                    # Utiliser les données du ticket depuis la base de données
+                    metadata.update({
+                        "user_id": ticket_user_id,
+                        "username": logs_data.get("ticket_username", "Unknown"),
+                        "discriminator": logs_data.get("ticket_discriminator", "0000"),
+                        "display_name": logs_data.get("ticket_display_name", "Unknown"),
+                        "avatar_url": logs_data.get("ticket_avatar_url")
+                    })
+                elif logs_data.get("messages"):
+                    # Fallback sur le premier message
                     first_message = logs_data["messages"][0]
                     metadata.update({
                         "user_id": first_message.get("author_id"),
@@ -284,11 +296,20 @@ class GoogleDriveStorage:
                         metadata = logs_data['metadata']
                         
                         # Vérifier si c'est un ticket de cet utilisateur
-                        # On peut le faire en vérifiant les messages
+                        # Utiliser les métadonnées en priorité, puis les messages en fallback
                         messages = logs_data.get('messages', [])
-                        if messages:
+                        is_user_ticket = False
+                        
+                        # Vérifier d'abord dans les métadonnées
+                        if metadata.get('user_id') and str(metadata.get('user_id')) == str(user_id):
+                            is_user_ticket = True
+                        elif messages:
+                            # Fallback sur les messages
                             first_message = messages[0]
                             if str(first_message.get('author_id')) == str(user_id):
+                                is_user_ticket = True
+                        
+                        if is_user_ticket:
                                 # Ajouter les données complètes du ticket
                                 ticket_data = {
                                     'file_id': file['id'],
@@ -562,6 +583,9 @@ class CloudTicketLogger:
         try:
             # Récupérer les logs du cache
             logs_data = self.ticket_cache[ticket_key]
+            
+            # Ajouter les informations utilisateur depuis la base de données
+            # (Cette partie sera implémentée dans le cog Ticket)
             
             # Upload vers Google Drive
             file_id = await self.cloud_storage.upload_ticket_logs(

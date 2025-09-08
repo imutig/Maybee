@@ -250,6 +250,161 @@ class Ticket(commands.Cog):
             await interaction.followup.send(
                 "❌ Erreur lors de la récupération des logs de tickets.", ephemeral=True)
     
+    @app_commands.command(name="new_ticket", description="Créer un ticket pour un autre utilisateur")
+    @app_commands.describe(
+        user="L'utilisateur pour lequel créer le ticket",
+        category="La catégorie où créer le ticket",
+        reason="La raison de la création du ticket"
+    )
+    @app_commands.default_permissions(manage_channels=True)
+    async def new_ticket(self, interaction: discord.Interaction, user: discord.Member, category: discord.CategoryChannel, reason: str):
+        """Créer un ticket pour un autre utilisateur"""
+        guild_id = interaction.guild.id if interaction.guild else None
+        
+        # Déférer l'interaction immédiatement pour éviter les timeouts
+        await interaction.response.defer(ephemeral=True)
+        
+        # Vérifier les permissions
+        if not interaction.user.guild_permissions.manage_channels:
+            await interaction.followup.send(
+                _("ticket_system.new_ticket.no_permission", interaction.user.id, guild_id), ephemeral=True)
+            return
+        
+        # Vérifier que l'utilisateur n'est pas un bot
+        if user.bot:
+            await interaction.followup.send(
+                _("ticket_system.new_ticket.bot_user", interaction.user.id, guild_id), ephemeral=True)
+            return
+        
+        # Vérifier que l'utilisateur n'est pas soi-même
+        if user.id == interaction.user.id:
+            await interaction.followup.send(
+                _("ticket_system.new_ticket.self_user", interaction.user.id, guild_id), ephemeral=True)
+            return
+        
+        try:
+            # Récupérer la configuration des logs (optionnel)
+            ticket_config = await self.bot.db.query(
+                "SELECT ticket_logs_channel_id FROM server_config WHERE guild_id = %s",
+                (str(guild_id),),
+                fetchone=True
+            )
+            
+            logs_channel_id = None
+            if ticket_config:
+                logs_channel_id = ticket_config.get('ticket_logs_channel_id')
+            
+            # Générer un ID de ticket unique
+            ticket_id = await self._generate_ticket_id(guild_id)
+            
+            # Créer le canal de ticket
+            overwrites = {
+                interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                interaction.guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_messages=True)
+            }
+            
+            # Ajouter les permissions pour les modérateurs
+            for role in interaction.guild.roles:
+                if role.permissions.manage_channels:
+                    overwrites[role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+            
+            # Créer un nom de canal basé sur le nom d'utilisateur
+            username = user.display_name.lower().replace(" ", "-").replace("_", "-")
+            # Nettoyer le nom pour qu'il soit compatible avec Discord (max 100 caractères, pas de caractères spéciaux)
+            import re
+            username = re.sub(r'[^a-z0-9\-]', '', username)[:50]  # Limiter à 50 caractères
+            if not username:  # Si le nom est vide après nettoyage, utiliser "user"
+                username = "user"
+            
+            channel = await interaction.guild.create_text_channel(
+                name=f"ticket-{username}",
+                category=category,
+                overwrites=overwrites,
+                reason=f"Ticket créé par {interaction.user.display_name} pour {user.display_name}"
+            )
+            
+            # Créer l'embed de bienvenue
+            embed = discord.Embed(
+                title=_("ticket_system.new_ticket.embed_title", interaction.user.id, guild_id, ticket_id=ticket_id),
+                description=_("ticket_system.new_ticket.embed_description", interaction.user.id, guild_id, 
+                             creator=interaction.user.mention, user=user.mention, category=category.name, reason=reason),
+                color=discord.Color.green(),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(
+                name=_("ticket_system.new_ticket.embed_info", interaction.user.id, guild_id),
+                value=_("ticket_system.new_ticket.embed_info_content", interaction.user.id, guild_id,
+                       creator=interaction.user.display_name, user=user.display_name, category=category.name, ticket_id=ticket_id),
+                inline=False
+            )
+            
+            embed.set_footer(text=f"Ticket créé par {interaction.user.display_name}")
+            
+            # Créer la vue avec le bouton de fermeture
+            view = TicketCloseView()
+            
+            # Envoyer le message dans le canal de ticket
+            await channel.send(content=user.mention, embed=embed, view=view)
+            
+            # Enregistrer le ticket dans la base de données (utiliser la même structure que les tickets existants)
+            # Utiliser NULL pour button_id car ce ticket ne provient pas d'un bouton dashboard
+            await self.bot.db.execute("""
+                INSERT INTO active_tickets (guild_id, channel_id, user_id, button_id, created_at)
+                VALUES (%s, %s, %s, %s, NOW())
+            """, (str(guild_id), str(channel.id), str(user.id), None))
+            
+            # Enregistrer l'événement de création
+            await self.ticket_logger.log_ticket_event(
+                guild_id, channel.id, "created", interaction.user.id, interaction.user.display_name,
+                f"Ticket créé par {interaction.user.display_name} pour {user.display_name} - Raison: {reason}"
+            )
+            
+            # Envoyer un message de confirmation à l'utilisateur qui a créé le ticket
+            await interaction.followup.send(
+                _("ticket_system.new_ticket.success", interaction.user.id, guild_id,
+                  ticket_id=ticket_id, user=user.mention, channel=channel.mention, category=category.name, reason=reason), ephemeral=True)
+            
+            # Envoyer un message dans le canal de logs si configuré
+            if logs_channel_id:
+                logs_channel = interaction.guild.get_channel(int(logs_channel_id))
+                if logs_channel:
+                    log_embed = discord.Embed(
+                        title=_("ticket_system.new_ticket.log_title", interaction.user.id, guild_id),
+                        description=_("ticket_system.new_ticket.log_description", interaction.user.id, guild_id,
+                                     ticket_id=ticket_id, creator=interaction.user.mention, user=user.mention,
+                                     channel=channel.mention, category=category.name, reason=reason),
+                        color=discord.Color.blue(),
+                        timestamp=datetime.now()
+                    )
+                    await logs_channel.send(embed=log_embed)
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la création du ticket: {e}")
+            await interaction.followup.send(
+                _("ticket_system.new_ticket.error", interaction.user.id, guild_id), ephemeral=True)
+    
+    async def _generate_ticket_id(self, guild_id: int) -> int:
+        """Générer un ID de ticket unique pour le serveur"""
+        try:
+            # Compter le nombre de tickets existants pour ce serveur
+            result = await self.bot.db.query(
+                "SELECT COUNT(*) as count FROM active_tickets WHERE guild_id = %s",
+                (str(guild_id),),
+                fetchone=True
+            )
+            
+            if result and result.get('count') is not None:
+                return result['count'] + 1
+            else:
+                return 1
+                
+        except Exception as e:
+            logger.error(f"Erreur lors de la génération de l'ID de ticket: {e}")
+            return 1
+    
     # Commande ticket_details supprimée - remplacée par le système de dropdown
 
 
@@ -404,6 +559,35 @@ class TicketConfirmDeleteButton(discord.ui.Button):
             guild_id, channel.id, "deleted", user_id, interaction.user.display_name,
             f"Ticket supprimé définitivement par {interaction.user.display_name}"
         )
+        
+        # Récupérer les informations du ticket depuis la base de données
+        ticket_data = await interaction.client.db.query(
+            "SELECT * FROM active_tickets WHERE channel_id = %s AND guild_id = %s",
+            (str(channel.id), str(guild_id)),
+            fetchone=True
+        )
+        
+        # Ajouter les informations utilisateur aux logs si disponibles
+        if ticket_data:
+            ticket_cog = interaction.client.get_cog('Ticket')
+            ticket_key = f"{guild_id}_{channel.id}"
+            
+            if ticket_key in ticket_cog.ticket_logger.ticket_cache:
+                logs_data = ticket_cog.ticket_logger.ticket_cache[ticket_key]
+                
+                # Ajouter les informations utilisateur depuis la base de données
+                logs_data["ticket_user_id"] = ticket_data.get("user_id")
+                
+                # Essayer de récupérer les informations utilisateur depuis Discord
+                try:
+                    user = interaction.guild.get_member(int(ticket_data["user_id"]))
+                    if user:
+                        logs_data["ticket_username"] = user.name
+                        logs_data["ticket_discriminator"] = user.discriminator
+                        logs_data["ticket_display_name"] = user.display_name
+                        logs_data["ticket_avatar_url"] = str(user.display_avatar.url) if user.display_avatar else None
+                except Exception as e:
+                    logger.warning(f"Impossible de récupérer les informations utilisateur: {e}")
         
         # Finaliser et uploader les logs vers Google Drive
         ticket_cog = interaction.client.get_cog('Ticket')

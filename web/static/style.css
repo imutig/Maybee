@@ -2373,6 +2373,50 @@ h1, h2, h3, h4, h5, h6 {
     margin-top: auto;
 }
 
+/* Footer with bg-secondary class */
+footer.bg-secondary {
+    background-color: var(--background-darker) !important;
+    border-top: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    margin-top: auto;
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+footer.bg-secondary .text-muted {
+    color: var(--text-tertiary) !important;
+}
+
+footer.bg-secondary a {
+    color: var(--text-tertiary) !important;
+    transition: color 0.2s ease;
+    text-decoration: none !important;
+}
+
+footer.bg-secondary a:hover {
+    color: var(--primary-yellow) !important;
+    text-decoration: none !important;
+}
+
+footer.bg-secondary code {
+    background: var(--surface-dark);
+    color: var(--primary-yellow);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+/* Force footer visibility */
+footer {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
 .footer-main {
     color: var(--text-secondary);
     margin-bottom: var(--spacing-sm);
@@ -2390,6 +2434,18 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0.2rem 0.4rem;
     border-radius: 4px;
     font-size: 0.85rem;
+}
+
+/* Footer links styling */
+.modern-footer a {
+    color: var(--text-tertiary) !important;
+    transition: color 0.2s ease;
+    text-decoration: none !important;
+}
+
+.modern-footer a:hover {
+    color: var(--primary-yellow) !important;
+    text-decoration: none !important;
 }
 
 /* Responsive Design for Index Page */

@@ -530,13 +530,69 @@ class Database:
                 closed_at TIMESTAMP NULL,
                 reopened_by BIGINT DEFAULT NULL,
                 reopened_at TIMESTAMP NULL,
+                created_by BIGINT DEFAULT NULL,
+                reason TEXT DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_guild_id (guild_id),
                 INDEX idx_user_id (user_id),
                 INDEX idx_ticket_id (ticket_id),
                 INDEX idx_status (status),
-                INDEX idx_user_guild (user_id, guild_id)
+                INDEX idx_user_guild (user_id, guild_id),
+                INDEX idx_created_by (created_by)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS dm_logs_preferences (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                guild_id BIGINT DEFAULT NULL,
+                enabled BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_user_guild (user_id, guild_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_guild_id (guild_id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS dm_logs_commands (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                command_name VARCHAR(100) NOT NULL,
+                guild_id BIGINT DEFAULT NULL,
+                enabled BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_user_command_guild (user_id, command_name, guild_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_command_name (command_name),
+                INDEX idx_guild_id (guild_id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS dm_logs_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                command_name VARCHAR(100) NOT NULL,
+                executor_id BIGINT NOT NULL,
+                guild_id BIGINT,
+                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id),
+                INDEX idx_executor_id (executor_id),
+                INDEX idx_guild_id (guild_id),
+                INDEX idx_executed_at (executed_at)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS server_config (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id BIGINT NOT NULL UNIQUE,
+                ticket_category_id BIGINT DEFAULT NULL,
+                ticket_logs_channel_id BIGINT DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_guild_id (guild_id)
             )
             """
         ]

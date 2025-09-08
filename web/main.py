@@ -2657,6 +2657,26 @@ async def language_test_page(request: Request):
     """Language test page - for testing language functionality"""
     return templates.TemplateResponse("language-test.html", {"request": request})
 
+@app.get("/terms-of-service", response_class=HTMLResponse)
+async def terms_of_service(request: Request):
+    """Terms of Service page"""
+    from datetime import datetime
+    current_date = datetime.now().strftime("%d/%m/%Y")
+    return templates.TemplateResponse("terms-of-service.html", {
+        "request": request,
+        "current_date": current_date
+    })
+
+@app.get("/privacy-policy", response_class=HTMLResponse)
+async def privacy_policy(request: Request):
+    """Privacy Policy page"""
+    from datetime import datetime
+    current_date = datetime.now().strftime("%d/%m/%Y")
+    return templates.TemplateResponse("privacy-policy.html", {
+        "request": request,
+        "current_date": current_date
+    })
+
 # Add caching for guild access verification
 guild_access_cache = {}
 guild_access_cache_ttl = 300  # 5 minutes cache

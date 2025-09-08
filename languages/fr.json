@@ -1033,6 +1033,19 @@
           "embed_description": "Salut {user} ! Un membre du staff va te répondre rapidement.\nClique sur le bouton pour fermer le ticket.",
           "close_button": "Fermer le ticket"
         },
+        "new_ticket": {
+          "no_permission": "❌ Vous n'avez pas la permission de créer des tickets.",
+          "bot_user": "❌ Vous ne pouvez pas créer de ticket pour un bot.",
+          "self_user": "❌ Vous ne pouvez pas créer de ticket pour vous-même. Utilisez le panneau de tickets.",
+          "success": "✅ Ticket #{ticket_id} créé avec succès pour {user} dans {channel}.\n**Catégorie :** {category}\n**Raison :** {reason}",
+          "error": "❌ Erreur lors de la création du ticket. Veuillez réessayer.",
+          "embed_title": "🎫 Ticket #{ticket_id}",
+          "embed_description": "**Ticket créé par :** {creator}\n**Pour :** {user}\n**Catégorie :** {category}\n**Raison :** {reason}\n\n💬 Ce ticket a été créé pour vous. Vous pouvez maintenant communiquer avec l'équipe de modération.",
+          "embed_info": "📋 Informations",
+          "embed_info_content": "**Créé par :** {creator}\n**Pour :** {user}\n**Catégorie :** {category}\n**ID du ticket :** {ticket_id}",
+          "log_title": "🎫 Nouveau ticket créé",
+          "log_description": "**Ticket :** #{ticket_id}\n**Créé par :** {creator}\n**Pour :** {user}\n**Canal :** {channel}\n**Catégorie :** {category}\n**Raison :** {reason}"
+        },
         "close": {
           "closing": "Fermeture dans 5 secondes..."
         }

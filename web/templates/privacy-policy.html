@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="legal.privacy.title">Privacy Policy - Maybee Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <style>
+        .legal-page {
+            min-height: 100vh;
+            background: var(--background-dark);
+            padding-top: 80px;
+        }
+        
+        .legal-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: var(--spacing-xl);
+        }
+        
+        .legal-header {
+            text-align: center;
+            margin-bottom: var(--spacing-2xl);
+        }
+        
+        .legal-title {
+            color: var(--primary-yellow);
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-md);
+        }
+        
+        .legal-subtitle {
+            color: var(--text-secondary);
+            font-size: var(--font-size-lg);
+        }
+        
+        .legal-content {
+            background: var(--surface-dark);
+            border-radius: 12px;
+            padding: var(--spacing-2xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-subtle);
+        }
+        
+        .legal-section {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .legal-section h2 {
+            color: var(--primary-yellow);
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .legal-section p {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+            line-height: 1.7;
+        }
+        
+        .legal-section ul {
+            color: var(--text-primary);
+            margin-left: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .legal-section li {
+            margin-bottom: var(--spacing-sm);
+            line-height: 1.6;
+        }
+        
+        .legal-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: var(--spacing-2xl);
+            padding-top: var(--spacing-xl);
+            border-top: 1px solid var(--border-subtle);
+        }
+        
+        .legal-btn {
+            background: var(--surface-lighter);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: 8px;
+            text-decoration: none;
+            transition: var(--transition-smooth);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .legal-btn:hover {
+            background: var(--primary-yellow);
+            color: var(--background-dark);
+            border-color: var(--primary-yellow);
+            box-shadow: var(--glow-yellow);
+        }
+        
+        .legal-btn-primary {
+            background: var(--primary-yellow);
+            color: var(--background-dark);
+            border-color: var(--primary-yellow);
+        }
+        
+        .legal-btn-primary:hover {
+            background: var(--secondary-yellow);
+            border-color: var(--secondary-yellow);
+        }
+        
+        .back-link {
+            color: var(--primary-yellow);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+            transition: var(--transition-smooth);
+        }
+        
+        .back-link:hover {
+            color: var(--secondary-yellow);
+        }
+        
+        .last-updated {
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+    </style>
+</head>
+<body class="dashboard-body">
+    <!-- Modern Navbar -->
+    <nav class="modern-navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand-section">
+                <a class="brand-link" href="/">
+                    <div class="brand-icon">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <span class="brand-text">Maybee</span>
+                    <span class="brand-subtitle">Dashboard</span>
+                </a>
+            </div>
+            
+            <div class="navbar-actions">
+                <!-- Language Selector -->
+                <div class="action-item language-selector">
+                    <button class="action-btn" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-globe"></i>
+                        <span id="currentLanguage">English</span>
+                        <i class="fas fa-chevron-down ms-1"></i>
+                    </button>
+                    <ul class="dropdown-menu modern-dropdown" id="languageMenu">
+                        <li><a class="dropdown-item" href="#" onclick="changeLanguage('en')">
+                            <i class="fas fa-flag-usa me-2"></i>English
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="changeLanguage('fr')">
+                            <i class="fas fa-flag me-2"></i>Français
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="legal-page">
+        <div class="legal-container">
+            <a href="/" class="back-link">
+                <i class="fas fa-arrow-left"></i>
+                <span data-translate="legal.back_to_dashboard">Back to Dashboard</span>
+            </a>
+            
+            <div class="legal-header">
+                <h1 class="legal-title">
+                    <i class="fas fa-shield-alt"></i>
+                    <span data-translate="legal.privacy.title">Privacy Policy</span>
+                </h1>
+                <p class="legal-subtitle" data-translate="legal.privacy.subtitle">How we collect, use, and protect your information</p>
+            </div>
+            
+            <div class="legal-content">
+                <p class="last-updated">
+                    <span data-translate="legal.last_updated">Last updated:</span> {{ current_date }}
+                </p>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-info-circle"></i><span data-translate="legal.privacy.section1.title">1. Information We Collect</span></h2>
+                    <p data-translate="legal.privacy.section1.content1">We collect information necessary to provide our Discord bot services effectively. This includes:</p>
+                    <ul>
+                        <li data-translate="legal.privacy.section1.data1">Discord user IDs and usernames</li>
+                        <li data-translate="legal.privacy.section1.data2">Server IDs and basic server information</li>
+                        <li data-translate="legal.privacy.section1.data3">Message content (only when explicitly logged for moderation purposes)</li>
+                        <li data-translate="legal.privacy.section1.data4">Bot command usage and interaction data</li>
+                        <li data-translate="legal.privacy.section1.data5">User preferences and settings</li>
+                    </ul>
+                </div>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-cogs"></i><span data-translate="legal.privacy.section2.title">2. How We Use Your Information</span></h2>
+                    <p data-translate="legal.privacy.section2.content1">We use the collected information to:</p>
+                    <ul>
+                        <li data-translate="legal.privacy.section2.use1">Provide bot functionality and services</li>
+                        <li data-translate="legal.privacy.section2.use2">Maintain server moderation and safety</li>
+                        <li data-translate="legal.privacy.section2.use3">Track user activity and XP systems</li>
+                        <li data-translate="legal.privacy.section2.use4">Generate server statistics and leaderboards</li>
+                        <li data-translate="legal.privacy.section2.use5">Improve bot performance and features</li>
+                        <li data-translate="legal.privacy.section2.use6">Provide customer support</li>
+                    </ul>
+                </div>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-share-alt"></i><span data-translate="legal.privacy.section3.title">3. Information Sharing</span></h2>
+                    <p data-translate="legal.privacy.section3.content1">We do not sell, trade, or otherwise transfer your personal information to third parties except:</p>
+                    <ul>
+                        <li data-translate="legal.privacy.section3.share1">When required by law or legal process</li>
+                        <li data-translate="legal.privacy.section3.share2">To protect our rights and safety</li>
+                        <li data-translate="legal.privacy.section3.share3">With trusted service providers who assist in operating our services</li>
+                        <li data-translate="legal.privacy.section3.share4">When you explicitly consent to sharing</li>
+                    </ul>
+                </div>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-database"></i><span data-translate="legal.privacy.section4.title">4. Data Storage and Security</span></h2>
+                    <p data-translate="legal.privacy.section4.content1">We implement appropriate security measures to protect your information:</p>
+                    <ul>
+                        <li data-translate="legal.privacy.section4.security1">Encrypted data transmission and storage</li>
+                        <li data-translate="legal.privacy.section4.security2">Regular security audits and updates</li>
+                        <li data-translate="legal.privacy.section4.security3">Limited access to personal information</li>
+                        <li data-translate="legal.privacy.section4.security4">Secure cloud infrastructure</li>
+                    </ul>
+                    <p data-translate="legal.privacy.section4.content2">However, no method of transmission over the internet is 100% secure, and we cannot guarantee absolute security.</p>
+                </div>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-clock"></i><span data-translate="legal.privacy.section5.title">5. Data Retention</span></h2>
+                    <p data-translate="legal.privacy.section5.content1">We retain your information for as long as necessary to provide our services and comply with legal obligations.</p>
+                    <p data-translate="legal.privacy.section5.content2">You may request deletion of your data at any time, subject to certain legal and operational requirements.</p>
+                </div>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-user-cog"></i><span data-translate="legal.privacy.section6.title">6. Your Rights</span></h2>
+                    <p data-translate="legal.privacy.section6.content1">You have the right to:</p>
+                    <ul>
+                        <li data-translate="legal.privacy.section6.right1">Access your personal information</li>
+                        <li data-translate="legal.privacy.section6.right2">Correct inaccurate data</li>
+                        <li data-translate="legal.privacy.section6.right3">Request deletion of your data</li>
+                        <li data-translate="legal.privacy.section6.right4">Object to processing of your data</li>
+                        <li data-translate="legal.privacy.section6.right5">Data portability</li>
+                    </ul>
+                </div>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-cookie-bite"></i><span data-translate="legal.privacy.section7.title">7. Cookies and Tracking</span></h2>
+                    <p data-translate="legal.privacy.section7.content1">Our web dashboard may use cookies to enhance your experience and provide personalized content.</p>
+                    <p data-translate="legal.privacy.section7.content2">You can control cookie settings through your browser preferences.</p>
+                </div>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-child"></i><span data-translate="legal.privacy.section8.title">8. Children's Privacy</span></h2>
+                    <p data-translate="legal.privacy.section8.content1">Our services are not directed to children under 13 years of age. We do not knowingly collect personal information from children under 13.</p>
+                    <p data-translate="legal.privacy.section8.content2">If we become aware that we have collected personal information from a child under 13, we will take steps to delete such information.</p>
+                </div>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-globe"></i><span data-translate="legal.privacy.section9.title">9. International Data Transfers</span></h2>
+                    <p data-translate="legal.privacy.section9.content1">Your information may be transferred to and processed in countries other than your own.</p>
+                    <p data-translate="legal.privacy.section9.content2">We ensure appropriate safeguards are in place to protect your information during such transfers.</p>
+                </div>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-edit"></i><span data-translate="legal.privacy.section10.title">10. Changes to This Policy</span></h2>
+                    <p data-translate="legal.privacy.section10.content1">We may update this Privacy Policy from time to time. We will notify you of any material changes via Discord or our website.</p>
+                    <p data-translate="legal.privacy.section10.content2">Your continued use of our services after changes constitutes acceptance of the updated policy.</p>
+                </div>
+                
+                <div class="legal-section">
+                    <h2><i class="fas fa-envelope"></i><span data-translate="legal.privacy.section11.title">11. Contact Us</span></h2>
+                    <p data-translate="legal.privacy.section11.content1">If you have any questions about this Privacy Policy or our data practices, please contact us via Discord or our website.</p>
+                    <p data-translate="legal.privacy.section11.content2">We will respond to privacy-related inquiries within 30 days.</p>
+                </div>
+                
+                <div class="legal-navigation">
+                    <a href="/terms-of-service" class="legal-btn">
+                        <i class="fas fa-file-contract"></i>
+                        <span data-translate="legal.terms_of_service">Terms of Service</span>
+                    </a>
+                    <a href="/" class="legal-btn legal-btn-primary">
+                        <i class="fas fa-home"></i>
+                        <span data-translate="legal.back_to_dashboard">Back to Dashboard</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Language switching functionality
+        let currentLang = 'en';
+        const translations = {
+            en: {
+                'legal.privacy.title': 'Privacy Policy',
+                'legal.privacy.subtitle': 'How we collect, use, and protect your information',
+                'legal.back_to_dashboard': 'Back to Dashboard',
+                'legal.last_updated': 'Last updated:',
+                'legal.privacy.section1.title': '1. Information We Collect',
+                'legal.privacy.section1.content1': 'We collect information necessary to provide our Discord bot services effectively. This includes:',
+                'legal.privacy.section1.data1': 'Discord user IDs and usernames',
+                'legal.privacy.section1.data2': 'Server IDs and basic server information',
+                'legal.privacy.section1.data3': 'Message content (only when explicitly logged for moderation purposes)',
+                'legal.privacy.section1.data4': 'Bot command usage and interaction data',
+                'legal.privacy.section1.data5': 'User preferences and settings',
+                'legal.privacy.section2.title': '2. How We Use Your Information',
+                'legal.privacy.section2.content1': 'We use the collected information to:',
+                'legal.privacy.section2.use1': 'Provide bot functionality and services',
+                'legal.privacy.section2.use2': 'Maintain server moderation and safety',
+                'legal.privacy.section2.use3': 'Track user activity and XP systems',
+                'legal.privacy.section2.use4': 'Generate server statistics and leaderboards',
+                'legal.privacy.section2.use5': 'Improve bot performance and features',
+                'legal.privacy.section2.use6': 'Provide customer support',
+                'legal.privacy.section3.title': '3. Information Sharing',
+                'legal.privacy.section3.content1': 'We do not sell, trade, or otherwise transfer your personal information to third parties except:',
+                'legal.privacy.section3.share1': 'When required by law or legal process',
+                'legal.privacy.section3.share2': 'To protect our rights and safety',
+                'legal.privacy.section3.share3': 'With trusted service providers who assist in operating our services',
+                'legal.privacy.section3.share4': 'When you explicitly consent to sharing',
+                'legal.privacy.section4.title': '4. Data Storage and Security',
+                'legal.privacy.section4.content1': 'We implement appropriate security measures to protect your information:',
+                'legal.privacy.section4.security1': 'Encrypted data transmission and storage',
+                'legal.privacy.section4.security2': 'Regular security audits and updates',
+                'legal.privacy.section4.security3': 'Limited access to personal information',
+                'legal.privacy.section4.security4': 'Secure cloud infrastructure',
+                'legal.privacy.section4.content2': 'However, no method of transmission over the internet is 100% secure, and we cannot guarantee absolute security.',
+                'legal.privacy.section5.title': '5. Data Retention',
+                'legal.privacy.section5.content1': 'We retain your information for as long as necessary to provide our services and comply with legal obligations.',
+                'legal.privacy.section5.content2': 'You may request deletion of your data at any time, subject to certain legal and operational requirements.',
+                'legal.privacy.section6.title': '6. Your Rights',
+                'legal.privacy.section6.content1': 'You have the right to:',
+                'legal.privacy.section6.right1': 'Access your personal information',
+                'legal.privacy.section6.right2': 'Correct inaccurate data',
+                'legal.privacy.section6.right3': 'Request deletion of your data',
+                'legal.privacy.section6.right4': 'Object to processing of your data',
+                'legal.privacy.section6.right5': 'Data portability',
+                'legal.privacy.section7.title': '7. Cookies and Tracking',
+                'legal.privacy.section7.content1': 'Our web dashboard may use cookies to enhance your experience and provide personalized content.',
+                'legal.privacy.section7.content2': 'You can control cookie settings through your browser preferences.',
+                'legal.privacy.section8.title': '8. Children\'s Privacy',
+                'legal.privacy.section8.content1': 'Our services are not directed to children under 13 years of age. We do not knowingly collect personal information from children under 13.',
+                'legal.privacy.section8.content2': 'If we become aware that we have collected personal information from a child under 13, we will take steps to delete such information.',
+                'legal.privacy.section9.title': '9. International Data Transfers',
+                'legal.privacy.section9.content1': 'Your information may be transferred to and processed in countries other than your own.',
+                'legal.privacy.section9.content2': 'We ensure appropriate safeguards are in place to protect your information during such transfers.',
+                'legal.privacy.section10.title': '10. Changes to This Policy',
+                'legal.privacy.section10.content1': 'We may update this Privacy Policy from time to time. We will notify you of any material changes via Discord or our website.',
+                'legal.privacy.section10.content2': 'Your continued use of our services after changes constitutes acceptance of the updated policy.',
+                'legal.privacy.section11.title': '11. Contact Us',
+                'legal.privacy.section11.content1': 'If you have any questions about this Privacy Policy or our data practices, please contact us via Discord or our website.',
+                'legal.privacy.section11.content2': 'We will respond to privacy-related inquiries within 30 days.',
+                'legal.terms_of_service': 'Terms of Service'
+            },
+            fr: {
+                'legal.privacy.title': 'Politique de confidentialité',
+                'legal.privacy.subtitle': 'Comment nous collectons, utilisons et protégeons vos informations',
+                'legal.back_to_dashboard': 'Retour au Dashboard',
+                'legal.last_updated': 'Dernière mise à jour :',
+                'legal.privacy.section1.title': '1. Informations que nous collectons',
+                'legal.privacy.section1.content1': 'Nous collectons les informations nécessaires pour fournir efficacement nos services de bot Discord. Cela inclut :',
+                'legal.privacy.section1.data1': 'Les identifiants et noms d\'utilisateur Discord',
+                'legal.privacy.section1.data2': 'Les identifiants de serveur et informations de base du serveur',
+                'legal.privacy.section1.data3': 'Le contenu des messages (uniquement lors de l\'enregistrement explicite à des fins de modération)',
+                'legal.privacy.section1.data4': 'L\'utilisation des commandes du bot et les données d\'interaction',
+                'legal.privacy.section1.data5': 'Les préférences et paramètres utilisateur',
+                'legal.privacy.section2.title': '2. Comment nous utilisons vos informations',
+                'legal.privacy.section2.content1': 'Nous utilisons les informations collectées pour :',
+                'legal.privacy.section2.use1': 'Fournir les fonctionnalités et services du bot',
+                'legal.privacy.section2.use2': 'Maintenir la modération et la sécurité du serveur',
+                'legal.privacy.section2.use3': 'Suivre l\'activité des utilisateurs et les systèmes d\'XP',
+                'legal.privacy.section2.use4': 'Générer des statistiques de serveur et des classements',
+                'legal.privacy.section2.use5': 'Améliorer les performances et fonctionnalités du bot',
+                'legal.privacy.section2.use6': 'Fournir un support client',
+                'legal.privacy.section3.title': '3. Partage d\'informations',
+                'legal.privacy.section3.content1': 'Nous ne vendons, n\'échangeons ni ne transférons vos informations personnelles à des tiers, sauf :',
+                'legal.privacy.section3.share1': 'Lorsque requis par la loi ou un processus légal',
+                'legal.privacy.section3.share2': 'Pour protéger nos droits et notre sécurité',
+                'legal.privacy.section3.share3': 'Avec des prestataires de services de confiance qui nous aident à exploiter nos services',
+                'legal.privacy.section3.share4': 'Lorsque vous consentez explicitement au partage',
+                'legal.privacy.section4.title': '4. Stockage et sécurité des données',
+                'legal.privacy.section4.content1': 'Nous mettons en place des mesures de sécurité appropriées pour protéger vos informations :',
+                'legal.privacy.section4.security1': 'Transmission et stockage de données chiffrées',
+                'legal.privacy.section4.security2': 'Audits de sécurité et mises à jour réguliers',
+                'legal.privacy.section4.security3': 'Accès limité aux informations personnelles',
+                'legal.privacy.section4.security4': 'Infrastructure cloud sécurisée',
+                'legal.privacy.section4.content2': 'Cependant, aucune méthode de transmission sur Internet n\'est sécurisée à 100%, et nous ne pouvons garantir une sécurité absolue.',
+                'legal.privacy.section5.title': '5. Rétention des données',
+                'legal.privacy.section5.content1': 'Nous conservons vos informations aussi longtemps que nécessaire pour fournir nos services et respecter les obligations légales.',
+                'legal.privacy.section5.content2': 'Vous pouvez demander la suppression de vos données à tout moment, sous réserve de certaines exigences légales et opérationnelles.',
+                'legal.privacy.section6.title': '6. Vos droits',
+                'legal.privacy.section6.content1': 'Vous avez le droit de :',
+                'legal.privacy.section6.right1': 'Accéder à vos informations personnelles',
+                'legal.privacy.section6.right2': 'Corriger les données inexactes',
+                'legal.privacy.section6.right3': 'Demander la suppression de vos données',
+                'legal.privacy.section6.right4': 'Vous opposer au traitement de vos données',
+                'legal.privacy.section6.right5': 'Portabilité des données',
+                'legal.privacy.section7.title': '7. Cookies et suivi',
+                'legal.privacy.section7.content1': 'Notre tableau de bord web peut utiliser des cookies pour améliorer votre expérience et fournir du contenu personnalisé.',
+                'legal.privacy.section7.content2': 'Vous pouvez contrôler les paramètres des cookies via les préférences de votre navigateur.',
+                'legal.privacy.section8.title': '8. Confidentialité des enfants',
+                'legal.privacy.section8.content1': 'Nos services ne sont pas destinés aux enfants de moins de 13 ans. Nous ne collectons pas sciemment d\'informations personnelles auprès d\'enfants de moins de 13 ans.',
+                'legal.privacy.section8.content2': 'Si nous apprenons que nous avons collecté des informations personnelles auprès d\'un enfant de moins de 13 ans, nous prendrons des mesures pour supprimer ces informations.',
+                'legal.privacy.section9.title': '9. Transferts internationaux de données',
+                'legal.privacy.section9.content1': 'Vos informations peuvent être transférées et traitées dans des pays autres que le vôtre.',
+                'legal.privacy.section9.content2': 'Nous nous assurons que des garanties appropriées sont en place pour protéger vos informations lors de ces transferts.',
+                'legal.privacy.section10.title': '10. Modifications de cette politique',
+                'legal.privacy.section10.content1': 'Nous pouvons mettre à jour cette politique de confidentialité de temps à autre. Nous vous informerons de tout changement important via Discord ou notre site web.',
+                'legal.privacy.section10.content2': 'Votre utilisation continue de nos services après les modifications constitue une acceptation de la politique mise à jour.',
+                'legal.privacy.section11.title': '11. Nous contacter',
+                'legal.privacy.section11.content1': 'Si vous avez des questions sur cette politique de confidentialité ou nos pratiques de données, veuillez nous contacter via Discord ou notre site web.',
+                'legal.privacy.section11.content2': 'Nous répondrons aux demandes liées à la confidentialité dans les 30 jours.',
+                'legal.terms_of_service': 'Conditions d\'utilisation'
+            }
+        };
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            document.getElementById('currentLanguage').textContent = lang === 'fr' ? 'Français' : 'English';
+            
+            // Update all elements with data-translate attribute
+            document.querySelectorAll('[data-translate]').forEach(element => {
+                const key = element.getAttribute('data-translate');
+                if (translations[lang] && translations[lang][key]) {
+                    element.textContent = translations[lang][key];
+                }
+            });
+            
+            // Update document title
+            document.title = translations[lang]['legal.privacy.title'] + ' - Maybee Bot';
+        }
+
+        // Initialize language on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for language preference in localStorage or URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const langParam = urlParams.get('lang');
+            const savedLang = localStorage.getItem('preferredLanguage');
+            
+            if (langParam && translations[langParam]) {
+                changeLanguage(langParam);
+            } else if (savedLang && translations[savedLang]) {
+                changeLanguage(savedLang);
+            } else {
+                // Default to English
+                changeLanguage('en');
+            }
+        });
+    </script>
+</body>
+</html>

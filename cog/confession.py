@@ -32,10 +32,8 @@ class Confession(commands.Cog):
 
     @app_commands.command(name="confession", description="Envoyer une confession anonyme dans le canal prévu")
     @app_commands.describe(message="Le contenu de ta confession (anonyme)")
-    @log_command_usage
     async def confession(self, interaction: discord.Interaction, message: str):
         from i18n import _
-        from .command_logger import log_command_usage
         
         user_id = interaction.user.id
         guild_id = interaction.guild.id
@@ -71,6 +69,7 @@ class Confession(commands.Cog):
         try:
             await channel.send(embed=embed)
             await interaction.response.send_message(_("confession_system.success", user_id, guild_id), ephemeral=True)
+                
         except discord.Forbidden:
             await interaction.response.send_message(
                 _("confession_system.errors.no_permission", user_id, guild_id), 
