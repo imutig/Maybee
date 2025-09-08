@@ -176,8 +176,22 @@ class GoogleDriveStorage:
                     "ticket_id": ticket_id,
                     "upload_date": datetime.now().isoformat(),
                     "message_count": len(logs_data.get("messages", [])),
-                    "event_count": len(logs_data.get("events", []))
+                    "event_count": len(logs_data.get("events", [])),
+                    "created_at": logs_data.get("created_at"),
+                    "status": logs_data.get("status", "closed"),
+                    "closed_at": logs_data.get("closed_at")
                 }
+                
+                # Ajouter les informations utilisateur si disponibles
+                if logs_data.get("messages"):
+                    first_message = logs_data["messages"][0]
+                    metadata.update({
+                        "user_id": first_message.get("author_id"),
+                        "username": first_message.get("author_username"),
+                        "discriminator": first_message.get("author_discriminator"),
+                        "display_name": first_message.get("author_name"),
+                        "avatar_url": first_message.get("author_avatar_url")
+                    })
                 zip_file.writestr("metadata.json", json.dumps(metadata, ensure_ascii=False, indent=2))
             
             zip_buffer.seek(0)
@@ -287,6 +301,14 @@ class GoogleDriveStorage:
                                     # Ajouter les données principales pour compatibilité
                                     'ticket_id': logs_data.get('ticket_id', 'Inconnu'),
                                     'created_at': logs_data.get('created_at', 'Inconnu'),
+                                    'status': logs_data.get('status', 'closed'),
+                                    'closed_at': logs_data.get('closed_at'),
+                                    'user_id': user_id,
+                                    # Ajouter les données utilisateur depuis les métadonnées
+                                    'username': metadata.get('username', 'Unknown'),
+                                    'discriminator': metadata.get('discriminator', '0000'),
+                                    'display_name': metadata.get('display_name', metadata.get('username', 'Unknown')),
+                                    'avatar_url': metadata.get('avatar_url'),
                                     'messages': messages,
                                     'events': logs_data.get('events', [])
                                 }
@@ -325,24 +347,59 @@ class GoogleDriveStorage:
                     # Télécharger et analyser les métadonnées
                     logs_data = await self.download_ticket_logs(file['id'])
                     if logs_data:
+                        # Extraire les informations utilisateur des métadonnées ou du premier message
+                        messages = logs_data.get('messages', [])
+                        metadata = logs_data.get('metadata', {})
+                        user_info = {}
+                        
+                        # Priorité aux métadonnées (plus fiables)
+                        if metadata.get('user_id'):
+                            user_info = {
+                                'user_id': metadata.get('user_id'),
+                                'username': metadata.get('username', 'Inconnu'),
+                                'discriminator': metadata.get('discriminator', '0000'),
+                                'display_name': metadata.get('display_name', 'Inconnu'),
+                                'avatar_url': metadata.get('avatar_url')
+                            }
+                        elif messages:
+                            # Fallback sur le premier message
+                            first_message = messages[0]
+                            user_info = {
+                                'user_id': first_message.get('author_id', 'Inconnu'),
+                                'username': first_message.get('author_username', first_message.get('author_name', 'Inconnu')),
+                                'discriminator': first_message.get('author_discriminator', '0000'),
+                                'display_name': first_message.get('author_name', 'Inconnu'),
+                                'avatar_url': first_message.get('author_avatar_url')
+                            }
+                        else:
+                            # Fallback sur les données du log
+                            user_info = {
+                                'user_id': logs_data.get('user_id', 'Inconnu'),
+                                'username': logs_data.get('username', 'Inconnu'),
+                                'discriminator': logs_data.get('discriminator', '0000'),
+                                'display_name': logs_data.get('username', 'Inconnu'),
+                                'avatar_url': logs_data.get('avatar_url')
+                            }
+                        
                         # Ajouter les données complètes du ticket
                         ticket_data = {
                             'file_id': file['id'],
                             'filename': file['name'],
                             'created_time': file['createdTime'],
                             'size': file.get('size', 0),
-                            'message_count': len(logs_data.get('messages', [])),
+                            'message_count': len(messages),
                             'event_count': len(logs_data.get('events', [])),
                             # Ajouter les données principales pour compatibilité
                             'ticket_id': logs_data.get('ticket_id', 'Inconnu'),
-                            'user_id': logs_data.get('user_id', 'Inconnu'),
-                            'username': logs_data.get('username', 'Inconnu'),
-                            'discriminator': logs_data.get('discriminator', '0000'),
-                            'avatar_url': logs_data.get('avatar_url'),
+                            'user_id': user_info['user_id'],
+                            'username': user_info['username'],
+                            'discriminator': user_info['discriminator'],
+                            'display_name': user_info.get('display_name', user_info['username']),
+                            'avatar_url': user_info['avatar_url'],
                             'created_at': logs_data.get('created_at', 'Inconnu'),
                             'status': logs_data.get('status', 'closed'),
                             'closed_at': logs_data.get('closed_at'),
-                            'messages': logs_data.get('messages', []),
+                            'messages': messages,
                             'events': logs_data.get('events', [])
                         }
                         all_logs.append(ticket_data)
@@ -433,7 +490,10 @@ class CloudTicketLogger:
         message_entry = {
             "message_id": str(message.id),
             "author_id": str(message.author.id),
-            "author_name": message.author.display_name,
+            "author_name": message.author.display_name,  # Nom d'affichage (nickname ou nom Discord)
+            "author_username": message.author.name,  # Vrai nom Discord
+            "author_discriminator": message.author.discriminator,  # Discriminateur Discord
+            "author_avatar_url": str(message.author.avatar.url) if message.author.avatar else None,
             "content": message.content,
             "timestamp": message.created_at.isoformat(),
             "attachments": [

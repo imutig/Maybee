@@ -3756,6 +3756,13 @@ class Dashboard {
     async initTicketLogs() {
         console.log('📋 Initializing ticket logs system...');
         
+        // Vérifier qu'un serveur est sélectionné
+        if (!this.currentGuild) {
+            console.log('❌ No guild selected for ticket logs');
+            this.showError('Veuillez d\'abord sélectionner un serveur');
+            return;
+        }
+        
         // Clear previous state
         this.selectedUser = null;
         this.userTickets = [];
@@ -3912,6 +3919,10 @@ class Dashboard {
     }
     
     async loadSearchSuggestions() {
+        if (!this.currentGuild) {
+            return;
+        }
+        
         try {
             const response = await this.apiCall(`/ticket-logs/search-suggestions?guild_id=${this.currentGuild}`);
             const suggestions = response.suggestions || [];
@@ -3987,6 +3998,10 @@ class Dashboard {
     }
     
     async debugTicketLogs() {
+        if (!this.currentGuild) {
+            return;
+        }
+        
         try {
             const response = await this.apiCall(`/ticket-logs/debug?guild_id=${this.currentGuild}`);
             console.log('🔍 Ticket Logs Debug Info:', response);
@@ -4011,6 +4026,11 @@ class Dashboard {
     }
 
     async searchUser() {
+        if (!this.currentGuild) {
+            this.showError('Veuillez d\'abord sélectionner un serveur');
+            return;
+        }
+        
         const searchInput = document.getElementById('userSearchInput');
         const query = searchInput.value.trim();
         
@@ -4061,6 +4081,11 @@ class Dashboard {
     }
 
     async selectUser(userId) {
+        if (!this.currentGuild) {
+            this.showError('Veuillez d\'abord sélectionner un serveur');
+            return;
+        }
+        
         try {
             this.showLoading('userTicketsList', 'Chargement des tickets...');
             
@@ -4082,11 +4107,17 @@ class Dashboard {
 
     displaySelectedUser() {
         const userInfo = document.getElementById('selectedUserInfo');
+        
+        // Utiliser la même logique que les suggestions
+        const username = this.selectedUser.discriminator && this.selectedUser.discriminator !== '0000' 
+            ? `${this.selectedUser.username}#${this.selectedUser.discriminator}`
+            : this.selectedUser.username;
+        
         userInfo.innerHTML = `
             <img src="${this.selectedUser.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
                  alt="Avatar" class="user-avatar">
             <div class="user-info">
-                <div class="user-name">${this.selectedUser.username}#${this.selectedUser.discriminator}</div>
+                <div class="user-name">${username}</div>
                 <div class="user-id">ID: ${this.selectedUser.id}</div>
             </div>
         `;
@@ -4106,30 +4137,70 @@ class Dashboard {
         noTicketsState.style.display = 'none';
         ticketsList.innerHTML = '';
         
-        this.userTickets.forEach(ticket => {
+        this.userTickets.forEach((ticket, index) => {
             const ticketItem = document.createElement('div');
             ticketItem.className = 'ticket-item';
             
             const createdDate = new Date(ticket.created_at).toLocaleDateString('fr-FR');
+            const createdTime = new Date(ticket.created_at).toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
             const statusClass = ticket.status === 'open' ? 'open' : 'closed';
+            const messageCount = ticket.message_count || 0;
+            const eventCount = ticket.event_count || 0;
+            
+            // Formatage du nom d'utilisateur avec avatar Discord (même logique que les suggestions)
+            let username = 'Utilisateur inconnu';
+            let avatarUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
+            
+            // Utiliser la même logique que dans displaySearchSuggestions
+            if (ticket.username && ticket.username !== 'Unknown' && ticket.username !== 'Inconnu') {
+                username = ticket.discriminator && ticket.discriminator !== '0000' 
+                    ? `${ticket.username}#${ticket.discriminator}`
+                    : ticket.username;
+                
+                // Utiliser l'avatar Discord si disponible
+                if (ticket.avatar_url) {
+                    avatarUrl = ticket.avatar_url;
+                }
+            }
             
             ticketItem.innerHTML = `
                 <div class="ticket-info">
-                    <div class="ticket-id">Ticket #${ticket.ticket_id}</div>
-                    <div class="ticket-meta">
-                        <span>Créé le: ${createdDate}</span>
+                    <div class="ticket-header">
+                        <div class="ticket-title">
+                            <span class="ticket-name">Ticket ${index + 1}</span>
+                            <span class="ticket-id-discrete">(${ticket.ticket_id})</span>
+                        </div>
                         <span class="ticket-status ${statusClass}">${ticket.status === 'open' ? 'Ouvert' : 'Fermé'}</span>
                     </div>
+                    <div class="ticket-meta">
+                        <div class="ticket-user">
+                            <img src="${avatarUrl}" alt="Avatar" class="user-avatar-small" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                            <span>${username}</span>
+                        </div>
+                        <div class="ticket-stats">
+                            <span class="message-count">💬 ${messageCount} message${messageCount > 1 ? 's' : ''}</span>
+                            <span class="event-count">⚡ ${eventCount} événement${eventCount > 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="ticket-date">📅 ${createdDate} à ${createdTime}</div>
+                    </div>
+                    <button class="ticket-view-btn" onclick="dashboard.viewTicketDetails('${ticket.file_id}')">
+                        📋 Voir les détails
+                    </button>
                 </div>
-                <button class="ticket-view-btn" onclick="dashboard.viewTicketDetails('${ticket.file_id}')">
-                    Voir les détails
-                </button>
             `;
             ticketsList.appendChild(ticketItem);
         });
     }
 
     async viewTicketDetails(fileId) {
+        if (!this.currentGuild) {
+            this.showError('Veuillez d\'abord sélectionner un serveur');
+            return;
+        }
+        
         try {
             this.showLoading('ticketDetailsContent', 'Chargement des détails du ticket...');
             
@@ -4155,38 +4226,151 @@ class Dashboard {
         
         const createdDate = new Date(ticketData.created_at).toLocaleString('fr-FR');
         const statusClass = ticketData.status === 'open' ? 'open' : 'closed';
+        const messageCount = ticketData.messages ? ticketData.messages.length : 0;
+        const eventCount = ticketData.events ? ticketData.events.length : 0;
+        
+        // Formatage du nom d'utilisateur
+        let username = 'Utilisateur inconnu';
+        if (ticketData.username && ticketData.username !== 'Inconnu') {
+            username = ticketData.discriminator && ticketData.discriminator !== '0000' 
+                ? `${ticketData.username}#${ticketData.discriminator}`
+                : ticketData.username;
+        }
         
         let html = `
             <div class="ticket-header">
-                <div>
+                <div class="ticket-title-section">
                     <h4 class="ticket-title">Ticket #${ticketData.ticket_id}</h4>
                     <div class="ticket-meta">
-                        <span>Créé le: ${createdDate}</span>
-                        <span class="ticket-status ${statusClass}">${ticketData.status === 'open' ? 'Ouvert' : 'Fermé'}</span>
+                        <div class="ticket-user-info">👤 ${username}</div>
+                        <div class="ticket-stats">
+                            <span class="message-count">💬 ${messageCount} message${messageCount > 1 ? 's' : ''}</span>
+                            <span class="event-count">⚡ ${eventCount} événement${eventCount > 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="ticket-dates">
+                            <span>📅 Créé le: ${createdDate}</span>
+                            <span class="ticket-status ${statusClass}">${ticketData.status === 'open' ? 'Ouvert' : 'Fermé'}</span>
+                        </div>
                     </div>
                 </div>
             </div>
         `;
         
+        // Créer une liste combinée de messages et événements triés par timestamp
+        const allItems = [];
+        
+        // Ajouter les messages
         if (ticketData.messages && ticketData.messages.length > 0) {
+            ticketData.messages.forEach(message => {
+                allItems.push({
+                    type: 'message',
+                    timestamp: message.timestamp,
+                    data: message
+                });
+            });
+        }
+        
+        // Ajouter les événements
+        if (ticketData.events && ticketData.events.length > 0) {
+            ticketData.events.forEach(event => {
+                allItems.push({
+                    type: 'event',
+                    timestamp: event.timestamp,
+                    data: event
+                });
+            });
+        }
+        
+        // Trier par timestamp
+        allItems.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        if (allItems.length > 0) {
             html += '<div class="ticket-messages">';
             
-            ticketData.messages.forEach((message, index) => {
-                const messageDate = new Date(message.timestamp).toLocaleString('fr-FR');
-                html += `
-                    <div class="message-item">
-                        <div class="message-header">
-                            <span class="message-author">${message.author_name}</span>
-                            <span class="message-time">${messageDate}</span>
+            allItems.forEach((item, index) => {
+                const itemDate = new Date(item.timestamp).toLocaleString('fr-FR');
+                const itemTime = new Date(item.timestamp).toLocaleTimeString('fr-FR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
+                if (item.type === 'message') {
+                    const message = item.data;
+                    
+                    // Formatage du nom d'auteur avec avatar
+                    let authorName = message.author_name || 'Utilisateur inconnu';
+                    let authorUsername = message.author_username || message.author_name || 'Inconnu';
+                    let authorAvatar = 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    
+                    if (message.author_discriminator && message.author_discriminator !== '0000') {
+                        authorName = `${authorUsername}#${message.author_discriminator}`;
+                    } else {
+                        authorName = authorUsername;
+                    }
+                    
+                    // Utiliser l'avatar Discord si disponible
+                    if (message.author_avatar_url) {
+                        authorAvatar = message.author_avatar_url;
+                    } else if (message.author_id && message.author_id !== 'Inconnu') {
+                        authorAvatar = `https://cdn.discordapp.com/avatars/${message.author_id}/${message.author_id}.png?size=64`;
+                    }
+                    
+                    html += `
+                        <div class="message-item">
+                            <div class="message-header">
+                                <div class="message-author-info">
+                                    <img src="${authorAvatar}" alt="Avatar" class="message-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                                    <div class="author-details">
+                                        <span class="message-author">💬 ${authorName}</span>
+                                        <span class="message-id">ID: ${message.author_id || 'Inconnu'}</span>
+                                    </div>
+                                </div>
+                                <div class="message-time-info">
+                                    <span class="message-date">${new Date(item.timestamp).toLocaleDateString('fr-FR')}</span>
+                                    <span class="message-time">${itemTime}</span>
+                                </div>
+                            </div>
+                            <div class="message-content">${message.content || '<em>Message vide</em>'}</div>
                         </div>
-                        <div class="message-content">${message.content}</div>
-                    </div>
-                `;
+                    `;
+                } else if (item.type === 'event') {
+                    const event = item.data;
+                    
+                    // Mapper les champs d'événement
+                    const eventType = event.type || event.event_type || 'Événement';
+                    const eventDescription = event.details || event.description || 'Aucune description';
+                    const eventUser = event.user_name || event.user || 'Utilisateur inconnu';
+                    
+                    // Traduire les types d'événements
+                    const eventTypeTranslations = {
+                        'created': 'Création',
+                        'closed': 'Fermeture',
+                        'reopened': 'Réouverture',
+                        'deleted': 'Suppression'
+                    };
+                    const translatedEventType = eventTypeTranslations[eventType] || eventType;
+                    
+                    html += `
+                        <div class="event-item">
+                            <div class="event-header">
+                                <div class="event-info">
+                                    <span class="event-type">⚡ ${translatedEventType}</span>
+                                    <span class="event-description">${eventDescription}</span>
+                                    <span class="event-user">👤 ${eventUser}</span>
+                                </div>
+                                <div class="event-time-info">
+                                    <span class="event-date">${new Date(item.timestamp).toLocaleDateString('fr-FR')}</span>
+                                    <span class="event-time">${itemTime}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
             });
             
             html += '</div>';
         } else {
-            html += '<div class="empty-state"><p>Aucun message trouvé dans ce ticket</p></div>';
+            html += '<div class="empty-state"><p>📭 Aucun message ou événement trouvé dans ce ticket</p></div>';
         }
         
         content.innerHTML = html;

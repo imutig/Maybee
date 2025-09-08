@@ -107,11 +107,11 @@
                     <span class="nav-text" data-translate="navigation.ticket_system">Ticket System</span>
                 </a>
                 
-                <a class="nav-item" href="#ticket-logs" data-translate="navigation.ticket_logs">
+                <a class="nav-item" href="#ticket-logs">
                     <div class="nav-icon">
                         <i class="fas fa-history"></i>
                     </div>
-                    <span class="nav-text" data-translate="navigation.ticket_logs">Ticket Logs</span>
+                    <span class="nav-text">Ticket Logs</span>
                 </a>
                 
                 <a class="nav-item" href="#embed" data-translate="navigation.embed_system">
@@ -924,12 +924,15 @@
                                 <i class="fas fa-history me-2"></i>
                                 Ticket Logs Consultation
                             </h3>
-                            <p class="card-subtitle">Consultez les logs des tickets directement depuis Google Drive</p>
+                            <p class="card-subtitle">Consultez les logs des tickets archivés</p>
                         </div>
                         <div class="card-content">
                             <!-- User Selection -->
                             <div class="settings-section">
-                                <h4 class="section-title">Sélection d'utilisateur</h4>
+                                <h4 class="section-title">
+                                    <i class="fas fa-user-search me-2"></i>
+                                    Sélection d'utilisateur
+                                </h4>
                                 <div class="form-group">
                                     <label class="form-label">Rechercher un utilisateur</label>
                                     <div class="input-group">
@@ -944,7 +947,10 @@
                             
                             <!-- User Results -->
                             <div class="settings-section" id="userResultsSection" style="display: none;">
-                                <h4 class="section-title">Résultats de recherche</h4>
+                                <h4 class="section-title">
+                                    <i class="fas fa-search me-2"></i>
+                                    Résultats de recherche
+                                </h4>
                                 <div id="userResultsList" class="users-list">
                                     <!-- Users will be populated here -->
                                 </div>
@@ -952,7 +958,10 @@
                             
                             <!-- Selected User Tickets -->
                             <div class="settings-section" id="userTicketsSection" style="display: none;">
-                                <h4 class="section-title">Tickets de l'utilisateur</h4>
+                                <h4 class="section-title">
+                                    <i class="fas fa-ticket-alt me-2"></i>
+                                    Tickets de l'utilisateur
+                                </h4>
                                 <div class="user-info" id="selectedUserInfo">
                                     <!-- Selected user info will be shown here -->
                                 </div>

@@ -787,6 +787,32 @@ body.dashboard-body {
     margin-bottom: var(--spacing-lg);
 }
 
+/* Bootstrap-like margin utilities */
+.me-2 {
+    margin-right: 0.5rem !important;
+}
+
+/* Force styles for Ticket Logs nav item */
+a[href="#ticket-logs"] {
+    display: flex !important;
+    align-items: center !important;
+    padding: var(--spacing-md) !important;
+    border-radius: 12px !important;
+    color: var(--text-secondary) !important;
+    text-decoration: none !important;
+    transition: var(--transition-smooth) !important;
+    position: relative !important;
+    gap: var(--spacing-md) !important;
+}
+
+a[href="#ticket-logs"]:hover {
+    background: var(--surface-lighter) !important;
+    color: var(--text-primary) !important;
+    transform: translateX(4px) !important;
+}
+
+
+
 .form-label {
     display: block;
     font-size: var(--font-size-sm);
@@ -1421,7 +1447,7 @@ select {
     background-color: var(--bee-black) !important;
 }
 
-.card-title {
+.stats-card .card-title {
     color: var(--bee-yellow) !important;
     font-weight: bold;
     text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
@@ -4414,23 +4440,29 @@ body > .modal-overlay {
 
 .selected-user-info {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    padding: var(--spacing-md);
+    padding: var(--spacing-xl);
     background: var(--surface-dark);
     border: 1px solid var(--primary-yellow);
-    border-radius: 8px;
+    border-radius: 16px;
     margin-bottom: var(--spacing-lg);
+    text-align: center;
 }
 
 .selected-user-info .user-avatar {
-    width: 50px;
-    height: 50px;
-    margin-right: var(--spacing-lg);
+    width: 64px;
+    height: 64px;
+    margin-right: 0;
+    margin-bottom: var(--spacing-md);
+    border: 3px solid var(--primary-yellow);
+    border-radius: 50%;
 }
 
 .selected-user-info .user-name {
-    font-size: var(--font-size-lg);
-    margin-bottom: 4px;
+    font-size: var(--font-size-xl);
+    font-weight: 800;
+    margin-bottom: var(--spacing-xs);
 }
 
 .tickets-list {
@@ -4439,72 +4471,187 @@ body > .modal-overlay {
 }
 
 .ticket-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-md);
+    padding: var(--spacing-xl);
     background: var(--surface-dark);
     border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: var(--transition-fast);
+    border-radius: 16px;
+    transition: all 0.2s ease;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+    min-height: 120px;
 }
 
 .ticket-item:hover {
-    background: var(--surface-lighter);
     border-color: var(--primary-yellow);
-    box-shadow: var(--glow-yellow);
+    box-shadow: 0 0 0 2px var(--primary-yellow);
+    transform: scale(1.02);
 }
 
 .ticket-info {
-    flex: 1;
+    position: relative;
 }
 
-.ticket-id {
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 4px;
+.ticket-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-md);
+}
+
+.ticket-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.ticket-name {
+    font-weight: 800;
+    color: var(--primary-yellow);
+    font-size: var(--font-size-xl);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    letter-spacing: -0.5px;
+}
+
+.ticket-id-discrete {
+    font-weight: 400;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+    opacity: 0.7;
 }
 
 .ticket-meta {
     display: flex;
-    gap: var(--spacing-lg);
+    flex-direction: column;
+    gap: var(--spacing-sm);
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
 }
 
-.ticket-status {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: var(--font-size-xs);
+.ticket-user {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-base);
+}
+
+.user-avatar-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 3px solid var(--primary-yellow);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.ticket-item:hover .user-avatar-small {
+    border-color: var(--secondary-yellow);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    transform: scale(1.1);
+}
+
+.ticket-stats {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xs);
+}
+
+.message-count, .event-count {
+    background: linear-gradient(135deg, var(--background-darker) 0%, var(--surface-dark) 100%);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: var(--font-size-sm);
     font-weight: 600;
+    border: 1px solid var(--border-subtle);
+    transition: all 0.3s ease;
+}
+
+.message-count {
+    color: var(--info);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+}
+
+.event-count {
+    color: var(--warning);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+.ticket-item:hover .message-count {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+    transform: translateY(-1px);
+}
+
+.ticket-item:hover .event-count {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+    transform: translateY(-1px);
+}
+
+.ticket-date {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+}
+
+.ticket-status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid;
+    transition: all 0.3s ease;
 }
 
 .ticket-status.open {
-    background: rgba(16, 185, 129, 0.2);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
     color: var(--success);
+    border-color: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
 }
 
 .ticket-status.closed {
-    background: rgba(239, 68, 68, 0.2);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%);
     color: var(--error);
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+.ticket-item:hover .ticket-status.open {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.2) 100%);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    transform: translateY(-1px);
+}
+
+.ticket-item:hover .ticket-status.closed {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(239, 68, 68, 0.2) 100%);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
 }
 
 .ticket-view-btn {
+    position: absolute;
+    bottom: var(--spacing-md);
+    right: var(--spacing-md);
     padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--primary-yellow);
+    background: linear-gradient(135deg, var(--primary-yellow) 0%, var(--secondary-yellow) 100%);
     color: var(--background-dark);
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-weight: 600;
+    font-size: var(--font-size-xs);
     cursor: pointer;
-    transition: var(--transition-fast);
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
 }
 
 .ticket-view-btn:hover {
-    background: var(--secondary-yellow);
+    background: linear-gradient(135deg, var(--secondary-yellow) 0%, var(--primary-yellow) 100%);
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
 }
 
 .ticket-details-content {
@@ -4518,14 +4665,40 @@ body > .modal-overlay {
     justify-content: space-between;
     padding: var(--spacing-lg);
     background: var(--surface-dark);
-    border-radius: 8px;
+    border-radius: 12px;
     margin-bottom: var(--spacing-lg);
+    border: 1px solid var(--border-subtle);
+}
+
+.ticket-title-section {
+    flex: 1;
 }
 
 .ticket-title {
     font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--primary-yellow);
+    margin-bottom: var(--spacing-md);
+}
+
+.ticket-user-info {
     font-weight: 600;
     color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.ticket-stats {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+}
+
+.ticket-dates {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
 }
 
 .ticket-messages {
@@ -4535,32 +4708,147 @@ body > .modal-overlay {
 }
 
 .message-item {
-    padding: var(--spacing-md);
+    padding: var(--spacing-lg);
     background: var(--surface-dark);
-    border-radius: 8px;
+    border-radius: 12px;
     border-left: 4px solid var(--primary-yellow);
+    margin-bottom: var(--spacing-md);
+    transition: var(--transition-fast);
+}
+
+.message-item:hover {
+    background: var(--surface-lighter);
+    box-shadow: var(--shadow-md);
 }
 
 .message-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    gap: var(--spacing-md);
+}
+
+.message-author-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border-subtle);
+}
+
+.author-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .message-author {
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: 700;
+    color: var(--primary-yellow);
+    font-size: var(--font-size-base);
+}
+
+.message-id {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    font-family: 'Courier New', monospace;
+}
+
+.message-time-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.message-date {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
 }
 
 .message-time {
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
+    font-weight: 500;
 }
 
 .message-content {
+    color: var(--text-primary);
+    line-height: 1.6;
+    background: var(--background-darker);
+    padding: var(--spacing-md);
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    font-size: var(--font-size-sm);
+}
+
+.event-item {
+    padding: var(--spacing-lg);
+    background: var(--surface-dark);
+    border-radius: 12px;
+    border-left: 4px solid var(--warning);
+    margin-bottom: var(--spacing-md);
+    transition: var(--transition-fast);
+}
+
+.event-item:hover {
+    background: var(--surface-lighter);
+    box-shadow: var(--shadow-md);
+}
+
+.event-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+.event-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.event-type {
+    font-weight: 700;
+    color: var(--warning);
+    font-size: var(--font-size-base);
+}
+
+.event-description {
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
-    line-height: 1.5;
+    font-style: italic;
+}
+
+.event-user {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+
+.event-time-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.event-date {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.event-time {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
 }
 
 .message-pagination {
@@ -4637,15 +4925,6 @@ body > .modal-overlay {
         gap: var(--spacing-sm);
     }
     
-    .selected-user-info {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .selected-user-info .user-avatar {
-        margin-right: 0;
-        margin-bottom: var(--spacing-md);
-    }
 }
 
 .validation-message {

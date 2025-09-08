@@ -4617,7 +4617,8 @@ async def search_users(
             username = log_data.get('username', '')
             discriminator = log_data.get('discriminator', '')
             
-            if not user_id or user_id in seen_users:
+            # Skip invalid user IDs
+            if not user_id or user_id == 'Inconnu' or user_id in seen_users:
                 continue
             
             # Check if user matches query
@@ -4673,7 +4674,8 @@ async def get_search_suggestions(
         user_stats = {}
         for log_data in all_logs:
             user_id = log_data.get('user_id')
-            if not user_id:
+            # Skip invalid user IDs
+            if not user_id or user_id == 'Inconnu':
                 continue
                 
             if user_id not in user_stats:
@@ -4731,8 +4733,12 @@ async def get_user_tickets(
         storage = GoogleDriveStorage()
         await storage.initialize()
         
+        # Validate user_id
+        if user_id == 'Inconnu' or not user_id.isdigit():
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        
         # Get ticket logs for this specific user from Google Drive
-        user_logs = await storage.list_user_ticket_logs(guild_id, user_id)
+        user_logs = await storage.list_user_ticket_logs(guild_id, int(user_id))
         
         # Process logs to create user info and tickets list
         user_tickets = []
@@ -4740,10 +4746,12 @@ async def get_user_tickets(
         
         for log_data in user_logs:
             if not user_info:
+                # Utiliser les mêmes données que dans get_search_suggestions
                 user_info = {
                     'id': user_id,
                     'username': log_data.get('username', 'Unknown'),
                     'discriminator': log_data.get('discriminator', '0000'),
+                    'display_name': log_data.get('display_name', log_data.get('username', 'Unknown')),
                     'avatar_url': log_data.get('avatar_url')
                 }
             
@@ -4752,7 +4760,13 @@ async def get_user_tickets(
                 'file_id': log_data.get('file_id'),
                 'status': log_data.get('status', 'closed'),
                 'created_at': log_data.get('created_at'),
-                'closed_at': log_data.get('closed_at')
+                'closed_at': log_data.get('closed_at'),
+                'message_count': log_data.get('message_count', 0),
+                'event_count': log_data.get('event_count', 0),
+                'username': log_data.get('username', 'Unknown'),
+                'discriminator': log_data.get('discriminator', '0000'),
+                'display_name': log_data.get('display_name', log_data.get('username', 'Unknown')),
+                'avatar_url': log_data.get('avatar_url')
             })
         
         if not user_info:
@@ -4851,7 +4865,12 @@ async def debug_ticket_logs(
             "unique_users": len(unique_users),
             "unique_tickets": len(unique_tickets),
             "sample_logs": sample_logs,
-            "google_drive_connected": True
+            "google_drive_connected": True,
+            "debug_info": {
+                "sample_user_ids": [log.get('user_id') for log in sample_logs[:3]],
+                "sample_usernames": [log.get('username') for log in sample_logs[:3]],
+                "sample_ticket_ids": [log.get('ticket_id') for log in sample_logs[:3]]
+            }
         }
         
     except Exception as e:
