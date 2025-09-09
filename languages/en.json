@@ -544,9 +544,6 @@
       "log_title": "🎫 New ticket created",
       "log_description": "**Ticket:** #{ticket_id}\n**Created by:** {creator}\n**For:** {user}\n**Channel:** {channel}\n**Category:** {category}\n**Reason:** {reason}"
     },
-    "close": {
-      "closing": "Closing in 5 seconds..."
-    },
     "config": {
       "title": "🎫 Ticket System Configuration",
       "description": "Configure support ticket system",
@@ -628,8 +625,14 @@
     "systems_list": "👋 **Welcome System** - Welcome and goodbye messages\n💬 **Confession System** - Channel for anonymous confessions\n🎭 **Role Requests** - Channel for role requests\n⚡ **Role Reactions** - Automatic role assignment\n📊 **XP System** - Experience and level system\n🎫 **Ticket System** - Support and tickets\n🌍 **Language** - Server language",
     "select_placeholder": "Choose a configuration to modify...",
     "welcome": {
-      "title": "🎉 Welcome System Configuration",
+      "title": "Welcome System Configuration",
       "description": "Configure welcome and goodbye messages.",
+      "use_dashboard": "Use the Web Dashboard",
+      "dashboard_description": "The welcome system is now fully managed through the web dashboard for a better experience.",
+      "dashboard_access": "Dashboard Access",
+      "dashboard_features": "Visit the web dashboard to configure:\n• Welcome channel selection\n• Welcome message content\n• Custom embed settings\n• Enable/disable welcome system",
+      "dashboard_benefits": "Why use the dashboard?",
+      "dashboard_benefits_list": "• User-friendly interface\n• Better form validation\n• Persistent settings storage\n• Easy configuration management",
       "welcome_channel": "Welcome Channel",
       "welcome_message": "Welcome Message",
       "goodbye_channel": "Goodbye Channel",
@@ -656,7 +659,7 @@
       "disabled": "✅ Welcome system disabled!"
     },
     "confession": {
-      "title": "💬 Confession System Configuration",
+      "title": "Confession System Configuration",
       "description": "Configure the channel where confessions will be sent.",
       "confession_channel": "Confession Channel",
       "not_configured": "Not configured",
@@ -708,8 +711,14 @@
       "no_requests": "No role requests found."
     },
     "role_reactions": {
-      "title": "⚡ Role Reactions Configuration",
+      "title": "Role Reactions Configuration",
       "description": "View and manage roles that can be obtained by reaction.",
+      "use_dashboard": "Use the Web Dashboard",
+      "dashboard_description": "Role reactions are now fully managed through the web dashboard for a better experience.",
+      "dashboard_features": "Dashboard Features",
+      "dashboard_features_list": "Visit the web dashboard to configure:\n• Create role reaction messages\n• Manage existing reactions\n• Intuitive visual interface\n• Real-time preview",
+      "dashboard_benefits": "Why use the dashboard?",
+      "dashboard_benefits_list": "• Modern and intuitive interface\n• Visual reaction management\n• Instant preview\n• Simplified configuration",
       "active_configs": "Active Configurations",
       "configs_count": "{count} role reactions configured",
       "no_configs": "No role reactions configured",
@@ -787,8 +796,14 @@
       "available_roles": "🎭 Available Roles"
     },
     "xp_system": {
-      "title": "📊 XP System Configuration",
+      "title": "XP System Configuration",
       "description": "Configure the XP system and level roles.",
+      "use_dashboard": "Use the Web Dashboard",
+      "dashboard_description": "The XP system is now fully managed through the web dashboard for advanced features.",
+      "dashboard_features": "Dashboard Features",
+      "dashboard_features_list": "• XP system enable/disable\n• Level-up channel configuration\n• Level-up message settings\n• XP multipliers\n• **Reset server XP data**\n• Advanced leaderboards",
+      "xp_reset_warning": "XP Reset",
+      "xp_reset_description": "XP reset functionality has been moved to the dashboard for safety.\nThis prevents accidental data loss.",
       "xp_channel": "XP Announcement Channel",
       "level_roles": "Level Roles",
       "not_configured": "Not configured",
@@ -843,7 +858,7 @@
       "close_reason": "Ticket closed by {user}"
     },
     "language": {
-      "title": "🌍 Language Configuration",
+      "title": "Language Configuration",
       "description": "Configure the server's default language.",
       "current_language": "Current Language",
       "select_placeholder": "Choose the server language...",
@@ -855,8 +870,14 @@
       "changed_to_french": "✅ Server language changed to Français!"
     },
     "server_logs": {
-      "title": "📋 Server Logs Configuration",
+      "title": "Server Logs Configuration",
       "description": "Configure server logging and monitoring.",
+      "use_dashboard": "Use the Web Dashboard",
+      "dashboard_description": "Server logs are now fully managed through the web dashboard with advanced options.",
+      "dashboard_features": "Dashboard Features",
+      "dashboard_features_list": "• Log channel configuration\n• Individual event toggles\n• Message delete/edit logs\n• Member join/leave logs\n• Voice activity logs\n• Role & nickname changes\n• Real-time settings preview",
+      "dashboard_benefits": "Enhanced Features",
+      "dashboard_benefits_list": "• Filter by user/channel\n• Log message formatting\n• Bulk configuration\n• Export log data",
       "current_channel": "Current Log Channel",
       "not_set": "Not set",
       "not_configured": "Not configured",
@@ -975,6 +996,14 @@
     },
     "clear": {
       "success": "✅ All caches cleared successfully!"
+    },
+    "dashboard": {
+      "title": "Maybee Dashboard",
+      "description": "Access the web dashboard to manage your Discord server with an intuitive and modern interface.",
+      "link_title": "Access Link",
+      "features_title": "Available Features",
+      "features": "• **Automatic role management**\n• **Level and XP system**\n• **Welcome message configuration**\n• **Ticket logs**\n• **Server statistics**\n• **And much more!**",
+      "footer": "Sweet server management, honey! 🍯"
     }
   }
 }

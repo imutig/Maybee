@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from i18n import _
 from .command_logger import log_command_usage
+from custom_emojis import PING
 
 class Ping(commands.Cog):
     def __init__(self, bot):
@@ -15,7 +16,7 @@ class Ping(commands.Cog):
         guild_id = interaction.guild.id if interaction.guild else None
         
         latency = round(self.bot.latency * 1000)
-        message = _("commands.ping.response", user_id, guild_id, latency=latency)
+        message = f"{PING} Pong ! {latency} ms"
         await interaction.response.send_message(message)
 
 async def setup(bot):

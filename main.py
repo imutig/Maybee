@@ -151,7 +151,7 @@ bot = MyBot(config)
 
 async def load_extensions():
     extensions = [
-        "cog.rename", "cog.scan", "cog.ping",
+        "cog.rename", "cog.scan", "cog.ping", "cog.dashboard",
         "cog.avatar", "cog.roll", "cog.confession", "cog.embed", "cog.XPSystem",
         "cog.role", "cog.welcome", "cog.role_menus", "cog.ticket", "cog.clear",
         "cog.language", "cog.config", "cog.moderation", "cog.server_logs", "cog.feedback",
@@ -206,7 +206,7 @@ async def on_ready():
     
     logger.info("Bot startup completed successfully")
     print("successfully finished startup")
-    await bot.change_presence(activity=discord.Game(name="Maybee | /config"))
+    await bot.change_presence(activity=discord.Game(name="/dashboard | /config"))
     bot.add_view(TicketPanelView())
     bot.add_view(TicketCloseView())
 

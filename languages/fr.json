@@ -101,7 +101,7 @@
     },
     "ping": {
       "description": "Affiche la latence du bot",
-      "response": "Pong 🏓 {latency} ms"
+      "response": "🏓 Pong ! {latency} ms"
     },
     "bumptop": {
       "description": "Afficher la toplist des bumps du serveur",
@@ -152,16 +152,24 @@
     "avatar": {
       "description": "Affiche l'avatar d'un utilisateur",
       "user_param": "L'utilisateur dont tu veux voir l'avatar",
-      "embed_title": "Avatar de {user}"
+      "embed_title": "🖼️ Avatar de {user}"
+    },
+    "dashboard": {
+      "title": "Dashboard Maybee",
+      "description": "Accédez au tableau de bord web pour gérer votre serveur Discord avec une interface intuitive et moderne.",
+      "link_title": "Lien d'accès",
+      "features_title": "Fonctionnalités disponibles",
+      "features": "• **Gestion des rôles automatiques**\n• **Système de niveaux et XP**\n• **Configuration des messages de bienvenue**\n• **Logs des tickets**\n• **Statistiques du serveur**\n• **Et bien plus encore !**",
+      "footer": "Sweet server management, honey! 🍯"
     },
     "level": {
       "description": "Voir votre niveau et XP",
-      "embed_title": "Niveau de {user}",
-      "level_field": "Niveau",
-      "total_xp_field": "XP total",
-      "progress_field": "Progression",
-      "text_xp_field": "XP texte",
-      "voice_xp_field": "XP vocal",
+      "embed_title": "🏆 Niveau de {user}",
+      "level_field": "🏆 Niveau",
+      "total_xp_field": "⭐ XP total",
+      "progress_field": "📊 Progression",
+      "text_xp_field": "💬 XP texte",
+      "voice_xp_field": "🎤 XP vocal",
       "no_xp": "Tu n'as pas encore d'XP. Parle un peu !"
     },
     "topxp": {
@@ -581,8 +589,14 @@
     "systems_list": "👋 **Système de bienvenue** - Messages de bienvenue et d'au revoir\n💬 **Système de confessions** - Canal pour les confessions anonymes\n🎭 **Demandes de rôles** - Canal pour les demandes de rôles\n⚡ **Rôles par réaction** - Attribution automatique de rôles\n📊 **Système XP** - Système d'expérience et de niveaux\n🎫 **Système de tickets** - Support et tickets\n🌍 **Langue** - Langue du serveur",
     "select_placeholder": "Choisissez une configuration à modifier...",
     "welcome": {
-      "title": "🎉 Configuration du système de bienvenue",
+      "title": "Configuration du système de bienvenue",
       "description": "Configurez les messages de bienvenue et d'au revoir.",
+      "use_dashboard": "Utilisez le Dashboard Web",
+      "dashboard_description": "Le système de bienvenue est maintenant entièrement géré via le dashboard web pour une meilleure expérience.",
+      "dashboard_access": "Accès au Dashboard",
+      "dashboard_features": "Visitez le dashboard web pour configurer :\n• Sélection du canal de bienvenue\n• Contenu des messages de bienvenue\n• Paramètres d'embed personnalisés\n• Activation/désactivation du système de bienvenue",
+      "dashboard_benefits": "Pourquoi utiliser le dashboard ?",
+      "dashboard_benefits_list": "• Interface intuitive\n• Meilleure validation des formulaires\n• Stockage persistant des paramètres\n• Gestion facile de la configuration",
       "welcome_channel": "Canal de bienvenue",
       "welcome_message": "Message de bienvenue",
       "goodbye_channel": "Canal d'au revoir",
@@ -609,7 +623,7 @@
       "disabled": "Désactivé"
     },
     "confession": {
-      "title": "💬 Configuration du système de confessions",
+      "title": "Configuration du système de confessions",
       "description": "Configurez le canal où les confessions seront envoyées.",
       "confession_channel": "Canal de confessions",
       "not_configured": "Non configuré",
@@ -641,8 +655,14 @@
       "disabled": "Désactivé"
     },
     "role_reactions": {
-      "title": "⚡ Configuration des rôles par réaction",
+      "title": "Configuration des rôles par réaction",
       "description": "Voir et gérer les rôles qui peuvent être obtenus par réaction.",
+      "use_dashboard": "Utilisez le Dashboard Web",
+      "dashboard_description": "Les rôles par réaction sont maintenant entièrement gérés via le dashboard web pour une meilleure expérience.",
+      "dashboard_features": "Fonctionnalités du Dashboard",
+      "dashboard_features_list": "Visitez le dashboard web pour configurer :\n• Création de messages de rôles par réaction\n• Gestion des réactions existantes\n• Interface visuelle intuitive\n• Prévisualisation en temps réel",
+      "dashboard_benefits": "Pourquoi utiliser le dashboard ?",
+      "dashboard_benefits_list": "• Interface moderne et intuitive\n• Gestion visuelle des réactions\n• Prévisualisation instantanée\n• Configuration simplifiée",
       "active_configs": "Configurations actives",
       "configs_count": "{count} rôles par réaction configurés",
       "no_configs": "Aucun rôle par réaction configuré",
@@ -657,8 +677,14 @@
       "clear_cancelled": "❌ Opération d'effacement annulée."
     },
     "xp_system": {
-      "title": "📊 Configuration du système XP",
+      "title": "Configuration du système XP",
       "description": "Configurez le système XP et les rôles de niveau.",
+      "use_dashboard": "Utilisez le Dashboard Web",
+      "dashboard_description": "Le système XP est maintenant entièrement géré via le dashboard web pour des fonctionnalités avancées.",
+      "dashboard_features": "Fonctionnalités du Dashboard",
+      "dashboard_features_list": "• Activation/désactivation du système XP\n• Configuration du canal de montée de niveau\n• Paramètres des messages de montée de niveau\n• Multiplicateurs XP\n• **Réinitialisation des données XP du serveur**\n• Classements avancés",
+      "xp_reset_warning": "Réinitialisation XP",
+      "xp_reset_description": "La fonctionnalité de réinitialisation XP a été déplacée vers le dashboard pour la sécurité.\nCela empêche la perte accidentelle de données.",
       "xp_channel": "Canal d'annonces XP",
       "level_roles": "Rôles de niveau",
       "not_configured": "Non configuré",
@@ -705,520 +731,40 @@
         "description": "Créer le panel de ticket",
         "title": "Support Tickets",
         "panel_description": "Clique sur le bouton ci-dessous pour créer un ticket.",
-        "create_button": "Créer un ticket"
+        "create_button": "🎫 Créer un ticket"
       },
       "create": {
         "category_not_found": "❌ La catégorie des tickets n'a pas encore été créée. Merci d'utiliser /setup_ticket pour la créer.",
-        "already_exists": "Tu as déjà un ticket ouvert dans la catégorie Tickets !",
-        "success": "Ton ticket a été créé : {channel}",
-        "embed_title": "Ticket Support",
+        "already_exists": "⚠️ Tu as déjà un ticket ouvert dans la catégorie Tickets !",
+        "success": "✅ Ton ticket a été créé : {channel}",
+        "embed_title": "🎫 Ticket Support",
         "embed_description": "Salut {user} ! Un membre du staff va te répondre rapidement.\nClique sur le bouton pour fermer le ticket.",
-        "close_button": "Fermer le ticket"
+        "close_button": "🔒 Fermer le ticket"
       },
       "close": {
-        "closing": "Fermeture dans 5 secondes..."
+        "closing": "⏰ Fermeture dans 5 secondes..."
       },
       "current_category": "Catégorie actuelle",
       "current_support_role": "Rôle de support actuel"
     },
     "language": {
-      "title": "🌍 Configuration de la langue",
+      "title": "Configuration de la langue",
       "description": "Configurez la langue du serveur.",
+      "current_language": "Langue actuelle",
       "english": "Anglais",
       "french": "Français",
       "changed_to_english": "Langue changée en anglais",
       "changed_to_french": "Langue changée en français"
     },
     "server_logs": {
-      "title": "📋 Configuration des logs du serveur",
-      "description": "Configurez la journalisation et le monitoring du serveur.",
-      "current_channel": "Canal de logs actuel",
-      "not_set": "Non défini",
-      "not_configured": "Non configuré",
-      "features": "Fonctions de logging",
-      "member_join": "Arrivées de membres",
-      "member_leave": "Départs de membres",
-      "voice_join": "Connexions vocales",
-      "voice_leave": "Déconnexions vocales",
-      "message_delete": "Suppressions de messages",
-      "message_edit": "Modifications de messages",
-      "role_changes": "Changements de rôles",
-      "nickname_changes": "Changements de pseudos",
-      "channel_create": "Création de canaux",
-      "channel_delete": "Suppression de canaux",
-      "feature_enabled": "activé",
-      "feature_disabled": "désactivé",
-      "toggle_features": "Sélectionnez une catégorie de fonctionnalités à basculer :",
-      "member_events": "Événements d'arrivée/départ",
-      "voice_events": "Événements vocaux",
-      "message_events": "Événements de messages",
-      "other_events": "Événements de rôles et pseudos",
-      "configure_first": "❌ Veuillez d'abord configurer un canal de logs !",
-      "channel_not_found": "❌ Canal non trouvé dans ce serveur.",
-      "invalid_channel_type": "❌ Veuillez sélectionner un canal textuel.",
-      "channel_set": "✅ Canal de logs défini sur {channel} !",
-      "system_disabled": "✅ Logging du serveur désactivé !",
-      "disabled": "✅ Logging du serveur désactivé !",
-      "enabled": "activé",
-      "log_events": {
-        "member_joined": "Membre Rejoint",
-        "member_left": "Membre Parti",
-        "voice_joined": "Canal Vocal Rejoint",
-        "voice_left": "Canal Vocal Quitté",
-        "voice_switched": "Canal Vocal Changé",
-        "message_deleted": "Message Supprimé",
-        "message_edited": "Message Modifié",
-        "nickname_changed": "Pseudonyme Changé",
-        "roles_changed": "Rôles Changés",
-        "channel_created": "Canal Créé",
-        "channel_deleted": "Canal Supprimé"
-      },
-      "embed_fields": {
-        "member": "Membre",
-        "account_created": "Compte Créé",
-        "total_members": "Membres Total",
-        "joined": "Rejoint",
-        "channel": "Canal",
-        "members_in_channel": "Membres dans le Canal",
-        "from_to": "De → Vers",
-        "message_id": "ID Message",
-        "content": "Contenu",
-        "attachments": "Pièces jointes",
-        "before": "Avant",
-        "after": "Après",
-        "jump_to_message": "Aller au Message",
-        "click_here": "Cliquer ici",
-        "added_roles": "➕ Rôles Ajoutés",
-        "removed_roles": "➖ Rôles Supprimés",
-        "type": "Type",
-        "category": "Catégorie",
-        "unknown": "Inconnu",
-        "no_content": "*Pas de contenu texte ou contenu non mis en cache*",
-        "attachment_count": "{count} pièce(s) jointe(s)"
-      },
-      "button_labels": {
-        "set_channel": "Définir Canal",
-        "toggle_features": "Basculer Fonctionnalités",
-        "disable_logging": "Désactiver Logs",
-        "member_join_leave": "Membre Rejoint/Parti",
-        "voice_events": "Événements Vocaux",
-        "message_events": "Événements Messages",
-        "other_events": "Autres Événements",
-        "set_message": "Définir Message",
-        "disable": "Désactiver",
-        "use_rolereact": "Utiliser /rolereact",
-        "enable": "Activer",
-        "set_rate": "Définir Taux",
-        "set_category": "Définir Catégorie",
-        "set_support_role": "Définir Rôle Support",
-        "english": "English",
-        "français": "Français"
-      },
-      "modal_titles": {
-        "set_log_channel": "Définir Canal de Logs",
-        "set_welcome_channel": "Définir Canal de Bienvenue",
-        "set_welcome_message": "Définir Message de Bienvenue",
-        "set_confession_channel": "Définir Canal de Confessions",
-        "set_role_request_channel": "Définir Canal de Demandes de Rôles",
-        "set_xp_rate": "Définir Taux XP",
-        "set_ticket_category": "Définir Catégorie Tickets",
-        "set_support_role": "Définir Rôle Support"
-      },
-      "modal_labels": {
-        "channel_id_or_name": "ID ou Nom du Canal",
-        "channel_placeholder": "Entrez l'ID du canal ou #nom-du-canal",
-        "welcome_message": "Message de Bienvenue",
-        "welcome_message_placeholder": "Entrez le message de bienvenue (utilisez {user} pour mentionner l'utilisateur)",
-        "role_name_or_id": "Nom ou ID du Rôle",
-        "role_placeholder": "Entrez le nom ou l'ID du rôle",
-        "category_name_or_id": "Nom ou ID de la Catégorie",
-        "category_placeholder": "Entrez le nom ou l'ID de la catégorie",
-        "xp_rate_multiplier": "Multiplicateur de Taux XP",
-        "xp_rate_placeholder": "Entrez un nombre (ex: 1.5 pour 150% de taux)"
-      }
-    },
-    "career_system": {
-      "command": {
-        "description": "Ajoute une décision de carrière pour un membre",
-        "member_param": "Le membre concerné",
-        "decision_param": "Type de décision prise",
-        "reason_param": "La raison de cette décision",
-        "decided_by_param": "Mentionne les rôles qui ont pris la décision (séparés par des virgules ou espaces)",
-        "choices": {
-          "warning": "Avertissement",
-          "blame": "Blâme",
-          "demotion": "Rétrogradation",
-          "promotion": "Promotion",
-          "exclusion": "Exclusion"
-        },
-        "embed_title": "📋 Décision de Carrière",
-        "member_field": "👤 Membre",
-        "decision_field": "📌 Décision",
-        "reason_field": "📝 Raison",
-        "decided_by_field": "🧑‍⚖️ Décidé par",
-        "footer": "Décision enregistrée par {user}"
-      }
-    },
-    "language_system": {
-      "command": {
-        "description": "Changer votre préférence de langue",
-        "language_param": "La langue que vous voulez utiliser",
-        "user_success": "✅ Votre langue a été définie sur {language}.",
-        "guild_success": "✅ La langue du serveur a été définie sur {language}.",
-        "invalid_language": "❌ Langue invalide. Langues disponibles : {languages}",
-        "no_permission": "❌ Vous avez besoin de la permission administrateur pour changer la langue du serveur."
-      },
-      "available": {
-        "description": "Afficher les langues disponibles",
-        "title": "🌍 Langues Disponibles",
-        "current_user": "Votre langue actuelle : {language}",
-        "current_guild": "Langue du serveur : {language}",
-        "change_hint": "Utilisez `/language` pour changer votre préférence"
-      }
-    },
-    "sync_command": {
-      "description": "Synchronise les commandes slash pour ce serveur (Admin uniquement)",
-      "no_permission": "❌ Vous devez être administrateur pour utiliser cette commande.",
-      "success": "✅ {count} commandes synchronisées pour ce serveur !",
-      "error": "❌ Erreur lors de la synchronisation : {error}"
-    },
-    "config_system": {
-      "description": "Configuration unifiée de tous les systèmes du bot",
-      "no_permission": "❌ Vous devez être administrateur pour utiliser cette commande.",
-      "title": "⚙️ Configuration du bot",
-      "description_text": "Sélectionnez le système que vous souhaitez configurer dans le menu déroulant ci-dessous.",
-      "systems_available": "🎯 Systèmes disponibles",
-      "systems_list": "👋 **Système de bienvenue** - Messages de bienvenue et d'au revoir\n💬 **Système de confessions** - Canal pour les confessions anonymes\n🎭 **Demandes de rôles** - Canal pour les demandes de rôles\n⚡ **Rôles par réaction** - Attribution automatique de rôles\n📊 **Système XP** - Système d'expérience et de niveaux\n🎫 **Système de tickets** - Support et tickets\n🌍 **Langue** - Langue du serveur",
-      "select_placeholder": "Choisissez une configuration à modifier...",
-      "welcome": {
-        "title": "🎉 Configuration du système de bienvenue",
-        "description": "Configurez les messages de bienvenue et d'au revoir.",
-        "welcome_channel": "Canal de bienvenue",
-        "welcome_message": "Message de bienvenue",
-        "goodbye_channel": "Canal d'au revoir",
-        "goodbye_message": "Message d'au revoir",
-        "not_configured": "Non configuré",
-        "configure_welcome_button": "Configurer bienvenue",
-        "configure_goodbye_button": "Configurer au revoir",
-        "welcome_modal_title": "Configuration bienvenue",
-        "goodbye_modal_title": "Configuration au revoir",
-        "channel_id_label": "ID du canal",
-        "channel_id_placeholder": "Entrez l'ID du canal où envoyer les messages",
-        "message_label": "Message",
-        "message_placeholder_welcome": "{memberMention}, {memberName}, {serverName}",
-        "message_placeholder_goodbye": "{memberName}, {serverName}",
-        "channel_not_found": "❌ Canal introuvable dans ce serveur.",
-        "channel_id_invalid": "❌ L'ID du canal doit être un nombre.",
-        "success_welcome": "✅ Configuration bienvenue mise à jour !",
-        "success_goodbye": "✅ Configuration au revoir mise à jour !",
-        "error": "❌ Erreur lors de la configuration."
-      },
-      "confession": {
-        "title": "💬 Configuration du système de confessions",
-        "description": "Configurez le canal où les confessions seront envoyées.",
-        "confession_channel": "Canal de confessions",
-        "not_configured": "Non configuré",
-        "channel_not_found": "Canal introuvable",
-        "configure_button": "Configurer canal",
-        "modal_title": "Configuration des confessions",
-        "channel_id_label": "ID du canal",
-        "channel_id_placeholder": "Entrez l'ID du canal pour les confessions",
-        "success": "✅ Canal de confessions configuré sur {channel} !",
-        "error": "❌ Erreur lors de la configuration."
-      },
-      "role_requests": {
-        "title": "🎭 Configuration des demandes de rôles",
-        "description": "Configurez le canal où les demandes de rôles seront envoyées.",
-        "role_request_channel": "Canal des demandes de rôles",
-        "not_configured": "Non configuré",
-        "channel_not_found": "Canal introuvable",
-        "configure_button": "Configurer canal",
-        "modal_title": "Configuration des demandes de rôles",
-        "channel_id_label": "ID du canal",
-        "channel_id_placeholder": "Entrez l'ID du canal pour les demandes de rôles",
-        "success": "✅ Canal des demandes de rôles configuré sur {channel} !",
-        "error": "❌ Erreur lors de la configuration."
-      },
-      "role_reactions": {
-        "title": "⚡ Configuration des rôles par réaction",
-        "description": "Configurez les rôles qui peuvent être obtenus par réaction.",
-        "active_configs": "Configurations actives",
-        "configs_count": "{count} rôles par réaction configurés",
-        "no_configs": "Aucun rôle par réaction configuré",
-        "configure_button": "Configurer rôles par réaction",
-        "interactive_warning": "⚠️ La configuration des rôles par réaction nécessite une configuration interactive. Utilisez la commande `/rolereact` pour configurer les rôles par réaction.",
-        "error": "❌ Impossible de récupérer la configuration."
-      },
-      "xp_system": {
-        "title": "📊 Configuration du système XP",
-        "description": "Configurez le système XP et les rôles de niveau.",
-        "xp_channel": "Canal d'annonces XP",
-        "level_roles": "Rôles de niveau",
-        "not_configured": "Non configuré",
-        "channel_not_found": "Canal introuvable",
-        "roles_count": "{count} rôles configurés",
-        "no_roles": "Aucun rôle configuré",
-        "configure_channel_button": "Configurer canal XP",
-        "configure_role_button": "Configurer rôle de niveau",
-        "channel_modal_title": "Configuration du canal XP",
-        "role_modal_title": "Configuration d'un rôle de niveau",
-        "channel_id_label": "ID du canal",
-        "channel_id_placeholder": "Entrez l'ID du canal pour les annonces XP",
-        "level_label": "Niveau",
-        "level_placeholder": "Entrez le niveau requis (nombre entier)",
-        "role_id_label": "ID du rôle",
-        "role_id_placeholder": "Entrez l'ID du rôle à attribuer",
-        "channel_success": "✅ Canal d'annonces XP configuré sur {channel} !",
-        "role_success": "✅ Rôle {role} configuré pour le niveau {level} !",
-        "role_not_found": "❌ Rôle introuvable dans ce serveur.",
-        "invalid_numbers": "❌ Le niveau et l'ID du rôle doivent être des nombres.",
-        "error": "❌ Erreur lors de la configuration."
-      },
-      "ticket_system": {
-        "title": "🎫 Configuration du système de tickets",
-        "description": "Configurer le système de tickets de support",
-        "not_implemented": "⚠️ La configuration du système de tickets n'est pas implémentée dans la structure de base de données actuelle.",
-        "category_not_found": "❌ Catégorie introuvable !",
-        "role_not_found": "❌ Rôle introuvable !",
-        "category_set": "✅ Catégorie de tickets définie sur {category} !",
-        "support_role_set": "✅ Rôle de support défini sur {role} !",
-        "disabled": "✅ Système de tickets désactivé !",
-        "close": {
-          "closing": "🔒 Fermeture du ticket en cours...",
-          "closed_title": "🔒 Ticket fermé",
-          "closed_description": "Le ticket a été fermé par **{user}**",
-          "confirm_delete": "🗑️ Supprimer définitivement",
-          "reopen": "🔓 Rouvrir le ticket",
-          "reopened_title": "🔓 Ticket rouvert",
-          "reopened_description": "Le ticket a été rouvert par **{user}**"
-        },
-        "logs": {
-          "no_permission": "❌ Vous n'avez pas la permission de consulter les logs de tickets.",
-          "no_logs_found": "📋 Aucun log de ticket trouvé pour {user}.",
-          "logs_title": "📋 Logs de tickets - {user}",
-          "logs_description": "Voici les logs de tickets pour {user} :",
-          "statistics": "📊 Statistiques",
-          "ticket_count": "Nombre de tickets : {count}",
-          "user_info": "Utilisateur : {user}",
-          "user_id": "ID : {id}",
-          "ticket_info": "🎫 Ticket #{number} (ID: {id})",
-          "created_at": "Créé : {timestamp}",
-          "message_count": "Messages : {count}",
-          "event_count": "Événements : {count}",
-          "more_tickets": "Et {count} autres tickets...",
-          "details_title": "📋 Détails du ticket #{id}",
-          "general_info": "📊 Informations générales",
-          "ticket_id": "ID du ticket : {id}",
-          "created_on": "Créé le : {timestamp}",
-          "recent_messages": "💬 Derniers messages",
-          "recent_events": "📝 Événements récents",
-          "no_message": "Aucun message",
-          "no_event": "Aucun événement"
-        },
-        "setup": {
-          "description": "Configurer le système de ticket",
-          "success": "Système de ticket configuré dans {category} !"
-        },
-        "panel": {
-          "description": "Créer le panel de ticket",
-          "title": "Support Tickets",
-          "panel_description": "Clique sur le bouton ci-dessous pour créer un ticket.",
-          "create_button": "Créer un ticket"
-        },
-        "create": {
-          "category_not_found": "❌ La catégorie des tickets n'a pas encore été créée. Merci d'utiliser /setup_ticket pour la créer.",
-          "already_exists": "Tu as déjà un ticket ouvert dans la catégorie Tickets !",
-          "success": "Ton ticket a été créé : {channel}",
-          "embed_title": "Ticket Support",
-          "embed_description": "Salut {user} ! Un membre du staff va te répondre rapidement.\nClique sur le bouton pour fermer le ticket.",
-          "close_button": "Fermer le ticket"
-        },
-        "new_ticket": {
-          "no_permission": "❌ Vous n'avez pas la permission de créer des tickets.",
-          "bot_user": "❌ Vous ne pouvez pas créer de ticket pour un bot.",
-          "self_user": "❌ Vous ne pouvez pas créer de ticket pour vous-même. Utilisez le panneau de tickets.",
-          "success": "✅ Ticket #{ticket_id} créé avec succès pour {user} dans {channel}.\n**Catégorie :** {category}\n**Raison :** {reason}",
-          "error": "❌ Erreur lors de la création du ticket. Veuillez réessayer.",
-          "embed_title": "🎫 Ticket #{ticket_id}",
-          "embed_description": "**Ticket créé par :** {creator}\n**Pour :** {user}\n**Catégorie :** {category}\n**Raison :** {reason}\n\n💬 Ce ticket a été créé pour vous. Vous pouvez maintenant communiquer avec l'équipe de modération.",
-          "embed_info": "📋 Informations",
-          "embed_info_content": "**Créé par :** {creator}\n**Pour :** {user}\n**Catégorie :** {category}\n**ID du ticket :** {ticket_id}",
-          "log_title": "🎫 Nouveau ticket créé",
-          "log_description": "**Ticket :** #{ticket_id}\n**Créé par :** {creator}\n**Pour :** {user}\n**Canal :** {channel}\n**Catégorie :** {category}\n**Raison :** {reason}"
-        },
-        "close": {
-          "closing": "Fermeture dans 5 secondes..."
-        }
-      },
-      "career_system": {
-        "command": {
-          "description": "Ajoute une décision de carrière pour un membre",
-          "member_param": "Le membre concerné",
-          "decision_param": "Type de décision prise",
-          "reason_param": "La raison de cette décision",
-          "decided_by_param": "Mentionne les rôles qui ont pris la décision (séparés par des virgules ou espaces)",
-          "choices": {
-            "warning": "Avertissement",
-            "blame": "Blâme",
-            "demotion": "Rétrogradation",
-            "promotion": "Promotion",
-            "exclusion": "Exclusion"
-          },
-          "embed_title": "📋 Décision de Carrière",
-          "member_field": "👤 Membre",
-          "decision_field": "📌 Décision",
-          "reason_field": "📝 Raison",
-          "decided_by_field": "🧑‍⚖️ Décidé par",
-          "footer": "Décision enregistrée par {user}"
-        }
-      },
-      "language_system": {
-        "command": {
-          "description": "Changer votre préférence de langue",
-          "language_param": "La langue que vous voulez utiliser",
-          "user_success": "✅ Votre langue a été définie sur {language}.",
-          "guild_success": "✅ La langue du serveur a été définie sur {language}.",
-          "invalid_language": "❌ Langue invalide. Langues disponibles : {languages}",
-          "no_permission": "❌ Vous avez besoin de la permission administrateur pour changer la langue du serveur."
-        },
-        "available": {
-          "description": "Afficher les langues disponibles",
-          "title": "🌍 Langues Disponibles",
-          "current_user": "Votre langue actuelle : {language}",
-          "current_guild": "Langue du serveur : {language}",
-          "change_hint": "Utilisez `/language` pour changer votre préférence"
-        }
-      },
-      "sync_command": {
-        "description": "Synchronise les commandes slash pour ce serveur (Admin uniquement)",
-        "no_permission": "❌ Vous devez être administrateur pour utiliser cette commande.",
-        "success": "✅ {count} commandes synchronisées pour ce serveur !",
-        "error": "❌ Erreur lors de la synchronisation : {error}"
-      },
-      "config_system": {
-        "description": "Configuration unifiée de tous les systèmes du bot",
-        "no_permission": "❌ Vous devez être administrateur pour utiliser cette commande.",
-        "title": "⚙️ Configuration du bot",
-        "description_text": "Sélectionnez le système que vous souhaitez configurer dans le menu déroulant ci-dessous.",
-        "systems_available": "🎯 Systèmes disponibles",
-        "systems_list": "👋 **Système de bienvenue** - Messages de bienvenue et d'au revoir\n💬 **Système de confessions** - Canal pour les confessions anonymes\n🎭 **Demandes de rôles** - Canal pour les demandes de rôles\n⚡ **Rôles par réaction** - Attribution automatique de rôles\n📊 **Système XP** - Système d'expérience et de niveaux\n🎫 **Système de tickets** - Support et tickets\n🌍 **Langue** - Langue du serveur",
-        "select_placeholder": "Choisissez une configuration à modifier...",
-        "welcome": {
-          "title": "🎉 Configuration du système de bienvenue",
-          "description": "Configurez les messages de bienvenue et d'au revoir.",
-          "welcome_channel": "Canal de bienvenue",
-          "welcome_message": "Message de bienvenue",
-          "goodbye_channel": "Canal d'au revoir",
-          "goodbye_message": "Message d'au revoir",
-          "not_configured": "Non configuré",
-          "configure_welcome_button": "Configurer bienvenue",
-          "configure_goodbye_button": "Configurer au revoir",
-          "welcome_modal_title": "Configuration bienvenue",
-          "goodbye_modal_title": "Configuration au revoir",
-          "channel_id_label": "ID du canal",
-          "channel_id_placeholder": "Entrez l'ID du canal où envoyer les messages",
-          "message_label": "Message",
-          "message_placeholder_welcome": "{memberMention}, {memberName}, {serverName}",
-          "message_placeholder_goodbye": "{memberName}, {serverName}",
-          "channel_not_found": "❌ Canal introuvable dans ce serveur.",
-          "channel_id_invalid": "❌ L'ID du canal doit être un nombre.",
-          "success_welcome": "✅ Configuration bienvenue mise à jour !",
-          "success_goodbye": "✅ Configuration au revoir mise à jour !",
-          "error": "❌ Erreur lors de la configuration."
-        },
-        "confession": {
-          "title": "💬 Configuration du système de confessions",
-          "description": "Configurez le canal où les confessions seront envoyées.",
-          "confession_channel": "Canal de confessions",
-          "not_configured": "Non configuré",
-          "channel_not_found": "Canal introuvable",
-          "configure_button": "Configurer canal",
-          "modal_title": "Configuration des confessions",
-          "channel_id_label": "ID du canal",
-          "channel_id_placeholder": "Entrez l'ID du canal pour les confessions",
-          "success": "✅ Canal de confessions configuré sur {channel} !",
-          "error": "❌ Erreur lors de la configuration."
-        },
-        "role_requests": {
-          "title": "🎭 Configuration des demandes de rôles",
-          "description": "Configurez le canal où les demandes de rôles seront envoyées.",
-          "role_request_channel": "Canal des demandes de rôles",
-          "not_configured": "Non configuré",
-          "channel_not_found": "Canal introuvable",
-          "configure_button": "Configurer canal",
-          "modal_title": "Configuration des demandes de rôles",
-          "channel_id_label": "ID du canal",
-          "channel_id_placeholder": "Entrez l'ID du canal pour les demandes de rôles",
-          "success": "✅ Canal des demandes de rôles configuré sur {channel} !",
-          "error": "❌ Erreur lors de la configuration."
-        },
-        "role_reactions": {
-          "title": "⚡ Configuration des rôles par réaction",
-          "description": "Configurez les rôles qui peuvent être obtenus par réaction.",
-          "active_configs": "Configurations actives",
-          "configs_count": "{count} rôles par réaction configurés",
-          "no_configs": "Aucun rôle par réaction configuré",
-          "configure_button": "Configurer rôles par réaction",
-          "interactive_warning": "⚠️ La configuration des rôles par réaction nécessite une configuration interactive. Utilisez la commande `/rolereact` pour configurer les rôles par réaction.",
-          "error": "❌ Impossible de récupérer la configuration."
-        },
-        "xp_system": {
-          "title": "📊 Configuration du système XP",
-          "description": "Configurez le système XP et les rôles de niveau.",
-          "xp_channel": "Canal d'annonces XP",
-          "level_roles": "Rôles de niveau",
-          "not_configured": "Non configuré",
-          "channel_not_found": "Canal introuvable",
-          "roles_count": "{count} rôles configurés",
-          "no_roles": "Aucun rôle configuré",
-          "configure_channel_button": "Configurer canal XP",
-          "configure_role_button": "Configurer rôle de niveau",
-          "channel_modal_title": "Configuration du canal XP",
-          "role_modal_title": "Configuration d'un rôle de niveau",
-          "channel_id_label": "ID du canal",
-          "channel_id_placeholder": "Entrez l'ID du canal pour les annonces XP",
-          "level_label": "Niveau",
-          "level_placeholder": "Entrez le niveau requis (nombre entier)",
-          "role_id_label": "ID du rôle",
-          "role_id_placeholder": "Entrez l'ID du rôle à attribuer",
-          "channel_success": "✅ Canal d'annonces XP configuré sur {channel} !",
-          "role_success": "✅ Rôle {role} configuré pour le niveau {level} !",
-          "role_not_found": "❌ Rôle introuvable dans ce serveur.",
-          "invalid_numbers": "❌ Le niveau et l'ID du rôle doivent être des nombres.",
-          "error": "❌ Erreur lors de la configuration."
-        },
-        "ticket_system": {
-          "title": "🎫 Configuration du système de tickets",
-          "description": "Configurer le système de tickets de support",
-          "not_implemented": "⚠️ La configuration du système de tickets n'est pas implémentée dans la structure de base de données actuelle.",
-          "category_not_found": "❌ Catégorie introuvable !",
-          "role_not_found": "❌ Rôle introuvable !",
-          "category_set": "✅ Catégorie de tickets définie sur {category} !",
-          "support_role_set": "✅ Rôle de support défini sur {role} !",
-          "disabled": "✅ Système de tickets désactivé !",
-          "setup": {
-            "description": "Configurer le système de ticket",
-            "success": "Système de ticket configuré dans {category} !"
-          },
-          "panel": {
-            "description": "Créer le panel de ticket",
-            "title": "Support Tickets",
-            "panel_description": "Clique sur le bouton ci-dessous pour créer un ticket.",
-            "create_button": "Créer un ticket"
-          },
-          "create": {
-            "category_not_found": "❌ La catégorie des tickets n'a pas encore été créée. Merci d'utiliser /setup_ticket pour la créer.",
-            "already_exists": "Tu as déjà un ticket ouvert dans la catégorie Tickets !",
-            "success": "Ton ticket a été créé : {channel}",
-            "embed_title": "Ticket Support",
-            "embed_description": "Salut {user} ! Un membre du staff va te répondre rapidement.\nClique sur le bouton pour fermer le ticket.",
-            "close_button": "Fermer le ticket"
-          },
-          "close": {
-            "closing": "Fermeture dans 5 secondes..."
-          }
-        }
-      }
+      "title": "Configuration des logs serveur",
+      "description": "Configurez les logs du serveur.",
+      "use_dashboard": "Utilisez le Dashboard Web",
+      "dashboard_description": "Les logs serveur sont maintenant entièrement gérés via le dashboard web avec des options avancées.",
+      "dashboard_features": "Fonctionnalités du Dashboard",
+      "dashboard_features_list": "• Configuration du canal de logs\n• Activation/désactivation des événements individuels\n• Logs de suppression/modification de messages\n• Logs d'arrivée/départ des membres\n• Logs d'activité vocale\n• Logs de changements de rôles et pseudos\n• Prévisualisation des paramètres en temps réel",
+      "dashboard_benefits": "Fonctionnalités améliorées",
+      "dashboard_benefits_list": "• Filtrage par utilisateur/canal\n• Formatage des messages de logs\n• Configuration en lot\n• Export des données de logs"
     }
   }
 }

@@ -9,6 +9,7 @@ import os
 import logging
 from datetime import datetime
 from cloud_storage import CloudTicketLogger, GoogleDriveStorage
+from custom_emojis import TICKET, TICKET_CREATE, TICKET_CLOSE, TICKET_DELETE, SUCCESS, ERROR, WARNING, CLOCK, TRASH, CHECK, CROSS
 
 logger = logging.getLogger(__name__)
 
@@ -327,17 +328,15 @@ class Ticket(commands.Cog):
             
             # Créer l'embed de bienvenue
             embed = discord.Embed(
-                title=_("ticket_system.new_ticket.embed_title", interaction.user.id, guild_id, ticket_id=ticket_id),
-                description=_("ticket_system.new_ticket.embed_description", interaction.user.id, guild_id, 
-                             creator=interaction.user.mention, user=user.mention, category=category.name, reason=reason),
+                title=f"{TICKET} Ticket Support #{ticket_id}",
+                description=f"Salut {user.mention} ! Un membre du staff va te répondre rapidement.\n\n**Créé par :** {interaction.user.mention}\n**Catégorie :** {category.name}\n**Raison :** {reason}",
                 color=discord.Color.green(),
                 timestamp=datetime.now()
             )
             
             embed.add_field(
-                name=_("ticket_system.new_ticket.embed_info", interaction.user.id, guild_id),
-                value=_("ticket_system.new_ticket.embed_info_content", interaction.user.id, guild_id,
-                       creator=interaction.user.display_name, user=user.display_name, category=category.name, ticket_id=ticket_id),
+                name="ℹ️ Informations du ticket",
+                value=f"**Créateur :** {interaction.user.display_name}\n**Utilisateur :** {user.display_name}\n**Catégorie :** {category.name}\n**ID du ticket :** #{ticket_id}",
                 inline=False
             )
             
@@ -364,18 +363,15 @@ class Ticket(commands.Cog):
             
             # Envoyer un message de confirmation à l'utilisateur qui a créé le ticket
             await interaction.followup.send(
-                _("ticket_system.new_ticket.success", interaction.user.id, guild_id,
-                  ticket_id=ticket_id, user=user.mention, channel=channel.mention, category=category.name, reason=reason), ephemeral=True)
+                f"{SUCCESS} Ton ticket a été créé : {channel.mention}\n\n**Utilisateur :** {user.mention}\n**Catégorie :** {category.name}\n**Raison :** {reason}\n**ID :** #{ticket_id}", ephemeral=True)
             
             # Envoyer un message dans le canal de logs si configuré
             if logs_channel_id:
                 logs_channel = interaction.guild.get_channel(int(logs_channel_id))
                 if logs_channel:
                     log_embed = discord.Embed(
-                        title=_("ticket_system.new_ticket.log_title", interaction.user.id, guild_id),
-                        description=_("ticket_system.new_ticket.log_description", interaction.user.id, guild_id,
-                                     ticket_id=ticket_id, creator=interaction.user.mention, user=user.mention,
-                                     channel=channel.mention, category=category.name, reason=reason),
+                        title=f"{TICKET_CREATE} Nouveau ticket créé",
+                        description=f"**ID :** #{ticket_id}\n**Créateur :** {interaction.user.mention}\n**Utilisateur :** {user.mention}\n**Canal :** {channel.mention}\n**Catégorie :** {category.name}\n**Raison :** {reason}",
                         color=discord.Color.blue(),
                         timestamp=datetime.now()
                     )

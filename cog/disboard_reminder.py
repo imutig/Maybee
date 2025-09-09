@@ -12,6 +12,7 @@ import asyncio
 import re
 from i18n import _
 from .command_logger import log_command_usage
+from custom_emojis import CHART_BAR, STATS, TROPHY, GOLD_MEDAL, SILVER_MEDAL, BRONZE_MEDAL, CLOCK, USERS, FIRE, ARROW_UP, INFO, ERROR
 
 from services import handle_errors, rate_limit
 from monitoring import logger
@@ -434,8 +435,8 @@ class DisboardReminder(commands.Cog):
             
             if not top_bumpers:
                 embed = discord.Embed(
-                    title=_("commands.bumptop.embed_title", guild_id=guild_id),
-                    description=_("commands.bumptop.no_bumps", guild_id=guild_id, period=period_name),
+                    title=f"{TROPHY} Top Bumpers",
+                    description=f"Aucun bump enregistré {period_name}.",
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
                 )
@@ -444,8 +445,8 @@ class DisboardReminder(commands.Cog):
             
             # Create leaderboard embed
             embed = discord.Embed(
-                title=_("commands.bumptop.embed_title", guild_id=guild_id),
-                description=_("commands.bumptop.top_bumpers", guild_id=guild_id, period=period_name),
+                title=f"{TROPHY} Top Bumpers",
+                description=f"Top 10 des bumpers {period_name}",
                 color=discord.Color.gold(),
                 timestamp=datetime.now()
             )
@@ -456,7 +457,7 @@ class DisboardReminder(commands.Cog):
                 
                 embed.add_field(
                     name=f"{medal} {bumper['bumper_name']}",
-                    value=f"**{bumper['bump_count']}** {_('commands.bumptop.bump_count', guild_id=guild_id)}\n{_('commands.bumptop.last_bump', guild_id=guild_id)}: <t:{int(bumper['last_bump'].timestamp())}:R>",
+                    value=f"**{bumper['bump_count']}** bumps\n{CLOCK} Dernier bump: <t:{int(bumper['last_bump'].timestamp())}:R>",
                     inline=False
                 )
             
@@ -467,14 +468,14 @@ class DisboardReminder(commands.Cog):
                 fetchone=True
             )
             
-            embed.set_footer(text=_("commands.bumptop.total_bumps", guild_id=guild_id, count=total_bumps['total'], period=period_name))
+            embed.set_footer(text=f"Total: {total_bumps['total']} bumps {period_name} • 🐝 Sweet server promotion, honey! 🍯")
             
             await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in bumptop command: {e}")
             await interaction.response.send_message(
-                _("disboard.error.bumptop_error", guild_id=guild_id),
+                f"{ERROR} Erreur lors de la récupération de la toplist des bumps.",
                 ephemeral=True
             )
 
@@ -526,8 +527,8 @@ class DisboardReminder(commands.Cog):
             
             if not stats or not stats['total_bumps']:
                 embed = discord.Embed(
-                    title=_("commands.bumpstats.embed_title", guild_id=guild_id),
-                    description=_("commands.bumpstats.no_stats", guild_id=guild_id),
+                    title=f"{STATS} Statistiques de Bump",
+                    description="Aucune statistique de bump disponible pour ce serveur.",
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
                 )
@@ -541,40 +542,40 @@ class DisboardReminder(commands.Cog):
             
             # Create stats embed
             embed = discord.Embed(
-                title=_("commands.bumpstats.embed_title", guild_id=guild_id),
-                description=_("commands.bumpstats.server_stats", guild_id=guild_id, server=interaction.guild.name),
+                title=f"{STATS} Statistiques de Bump",
+                description=f"Statistiques de bump pour **{interaction.guild.name}**",
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
             
-            embed.add_field(name=_("commands.bumpstats.total_bumps", guild_id=guild_id), value=f"**{stats['total_bumps']}**", inline=True)
-            embed.add_field(name=_("commands.bumpstats.unique_bumpers", guild_id=guild_id), value=f"**{stats['unique_bumpers']}**", inline=True)
-            embed.add_field(name=_("commands.bumpstats.last_bump", guild_id=guild_id), value=f"<t:{int(stats['last_bump'].timestamp())}:R>", inline=True)
+            embed.add_field(name=f"{FIRE} Total des bumps", value=f"**{stats['total_bumps']}**", inline=True)
+            embed.add_field(name=f"{USERS} Bumpers uniques", value=f"**{stats['unique_bumpers']}**", inline=True)
+            embed.add_field(name=f"{CLOCK} Dernier bump", value=f"<t:{int(stats['last_bump'].timestamp())}:R>", inline=True)
             
-            embed.add_field(name=_("commands.bumpstats.first_bump", guild_id=guild_id), value=f"<t:{int(stats['first_bump'].timestamp())}:R>", inline=True)
-            embed.add_field(name=_("commands.bumpstats.time_elapsed", guild_id=guild_id), value=f"**{hours_since_last}h**", inline=True)
+            embed.add_field(name=f"{ARROW_UP} Premier bump", value=f"<t:{int(stats['first_bump'].timestamp())}:R>", inline=True)
+            embed.add_field(name=f"{CLOCK} Temps écoulé", value=f"**{hours_since_last}h**", inline=True)
             
             if stats['avg_hours_between']:
-                embed.add_field(name=_("commands.bumpstats.avg_between", guild_id=guild_id), value=f"**{stats['avg_hours_between']:.1f}h**", inline=True)
+                embed.add_field(name=f"{CLOCK} Moyenne entre bumps", value=f"**{stats['avg_hours_between']:.1f}h**", inline=True)
             
             # Add bump frequency indicator
             if minutes_since_last >= 120:  # 2 hours or more (120 minutes)
-                status = _("commands.bumpstats.ready_bump", guild_id=guild_id)
+                status = "✅ Prêt pour un bump !"
             elif minutes_since_last >= 60:  # 1 hour or more (60 minutes)
-                status = _("commands.bumpstats.soon_bump", guild_id=guild_id)
+                status = "⏰ Bientôt prêt pour un bump"
             else:
-                status = _("commands.bumpstats.long_time_bump", guild_id=guild_id)
+                status = "⏳ Encore du temps avant le prochain bump"
             
-            embed.add_field(name=_("commands.bumpstats.status", guild_id=guild_id), value=status, inline=False)
+            embed.add_field(name=f"{INFO} Statut", value=status, inline=False)
             
-            embed.set_footer(text=_("disboard.bump_detected.footer", guild_id=guild_id))
+            embed.set_footer(text="🐝 Sweet server promotion, honey! 🍯")
             
             await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in bumpstats command: {e}")
             await interaction.response.send_message(
-                _("disboard.error.bumpstats_error", guild_id=guild_id),
+                f"{ERROR} Erreur lors de la récupération des statistiques de bump.",
                 ephemeral=True
             )
 

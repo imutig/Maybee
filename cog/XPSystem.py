@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Literal
 from i18n import _
 from .command_logger import log_command_usage
+from custom_emojis import TROPHY, STAR, GEM, FIRE, ARROW_UP
 
 class XPMultiplier:
     """XP multiplier system for events and boosts"""
@@ -484,7 +485,7 @@ class XPSystem(commands.Cog):
                 # User has no XP data
                 no_xp_msg = _("commands.level.no_xp", user_id, guild_id)
                 embed = discord.Embed(
-                    title=_("commands.level.embed_title", user_id, guild_id).format(user=target_user.display_name),
+                    title=f"{TROPHY} Niveau de {target_user.display_name}",
                     description=no_xp_msg,
                     color=discord.Color.blue()
                 )
@@ -514,37 +515,37 @@ class XPSystem(commands.Cog):
             
             # Create embed
             embed = discord.Embed(
-                title=_("commands.level.embed_title", user_id, guild_id).format(user=target_user.display_name),
+                title=f"{TROPHY} Niveau de {target_user.display_name}",
                 color=discord.Color.blue()
             )
             
             # Add fields
             embed.add_field(
-                name=_("commands.level.level_field", user_id, guild_id),
+                name=f"{TROPHY} Niveau",
                 value=f"**{calculated_level}**",
                 inline=True
             )
             
             embed.add_field(
-                name=_("commands.level.total_xp_field", user_id, guild_id),
+                name=f"{STAR} XP total",
                 value=f"**{total_xp:,}** XP",
                 inline=True
             )
             
             embed.add_field(
-                name=_("commands.level.progress_field", user_id, guild_id),
+                name=f"{ARROW_UP} Progression",
                 value=f"**{progress_xp:,}** / **{level_xp_range:,}** XP\n`{bar}` {progress_percentage:.1%}",
                 inline=False
             )
             
             embed.add_field(
-                name=_("commands.level.text_xp_field", user_id, guild_id),
+                name=f"💬 XP texte",
                 value=f"**{text_xp:,}** XP",
                 inline=True
             )
             
             embed.add_field(
-                name=_("commands.level.voice_xp_field", user_id, guild_id),
+                name=f"🎤 XP vocal",
                 value=f"**{voice_xp:,}** XP",
                 inline=True
             )
@@ -785,17 +786,17 @@ class XPSystem(commands.Cog):
             # Get all-time XP data based on type
             if type == "total":
                 query = """SELECT user_id, xp FROM xp_data WHERE guild_id = %s ORDER BY xp DESC LIMIT 10"""
-                field_name = _("commands.topxp.total_xp_field", user_id, guild_id)
+                field_name = f"{STAR} XP total"
                 color = discord.Color.gold()
                 xp_field = "xp"
             elif type == "text":
                 query = """SELECT user_id, text_xp FROM xp_data WHERE guild_id = %s ORDER BY text_xp DESC LIMIT 10"""
-                field_name = _("commands.topxp.text_xp_field", user_id, guild_id)
+                field_name = f"💬 XP texte"
                 color = discord.Color.blue()
                 xp_field = "text_xp"
             else:  # voice
                 query = """SELECT user_id, voice_xp FROM xp_data WHERE guild_id = %s ORDER BY voice_xp DESC LIMIT 10"""
-                field_name = _("commands.topxp.voice_xp_field", user_id, guild_id)
+                field_name = f"🎤 XP vocal"
                 color = discord.Color.green()
                 xp_field = "voice_xp"
             
@@ -818,7 +819,7 @@ class XPSystem(commands.Cog):
             
             # Create embed
             embed = discord.Embed(
-                title=_("commands.topxp.embed_title", user_id, guild_id) + f" ({type.title()})",
+                title=f"{TROPHY} Top 10 XP ({type.title()})",
                 color=color,
                 timestamp=datetime.utcnow()
             )
