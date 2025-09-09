@@ -2566,6 +2566,49 @@ class Dashboard {
             // Clear selections after adding
             e.target.selectedIndex = -1;
         });
+
+        // Ensure roles are loaded in the selector
+        this.loadRolesForAutoRole();
+    }
+
+    async loadRolesForAutoRole() {
+        const roleSelect = document.getElementById('roleSelect');
+        if (!roleSelect) {
+            console.warn('roleSelect element not found');
+            return;
+        }
+
+        if (!this.currentGuild) {
+            console.log('❌ No current guild for auto-role loading');
+            return;
+        }
+
+        try {
+            console.log(`📡 Loading roles for auto-role selector in guild ${this.currentGuild}`);
+            const response = await this.apiCall(`/guild/${this.currentGuild}/roles`);
+            const roles = response.roles || [];
+            console.log(`✅ Received ${roles.length} roles for auto-role selector`);
+            
+            // Clear existing options except the first one
+            while (roleSelect.children.length > 1) {
+                roleSelect.removeChild(roleSelect.lastChild);
+            }
+            
+            // Add role options (exclude @everyone and bot roles)
+            roles.forEach(role => {
+                if (role.name !== '@everyone' && !role.managed) {
+                    const option = document.createElement('option');
+                    option.value = role.id;
+                    option.textContent = role.name;
+                    roleSelect.appendChild(option);
+                }
+            });
+            
+            console.log(`✅ Added ${roles.filter(r => r.name !== '@everyone' && !r.managed).length} roles to auto-role selector`);
+        } catch (error) {
+            console.error('❌ Failed to load roles for auto-role selector:', error);
+            roleSelect.innerHTML = '<option value="">Error loading roles...</option>';
+        }
     }
 
     isRoleAlreadySelected(roleId) {

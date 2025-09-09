@@ -1,7 +1,13 @@
-# Environment Variables
+# Environment files
 .env
 .env.local
-.env.*.local
+.env.production
+.env.staging
+local_db_config.env
+
+# Google Drive credentials
+credentials.json
+token.json
 
 # Python
 __pycache__/
@@ -21,41 +27,19 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Virtual Environments
-.env
-.venv
-env/
+# Virtual environments
 venv/
+env/
 ENV/
-env.bak/
-venv.bak/
+.venv/
+.env/
 
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -64,52 +48,20 @@ venv.bak/
 
 # OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
 # Logs
 *.log
 logs/
-bot.log
-
-# Cache & Temporary Files
-cache_data/
-temp/
-tmp/
-*.tmp
 
 # Database
 *.db
-*.sqlite
 *.sqlite3
 
-# Backup files
-*.bak
-*_backup.*
-README_BACKUP.md
+# Cache
+cache_data/
+__pycache__/
 
-# Node.js (if you add any frontend tools later)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# JetBrains
-.idea/
-
-# Windows
-desktop.ini
-$RECYCLE.BIN/
-
-# Google Drive API Credentials (NEVER COMMIT THESE!)
-credentials.json
-token.json
-*.json
-!requirements.json
-!package.json
-!languages/*.json
-!web/languages/*.json
+# Temporary files
+*.tmp
+*.temp

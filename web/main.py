@@ -2792,24 +2792,24 @@ async def get_welcome_config(
         
         if welcome_config:
             return {
-                "welcome_enabled": True,
+                "welcome_enabled": bool(welcome_config.get("welcome_channel")),
                 "welcome_channel": str(welcome_config["welcome_channel"]) if welcome_config["welcome_channel"] else None,
                 "welcome_title": welcome_config.get("welcome_title", "👋 New member!"),
                 "welcome_message": welcome_config["welcome_message"] or "Welcome {user} to {server}!",
-                "welcome_fields": json.loads(welcome_config["welcome_fields"]) if welcome_config["welcome_fields"] else None,
-                "goodbye_enabled": True,
+                "welcome_fields": json.loads(welcome_config["welcome_fields"]) if welcome_config.get("welcome_fields") else None,
+                "goodbye_enabled": bool(welcome_config.get("goodbye_channel")),
                 "goodbye_channel": str(welcome_config["goodbye_channel"]) if welcome_config["goodbye_channel"] else None,
                 "goodbye_title": welcome_config.get("goodbye_title", "👋 Departure"),
                 "goodbye_message": welcome_config["goodbye_message"] or "Goodbye {user}, we'll miss you!",
-                "goodbye_fields": json.loads(welcome_config["goodbye_fields"]) if welcome_config["goodbye_fields"] else None,
+                "goodbye_fields": json.loads(welcome_config["goodbye_fields"]) if welcome_config.get("goodbye_fields") else None,
                 "auto_role_enabled": welcome_config.get("auto_role_enabled", False),
                 "auto_role_ids": json.loads(welcome_config["auto_role_ids"]) if welcome_config.get("auto_role_ids") else []
             }
-        elif guild_config and guild_config.get("welcome_enabled") and guild_config.get("welcome_channel"):
-            # If no welcome_config but guild_config has welcome settings, use those
+        elif guild_config and (guild_config.get("welcome_enabled") or guild_config.get("auto_role_enabled")):
+            # If no welcome_config but guild_config has welcome or auto-role settings, use those
             return {
                 "welcome_enabled": guild_config.get("welcome_enabled", False),
-                "welcome_channel": str(guild_config["welcome_channel"]) if guild_config["welcome_channel"] else None,
+                "welcome_channel": str(guild_config["welcome_channel"]) if guild_config.get("welcome_channel") else None,
                 "welcome_title": "👋 New member!",
                 "welcome_message": guild_config.get("welcome_message", "Welcome {user} to {server}!"),
                 "welcome_fields": None,
@@ -2856,39 +2856,65 @@ async def update_welcome_config(
         if not await verify_guild_access(guild_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this guild")
         
-        if config.welcome_enabled or config.goodbye_enabled:
-            # Insert or update welcome config
-            await database.execute(
-                """INSERT INTO welcome_config 
-                   (guild_id, welcome_channel, welcome_title, welcome_message, welcome_fields, goodbye_channel, goodbye_title, goodbye_message, goodbye_fields, auto_role_enabled, auto_role_ids, updated_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) AS new_values
-                   ON DUPLICATE KEY UPDATE
-                   welcome_channel = new_values.welcome_channel,
-                   welcome_title = new_values.welcome_title,
-                   welcome_message = new_values.welcome_message,
-                   welcome_fields = new_values.welcome_fields,
-                   goodbye_channel = new_values.goodbye_channel,
-                   goodbye_title = new_values.goodbye_title,
-                   goodbye_message = new_values.goodbye_message,
-                   goodbye_fields = new_values.goodbye_fields,
-                   auto_role_enabled = new_values.auto_role_enabled,
-                   auto_role_ids = new_values.auto_role_ids,
-                   updated_at = new_values.updated_at""",
-                (guild_id, 
-                 int(config.welcome_channel) if config.welcome_channel else None,
-                 config.welcome_title,
-                 config.welcome_message,
-                 json.dumps(config.welcome_fields) if config.welcome_fields else None,
-                 int(config.goodbye_channel) if config.goodbye_channel else None,
-                 config.goodbye_title,
-                 config.goodbye_message,
-                 json.dumps(config.goodbye_fields) if config.goodbye_fields else None,
-                 config.auto_role_enabled,
-                 json.dumps(config.auto_role_ids) if config.auto_role_ids else None,
-                 datetime.utcnow())
-            )
+        if config.welcome_enabled or config.goodbye_enabled or config.auto_role_enabled:
+            # Vérifier d'abord si les colonnes existent
+            try:
+                # Essayer d'abord avec toutes les colonnes
+                await database.execute(
+                    """INSERT INTO welcome_config 
+                       (guild_id, welcome_channel, welcome_title, welcome_message, welcome_fields, goodbye_channel, goodbye_title, goodbye_message, goodbye_fields, auto_role_enabled, auto_role_ids, updated_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) AS new_values
+                       ON DUPLICATE KEY UPDATE
+                       welcome_channel = new_values.welcome_channel,
+                       welcome_title = new_values.welcome_title,
+                       welcome_message = new_values.welcome_message,
+                       welcome_fields = new_values.welcome_fields,
+                       goodbye_channel = new_values.goodbye_channel,
+                       goodbye_title = new_values.goodbye_title,
+                       goodbye_message = new_values.goodbye_message,
+                       goodbye_fields = new_values.goodbye_fields,
+                       auto_role_enabled = new_values.auto_role_enabled,
+                       auto_role_ids = new_values.auto_role_ids,
+                       updated_at = new_values.updated_at""",
+                    (guild_id, 
+                     int(config.welcome_channel) if config.welcome_channel else None,
+                     config.welcome_title,
+                     config.welcome_message,
+                     json.dumps(config.welcome_fields) if config.welcome_fields else None,
+                     int(config.goodbye_channel) if config.goodbye_channel else None,
+                     config.goodbye_title,
+                     config.goodbye_message,
+                     json.dumps(config.goodbye_fields) if config.goodbye_fields else None,
+                     config.auto_role_enabled,
+                     json.dumps(config.auto_role_ids) if config.auto_role_ids else None,
+                     datetime.utcnow())
+                )
+            except Exception as e:
+                if "Unknown column" in str(e):
+                    print(f"⚠️ Colonnes manquantes détectées, utilisation de la version simplifiée: {e}")
+                    # Fallback vers la version simplifiée sans les nouvelles colonnes
+                    await database.execute(
+                        """INSERT INTO welcome_config 
+                           (guild_id, welcome_channel, welcome_message, goodbye_channel, goodbye_message, updated_at)
+                           VALUES (%s, %s, %s, %s, %s, %s) AS new_values
+                           ON DUPLICATE KEY UPDATE
+                           welcome_channel = new_values.welcome_channel,
+                           welcome_message = new_values.welcome_message,
+                           goodbye_channel = new_values.goodbye_channel,
+                           goodbye_message = new_values.goodbye_message,
+                           updated_at = new_values.updated_at""",
+                        (guild_id, 
+                         int(config.welcome_channel) if config.welcome_channel else None,
+                         config.welcome_message,
+                         int(config.goodbye_channel) if config.goodbye_channel else None,
+                         config.goodbye_message,
+                         datetime.utcnow())
+                    )
+                    print("⚠️ Configuration sauvegardée sans les nouvelles fonctionnalités (titre, champs, auto-rôle)")
+                else:
+                    raise e
         else:
-            # Delete welcome config if disabled
+            # Only delete welcome config if ALL features are disabled (including auto-role)
             await database.execute(
                 "DELETE FROM welcome_config WHERE guild_id = %s",
                 (guild_id,)

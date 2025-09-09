@@ -604,8 +604,13 @@ class TicketConfirmDeleteButton(discord.ui.Button):
             (str(channel.id), str(guild_id))
         )
         
-        await interaction.response.send_message(
-            "🗑️ Ticket supprimé définitivement. Les logs ont été sauvegardés.", ephemeral=True)
+        try:
+            await interaction.response.send_message(
+                "🗑️ Ticket supprimé définitivement. Les logs ont été sauvegardés.", ephemeral=True)
+        except discord.NotFound:
+            # L'interaction a expiré, utiliser followup
+            await interaction.followup.send(
+                "🗑️ Ticket supprimé définitivement. Les logs ont été sauvegardés.", ephemeral=True)
         
         # Supprimer le canal
         await asyncio.sleep(2)
