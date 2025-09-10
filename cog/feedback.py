@@ -11,6 +11,7 @@ class Feedback(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.feedback_channel_id = None  # Set this to your feedback channel ID
+        self.owner_id = 263679048712978432  # Owner ID for DM feedback
         
     @app_commands.command(name="feedback", description="Send feedback about the bot to the developers")
     @app_commands.describe(
@@ -64,6 +65,14 @@ class Feedback(commands.Cog):
                     await feedback_channel.send(embed=embed)
             except:
                 pass
+        
+        # Send DM to owner
+        try:
+            owner = self.bot.get_user(self.owner_id)
+            if owner:
+                await owner.send(embed=embed)
+        except Exception as e:
+            print(f"❌ Failed to send feedback DM to owner: {e}")
         
         # Also log to console for development
         print(f"📝 FEEDBACK ({type.upper()}): {message} - From {interaction.user} in {interaction.guild.name}")

@@ -152,9 +152,9 @@ bot = MyBot(config)
 async def load_extensions():
     extensions = [
         "cog.rename", "cog.scan", "cog.ping", "cog.dashboard",
-        "cog.avatar", "cog.roll", "cog.confession", "cog.embed", "cog.XPSystem",
+        "cog.avatar", "cog.confession", "cog.XPSystem",
         "cog.role", "cog.welcome", "cog.role_menus", "cog.ticket", "cog.clear",
-        "cog.language", "cog.config", "cog.moderation", "cog.server_logs", "cog.feedback",
+        "cog.config", "cog.moderation", "cog.server_logs", "cog.feedback",
         "cog.disboard_reminder", "cog.disboard_config", "cog.dm_logs"
     ]
     
@@ -255,145 +255,7 @@ async def on_app_command_error(interaction: discord.Interaction, error):
     else:
         await interaction.followup.send("❌ An unexpected error occurred. Please try again later.", ephemeral=True)
 
-@bot.tree.command(name="health", description="Check bot health and performance metrics")
-@handle_errors
-@rate_limit(cooldown=30)
-@log_command_usage
-async def health_check(interaction: discord.Interaction):
-    """Health check command for monitoring bot status"""
-    if not interaction.user.guild_permissions.administrator:
-        user_id = interaction.user.id
-        guild_id = interaction.guild.id if interaction.guild else None
-        await interaction.response.send_message(
-            _("errors.admin_only", user_id, guild_id), 
-            ephemeral=True
-        )
-        return
-    
-    # Defer response as health check might take a moment
-    await interaction.response.defer(ephemeral=True)
-    
-    try:
-        # Collect current metrics
-        health_report = bot.health_checker.get_health_report()
-        
-        # Create embed with health information
-        embed = discord.Embed(
-            title="🏥 Bot Health Report",
-            color=discord.Color.green() if health_report['status'] == 'healthy' else discord.Color.red(),
-            timestamp=datetime.now()
-        )
-        
-        # Status
-        status_emoji = "🟢" if health_report['status'] == 'healthy' else "🔴"
-        embed.add_field(
-            name="Status", 
-            value=f"{status_emoji} {health_report['status'].title()}", 
-            inline=True
-        )
-        
-        # Uptime
-        embed.add_field(
-            name="Uptime", 
-            value=health_report['uptime'], 
-            inline=True
-        )
-        
-        # Bot info
-        bot_info = health_report['bot_info']
-        embed.add_field(
-            name="Bot Info",
-            value=f"Guilds: {bot_info['guilds']}\nUsers: {bot_info['users']}\nLatency: {bot_info['latency']}ms",
-            inline=True
-        )
-        
-        # System metrics
-        current = health_report['current_metrics']['system']
-        embed.add_field(
-            name="System Resources",
-            value=f"CPU: {current['cpu_usage']:.1f}%\nMemory: {current['memory_usage']:.1f}%\nDisk: {current['disk_usage']:.1f}%",
-            inline=True
-        )
-        
-        # Database metrics
-        db_metrics = health_report['current_metrics']['database']
-        embed.add_field(
-            name="Database",
-            value=f"Connections: {db_metrics['connections']}\nResponse: {db_metrics['response_time']:.3f}s\nErrors: {db_metrics['errors']}",
-            inline=True
-        )
-        
-        # Performance metrics
-        perf = health_report['current_metrics']['performance']
-        embed.add_field(
-            name="Performance",
-            value=f"Avg Response: {perf['average_response_time']:.3f}s\nCache Hit Rate: {perf['cache_hit_rate']:.1f}%",
-            inline=True
-        )
-        
-        # Recent errors (if any)
-        if health_report['recent_errors']:
-            error_count = len(health_report['recent_errors'])
-            embed.add_field(
-                name="Recent Errors",
-                value=f"{error_count} error(s) in the last check",
-                inline=False
-            )
-        
-        embed.set_footer(text="Health check completed")
-        
-        await interaction.followup.send(embed=embed, ephemeral=True)
-        
-    except Exception as e:
-        logger.error(f"Error in health check command: {e}")
-        await interaction.followup.send(
-            "❌ Failed to generate health report. Check logs for details.",
-            ephemeral=True
-        )
 
-@bot.tree.command(name="sync", description="Synchronise les commandes slash pour ce serveur (Admin uniquement)")
-@handle_errors
-@rate_limit(cooldown=60)
-@log_command_usage
-async def sync_commands(interaction: discord.Interaction):
-    user_id = interaction.user.id
-    guild_id = interaction.guild.id if interaction.guild else None
-    
-    if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message(
-            _("errors.admin_only", user_id, guild_id), 
-            ephemeral=True
-        )
-        return
-    
-    try:
-        # Respond immediately to avoid timeout
-        await interaction.response.send_message(
-            "🔄 Synchronisation en cours...", 
-            ephemeral=True
-        )
-        
-        # Try global sync
-        synced_global = await bot.tree.sync()
-        
-        # Edit the response with results
-        await interaction.edit_original_response(
-            content=f"✅ {len(synced_global)} commandes synchronisées globalement\n"
-                   f"🔍 Commandes disponibles: {', '.join([cmd.name for cmd in synced_global])}\n"
-                   f"ℹ️  Les commandes peuvent prendre quelques minutes pour apparaître dans Discord."
-        )
-        
-    except Exception as e:
-        try:
-            await interaction.edit_original_response(
-                content=f"❌ Erreur lors de la synchronisation: {str(e)}"
-            )
-        except:
-            # If we can't edit, try to send a followup
-            await interaction.followup.send(
-                f"❌ Erreur lors de la synchronisation: {str(e)}", 
-                ephemeral=True
-            )
 
 # ========== Lancement du bot ==========
 async def main():

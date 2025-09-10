@@ -869,6 +869,68 @@
       "changed_to_english": "✅ Server language changed to English!",
       "changed_to_french": "✅ Server language changed to Français!"
     },
+    "moderation": {
+      "title": "Moderation Center",
+      "description": "Welcome to the moderation center of **{guild_name}**\nSelect an action category below.",
+      "available_actions": "Available Actions",
+      "available_actions_list": "• **Member Management** - Timeout, kick, ban\n• **Warnings System** - Warn and consult\n• **Cleanup** - Delete messages\n• **Role Management** - Add/remove roles\n• **Statistics** - View moderation stats\n• **Configuration** - Moderation settings",
+      "information": "Information",
+      "information_text": "This menu gives you access to all bot\nmoderation features in one place.",
+      "moderator_footer": "Moderator: {moderator_name}",
+      "member_management": {
+        "title": "Member Management",
+        "description": "Choose the action to perform on a member",
+        "available_actions": "Available Actions",
+        "available_actions_list": "• **Timeout** - Temporarily mute\n• **Untimeout** - Remove mute\n• **Kick** - Remove from server\n• **Ban** - Ban from server\n• **Unban** - Unban from server",
+        "info": "Information",
+        "info_text": "Use individual commands for each action.\nExample: `/timeout @member 60 reason`"
+      },
+      "warnings_system": {
+        "title": "Warnings System",
+        "description": "Manage member warnings",
+        "available_actions": "Available Actions",
+        "available_actions_list": "• **Warn** - Give a warning\n• **View Warnings** - Check history\n• **Clear Warnings** - Remove all warnings",
+        "info": "Information",
+        "info_text": "Warnings are stored in database\nand can be consulted at any time."
+      },
+      "cleanup": {
+        "title": "Message Cleanup",
+        "description": "Delete messages in bulk",
+        "available_options": "Cleanup Options",
+        "available_options_list": "• **Recent Messages** - Delete latest messages\n• **User Messages** - Delete messages from a member\n• **Messages with Content** - Delete messages containing text\n• **Bot Messages** - Delete all bot messages",
+        "limits": "Limits",
+        "limits_text": "• Maximum 100 messages per action\n• Messages older than 14 days cannot be deleted"
+      },
+      "role_management": {
+        "title": "Role Management",
+        "description": "Add or remove roles from members",
+        "available_actions": "Available Actions",
+        "available_actions_list": "• **Add Role** - Give a role to a member\n• **Remove Role** - Take a role from a member\n• **View Roles** - Check member roles",
+        "info": "Information",
+        "info_text": "You can only manage roles\nthat are below your highest role."
+      },
+      "moderation_stats": {
+        "title": "Moderation Statistics",
+        "description": "Statistics for server **{guild_name}**",
+        "warnings": "Warnings",
+        "warnings_stats": "• Total: {total_warnings}\n• This month: {warnings_this_month}\n• This week: {warnings_this_week}",
+        "moderation_actions": "Moderation Actions",
+        "moderation_actions_stats": "• Timeouts: {total_timeouts}\n• Kicks: {total_kicks}\n• Bans: {total_bans}",
+        "members": "Members",
+        "members_stats": "• Total: {total_members}\n• Online: {online_members}\n• Bots: {bot_count}"
+      },
+      "moderation_config": {
+        "title": "Moderation Configuration",
+        "description": "Configure server moderation settings",
+        "available_settings": "Available Settings",
+        "available_settings_list": "• **Log Channel** - Channel for moderation logs\n• **Auto-moderation** - Automatic configuration\n• **Moderation Roles** - Define moderator roles\n• **Warning Thresholds** - Limits before sanctions",
+        "info": "Information",
+        "info_text": "These settings are configured via the web dashboard.\nUse `/dashboard` to access configuration."
+      },
+      "no_permission": "You don't have permission to moderate members.",
+      "stats_error": "Error loading statistics.",
+      "use_individual_commands": "Use individual commands for each action."
+    },
     "server_logs": {
       "title": "Server Logs Configuration",
       "description": "Configure server logging and monitoring.",

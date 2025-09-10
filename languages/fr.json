@@ -181,10 +181,6 @@
       "total_xp_field": "XP Total",
       "no_data": "Aucune donnée XP trouvée dans ce serveur."
     },
-    "roll": {
-      "description": "Lance un dé entre 1 et 100",
-      "result": "🎲 {user} a lancé un dé et obtenu : **{result}**"
-    },
     "clear": {
       "description": "Supprime les messages du salon",
       "number_param": "Nombre de messages à supprimer (max 100)",
@@ -765,6 +761,68 @@
       "dashboard_features_list": "• Configuration du canal de logs\n• Activation/désactivation des événements individuels\n• Logs de suppression/modification de messages\n• Logs d'arrivée/départ des membres\n• Logs d'activité vocale\n• Logs de changements de rôles et pseudos\n• Prévisualisation des paramètres en temps réel",
       "dashboard_benefits": "Fonctionnalités améliorées",
       "dashboard_benefits_list": "• Filtrage par utilisateur/canal\n• Formatage des messages de logs\n• Configuration en lot\n• Export des données de logs"
+    },
+    "moderation": {
+      "title": "Centre de Modération",
+      "description": "Bienvenue dans le centre de modération de **{guild_name}**\nSélectionnez une catégorie d'action ci-dessous.",
+      "available_actions": "Actions disponibles",
+      "available_actions_list": "• **Gestion des membres** - Timeout, kick, ban\n• **Système d'avertissements** - Avertir et consulter\n• **Nettoyage** - Supprimer des messages\n• **Gestion des rôles** - Ajouter/retirer des rôles\n• **Statistiques** - Voir les stats de modération\n• **Configuration** - Paramètres de modération",
+      "information": "Information",
+      "information_text": "Ce menu vous donne accès à toutes les fonctionnalités\nde modération du bot en un seul endroit.",
+      "moderator_footer": "Modérateur: {moderator_name}",
+      "member_management": {
+        "title": "Gestion des membres",
+        "description": "Choisissez l'action à effectuer sur un membre",
+        "available_actions": "Actions disponibles",
+        "available_actions_list": "• **Timeout** - Mettre en sourdine temporairement\n• **Untimeout** - Retirer la sourdine\n• **Kick** - Expulser du serveur\n• **Ban** - Bannir du serveur\n• **Unban** - Débannir du serveur",
+        "info": "Information",
+        "info_text": "Utilisez les commandes individuelles pour chaque action.\nExemple: `/timeout @membre 60 raison`"
+      },
+      "warnings_system": {
+        "title": "Système d'avertissements",
+        "description": "Gérez les avertissements des membres",
+        "available_actions": "Actions disponibles",
+        "available_actions_list": "• **Avertir** - Donner un avertissement\n• **Voir les avertissements** - Consulter l'historique\n• **Effacer les avertissements** - Supprimer tous les avertissements",
+        "info": "Information",
+        "info_text": "Les avertissements sont stockés en base de données\net peuvent être consultés à tout moment."
+      },
+      "cleanup": {
+        "title": "Nettoyage des messages",
+        "description": "Supprimez des messages en masse",
+        "available_options": "Options de nettoyage",
+        "available_options_list": "• **Messages récents** - Supprimer les derniers messages\n• **Messages d'un utilisateur** - Supprimer les messages d'un membre\n• **Messages avec contenu** - Supprimer les messages contenant du texte\n• **Messages de bots** - Supprimer tous les messages de bots",
+        "limits": "Limites",
+        "limits_text": "• Maximum 100 messages par action\n• Les messages de plus de 14 jours ne peuvent pas être supprimés"
+      },
+      "role_management": {
+        "title": "Gestion des rôles",
+        "description": "Ajoutez ou retirez des rôles aux membres",
+        "available_actions": "Actions disponibles",
+        "available_actions_list": "• **Ajouter un rôle** - Donner un rôle à un membre\n• **Retirer un rôle** - Enlever un rôle d'un membre\n• **Voir les rôles** - Consulter les rôles d'un membre",
+        "info": "Information",
+        "info_text": "Vous ne pouvez gérer que les rôles\nqui sont en dessous de votre rôle le plus élevé."
+      },
+      "moderation_stats": {
+        "title": "Statistiques de modération",
+        "description": "Statistiques du serveur **{guild_name}**",
+        "warnings": "Avertissements",
+        "warnings_stats": "• Total: {total_warnings}\n• Ce mois: {warnings_this_month}\n• Cette semaine: {warnings_this_week}",
+        "moderation_actions": "Actions de modération",
+        "moderation_actions_stats": "• Timeouts: {total_timeouts}\n• Kicks: {total_kicks}\n• Bans: {total_bans}",
+        "members": "Membres",
+        "members_stats": "• Total: {total_members}\n• En ligne: {online_members}\n• Bots: {bot_count}"
+      },
+      "moderation_config": {
+        "title": "Configuration de modération",
+        "description": "Configurez les paramètres de modération du serveur",
+        "available_settings": "Paramètres disponibles",
+        "available_settings_list": "• **Salon de logs** - Canal pour les logs de modération\n• **Auto-modération** - Configuration automatique\n• **Rôles de modération** - Définir les rôles modérateurs\n• **Seuils d'avertissement** - Limites avant sanctions",
+        "info": "Information",
+        "info_text": "Ces paramètres sont configurés via le dashboard web.\nUtilisez `/dashboard` pour accéder à la configuration."
+      },
+      "no_permission": "Vous n'avez pas la permission de modérer les membres.",
+      "stats_error": "Erreur lors du chargement des statistiques.",
+      "use_individual_commands": "Utilisez les commandes individuelles pour chaque action."
     }
   }
 }
