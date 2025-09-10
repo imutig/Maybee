@@ -10,8 +10,8 @@ from cache import BotCache
 from cog.ticket import TicketPanelView, TicketCloseView
 from dotenv import load_dotenv
 from i18n import i18n, _
-from services import ServiceContainer, BotConfig, RateLimitManager, handle_errors, rate_limit
-from monitoring import initialize_monitoring, get_health_checker, profile_performance
+# Services module removed during cleanup
+# Monitoring module removed during cleanup
 from cog.command_logger import log_command_usage
 
 # Setup enhanced logging with Unicode support
@@ -30,16 +30,122 @@ class UnicodeStreamHandler(logging.StreamHandler):
         except Exception:
             self.handleError(record)
 
-# Configure logging with Unicode-safe handlers
-logging.basicConfig(
-    level=logging.INFO,  # Changé de DEBUG à INFO pour réduire le spam
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('bot.log', encoding='utf-8'),
-        UnicodeStreamHandler()
-    ]
-)
+# Configure logging with separate console and file handlers
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# File handler for detailed logs
+file_handler = logging.FileHandler('bot.log', encoding='utf-8')
+file_handler.setLevel(logging.DEBUG)
+file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(file_formatter)
+
+# Console handler for important logs only
+console_handler = UnicodeStreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# Custom formatter with colors and emojis
+class ColoredFormatter(logging.Formatter):
+    """Custom formatter with colors and emojis for better readability"""
+    
+    def __init__(self):
+        super().__init__()
+        # Check if terminal supports colors
+        self.supports_color = self._supports_color()
+        
+        # Color codes (ANSI escape sequences)
+        self.COLORS = {
+            'DEBUG': '\033[36m',    # Cyan
+            'INFO': '\033[32m',     # Green
+            'WARNING': '\033[33m',  # Yellow
+            'ERROR': '\033[31m',    # Red
+            'CRITICAL': '\033[35m', # Magenta
+            'RESET': '\033[0m',     # Reset
+            'BOLD': '\033[1m',      # Bold
+            'YELLOW': '\033[33m'    # Yellow for brackets
+        }
+        
+        # Emojis for different log levels (Unicode compatible)
+        self.EMOJIS = {
+            'DEBUG': "[O]",
+            'INFO': "[i]",
+            'WARNING': "[/!\]",
+            'ERROR': "[!]",
+            'CRITICAL': "[!!!]"
+        }
+    
+    def _supports_color(self):
+        """Check if the terminal supports colors"""
+        import os
+        import sys
+        
+        # Force color support for Git Bash and Windows Terminal
+        if hasattr(sys.stdout, 'isatty') and sys.stdout.isatty():
+            # Always enable colors for interactive terminals
+            return True
+        
+        # Check environment variables
+        if os.getenv('TERM') in ['xterm', 'xterm-color', 'xterm-256color', 'screen', 'screen-256color']:
+            return True
+        
+        # Windows 10+ with ANSI support
+        if os.name == 'nt' and os.getenv('ANSICON') is not None:
+            return True
+        
+        # Git Bash on Windows
+        if os.getenv('MSYSTEM') is not None:
+            return True
+            
+        return False
+    
+    def format(self, record):
+        # Get color and emoji for the log level
+        color = self.COLORS.get(record.levelname, '') if self.supports_color else ''
+        emoji = self.EMOJIS.get(record.levelname, '')
+        reset = self.COLORS['RESET'] if self.supports_color else ''
+        bold = self.COLORS['BOLD'] if self.supports_color else ''
+        yellow = self.COLORS['YELLOW'] if self.supports_color else ''
+        
+        # Format the message with yellow brackets, bold brackets, color text
+        if record.levelname == 'INFO':
+            # For INFO messages: yellow bold brackets, green text
+            return f"{yellow}{bold}[{reset}{color}{bold}i{reset}{yellow}{bold}]{reset} {color}{record.getMessage()}{reset}"
+        else:
+            # For other levels: yellow bold brackets with colored inner text
+            if record.levelname == 'WARNING':
+                return f"{yellow}{bold}[{reset}{color}{bold}!{reset}{yellow}{bold}]{reset} {color}{record.levelname}:{reset} {color}{record.getMessage()}{reset}"
+            elif record.levelname == 'ERROR':
+                return f"{yellow}{bold}[{reset}{color}{bold}!!{reset}{yellow}{bold}]{reset} {color}{record.levelname}:{reset} {color}{record.getMessage()}{reset}"
+            elif record.levelname == 'CRITICAL':
+                return f"{yellow}{bold}[{reset}{color}{bold}!!!{reset}{yellow}{bold}]{reset} {color}{record.levelname}:{reset} {color}{record.getMessage()}{reset}"
+            elif record.levelname == 'DEBUG':
+                return f"{yellow}{bold}[{reset}{color}{bold}-{reset}{yellow}{bold}]{reset} {color}{record.levelname}:{reset} {color}{record.getMessage()}{reset}"
+            else:
+                return f"{yellow}{bold}[{reset}{color}{bold}{record.levelname}{reset}{yellow}{bold}]{reset} {color}{record.levelname}:{reset} {color}{record.getMessage()}{reset}"
+
+console_formatter = ColoredFormatter()
+console_handler.setFormatter(console_formatter)
+
+# Fonction utilitaire pour unifier les logs dans toute l'application
+def log_command_execution(user_name: str, command_name: str):
+    """Log uniforme pour l'utilisation des commandes"""
+    print(f"\033[33m\033[1m[\033[0m\033[32m\033[1mi\033[0m\033[33m\033[1m]\033[0m \033[32mUtilisateur \033[33m\033[1m{user_name}\033[0m \033[32ma utilisé \033[33m\033[1m/{command_name}\033[0m")
+
+def log_info(message: str):
+    """Log INFO uniforme"""
+    print(f"\033[33m\033[1m[\033[0m\033[32m\033[1mi\033[0m\033[33m\033[1m]\033[0m \033[32m{message}\033[0m")
+
+def log_warning(message: str):
+    """Log WARNING uniforme"""
+    print(f"\033[33m\033[1m[\033[0m\033[33m\033[1mWARN\033[0m\033[33m\033[1m]\033[0m \033[33mWARNING:\033[0m \033[33m{message}\033[0m")
+
+def log_error(message: str):
+    """Log ERROR uniforme"""
+    print(f"\033[33m\033[1m[\033[0m\033[31m\033[1mERROR\033[0m\033[33m\033[1m]\033[0m \033[31mERROR:\033[0m \033[31m{message}\033[0m")
+
+# Add handlers
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 # Configure Discord.py to be less verbose
 logging.getLogger('discord').setLevel(logging.WARNING)
@@ -47,61 +153,52 @@ logging.getLogger('discord.http').setLevel(logging.WARNING)
 logging.getLogger('discord.gateway').setLevel(logging.WARNING)
 logging.getLogger('discord.client').setLevel(logging.WARNING)
 
+# Configure other loggers to be less verbose
+logging.getLogger('aiomysql').setLevel(logging.ERROR)
+logging.getLogger('googleapiclient').setLevel(logging.WARNING)
+
+# Suppress MySQL warnings
+import warnings
+warnings.filterwarnings('ignore', category=Warning, module='aiomysql')
+
 
 # ========== Configuration du bot ==========
 
+# Load configuration from environment
 load_dotenv()
 
-# Load configuration from environment
-try:
-    config = BotConfig.from_env()
-    logger.info("Configuration loaded successfully")
-except ValueError as e:
-    logger.error(f"Configuration error: {e}")
+TOKEN = os.getenv('DISCORD_TOKEN')
+PREFIX = "?"
+
+if not TOKEN:
+    logger.error("DISCORD_TOKEN not found in environment variables")
     exit(1)
 
-TOKEN = config.discord_token
-PREFIX = "?"
+logger.info("Configuration loaded successfully")
 CATEGORY = "Tickets 🔖"
 
 # =========== Fonctions YAML ==========
 
 class MyBot(commands.Bot):
 
-    def __init__(self, config: BotConfig):
+    def __init__(self):
         intents = discord.Intents.all()
         super().__init__(command_prefix="!", intents=intents)
         
-        # Store configuration and start time
-        self.config = config
+        # Store start time
         self.start_time = datetime.now()
-        
-        # Initialize service container
-        self.services = ServiceContainer()
         
         # Setup core services
         self.db = Database(
-            host=config.db_host,
-            port=config.db_port,
-            user=config.db_user,
-            password=config.db_password,
-            db=config.db_name,
-            debug=config.debug_mode
+            host=os.getenv('DB_HOST', 'localhost'),
+            port=int(os.getenv('DB_PORT', '3306')),
+            user=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASS', ''),
+            db=os.getenv('DB_NAME', 'maybebot'),
+            debug=os.getenv('DEBUG', 'False').lower() == 'true'
         )
         self.cache = BotCache(self.db)
         self.i18n = i18n
-        self.rate_limiter = RateLimitManager()
-        
-        # Register services in container
-        self.services.register('database', self.db)
-        self.services.register('cache', self.cache)
-        self.services.register('i18n', self.i18n)
-        self.services.register('rate_limiter', self.rate_limiter)
-        self.services.register('config', config)
-        
-        # Initialize monitoring
-        self.health_checker = initialize_monitoring(self, self.db, self.cache)
-        self.services.register('health_checker', self.health_checker)
         
         # Legacy attributes for backward compatibility
         self.role_reactions = {}
@@ -109,10 +206,7 @@ class MyBot(commands.Bot):
     async def close(self):
         logger.info("Shutting down bot...")
         
-        # Stop monitoring
-        if self.health_checker:
-            await self.health_checker.stop_monitoring()
-            logger.info("Health monitoring stopped")
+        # Monitoring removed during cleanup
         
         # Stop cache cleanup
         await self.cache.stop_cleanup_task()
@@ -125,9 +219,9 @@ class MyBot(commands.Bot):
         await super().close()
         logger.info("Bot shutdown complete")
 
-    @profile_performance("setup_hook")
     async def setup_hook(self):
         try:
+            logger.info("Connecting to database...")
             await self.db.connect()
             logger.info("Database connected successfully")
             
@@ -138,16 +232,14 @@ class MyBot(commands.Bot):
             await self.i18n.load_language_preferences(self.db)
             logger.info("Language preferences loaded from database")
             
-            # Start monitoring
-            await self.health_checker.start_monitoring(interval=60)
-            logger.info("Health monitoring started")
+            # Monitoring removed during cleanup
             
         except Exception as e:
             logger.error(f"Error during setup: {e}")
-            self.health_checker.log_error("setup", str(e))
+            print(f"❌ Database connection failed: {e}")
             raise
 
-bot = MyBot(config)
+bot = MyBot()
 
 async def load_extensions():
     extensions = [
@@ -158,17 +250,21 @@ async def load_extensions():
         "cog.disboard_reminder", "cog.disboard_config", "cog.dm_logs"
     ]
     
+    loaded_count = 0
+    failed_count = 0
+    
     for extension in extensions:
         try:
             await bot.load_extension(extension)
-            print(f"✅ Extension {extension} chargée.")
+            loaded_count += 1
+            logger.debug(f"Extension {extension} loaded successfully")
         except Exception as e:
-            print(f"❌ Erreur lors du chargement de {extension}: {e}")
+            failed_count += 1
+            logger.error(f"Failed to load extension {extension}: {e}")
     
-    print("✅ Chargement des extensions terminé.")
+    logger.info(f"Extensions loaded: {loaded_count} successful, {failed_count} failed")
 
 @bot.event
-@profile_performance("on_ready")
 async def on_ready():
     logger.info(f"Bot is ready as {bot.user}")
     logger.info(f"Connected to {len(bot.guilds)} server(s):")
@@ -196,16 +292,13 @@ async def on_ready():
         
     except Exception as e:
         logger.error(f"Error syncing slash commands: {e}")
-        bot.health_checker.log_error("command_sync", str(e))
         try:
             synced = await bot.tree.sync()
             logger.info(f"{len(synced)} commands synced successfully in fallback")
         except Exception as e2:
             logger.error(f"Fallback sync failed: {e2}")
-            bot.health_checker.log_error("command_sync_fallback", str(e2))
     
     logger.info("Bot startup completed successfully")
-    print("successfully finished startup")
     await bot.change_presence(activity=discord.Game(name="/dashboard | /config"))
     bot.add_view(TicketPanelView())
     bot.add_view(TicketCloseView())

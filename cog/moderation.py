@@ -6,7 +6,7 @@ import asyncio
 from datetime import datetime, timedelta
 from i18n import _
 from .command_logger import log_command_usage
-from validation import InputValidator
+# Validation module removed during cleanup
 import logging
 from custom_emojis import (
     SHIELD, SUCCESS, ERROR, WARNING, TRASH, CHECK, CROSS, 
@@ -54,7 +54,7 @@ class MemberSelectView(discord.ui.View):
             
             description = f"{status_emoji} {member.status.name.title()}"
             if len(member.roles) > 1:  # Plus que @everyone
-                top_role = member.top_role.name if member.top_role.name != "@everyone" else "Aucun rôle"
+                top_role = member.top_role.name if member.top_role.name != "@everyone" else _("common.none", self.user_id, self.guild_id)
                 description += f" • {top_role}"
             
             options.append(discord.SelectOption(
@@ -66,15 +66,15 @@ class MemberSelectView(discord.ui.View):
         
         # Ajouter l'option de recherche manuelle
         options.append(discord.SelectOption(
-            label="🔍 Recherche manuelle...",
+            label=_("moderation.member_select.manual_search", self.user_id, self.guild_id),
             value="manual_search",
-            description="Tapez l'ID ou la mention du membre",
+            description=_("moderation.member_select.manual_search_desc", self.user_id, self.guild_id),
             emoji="🔍"
         ))
         
         # Créer le select menu
         self.member_select = discord.ui.Select(
-            placeholder="👥 Sélectionnez un membre...",
+            placeholder=_("moderation.member_select.placeholder", self.user_id, self.guild_id),
             options=options,
             min_values=1,
             max_values=1
@@ -85,7 +85,7 @@ class MemberSelectView(discord.ui.View):
     async def on_member_select(self, interaction: discord.Interaction):
         """Gestionnaire pour la sélection de membre"""
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ Seul l'utilisateur qui a lancé la commande peut interagir.", ephemeral=True)
+            await interaction.response.send_message(_("moderation.member_select.unauthorized", self.user_id, self.guild_id), ephemeral=True)
             return
         
         selected_value = self.member_select.values[0]
@@ -102,7 +102,7 @@ class MemberSelectView(discord.ui.View):
             
             if not member:
                 await interaction.response.send_message(
-                    f"{ERROR} Membre introuvable sur ce serveur.",
+                    f"{ERROR} {_('moderation.member_select.member_not_found', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -113,7 +113,7 @@ class MemberSelectView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error in member selection: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors de la sélection du membre.",
+                f"{ERROR} {_('moderation.member_select.selection_error', self.user_id, self.guild_id)}",
                 ephemeral=True
             )
     
@@ -133,16 +133,29 @@ class MemberSelectView(discord.ui.View):
             await self.show_role_remove_modal(interaction, member)
         elif self.action_type == "view_warnings":
             await self.show_member_warnings(interaction, member)
-
-class MemberSearchModal(discord.ui.Modal, title="Recherche manuelle"):
-    """Modal pour rechercher un membre manuellement"""
     
-    member_input = discord.ui.TextInput(
-        label="ID ou mention du membre",
-        placeholder="Ex: @membre ou 123456789012345678",
-        required=True,
-        max_length=100
-    )
+    async def show_warn_modal(self, interaction: discord.Interaction, member: discord.Member):
+        """Affiche le modal d'avertissement"""
+        modal = WarnModal(member, self.bot, interaction)
+        await interaction.response.send_modal(modal)
+    
+    async def show_timeout_modal(self, interaction: discord.Interaction, member: discord.Member):
+        """Affiche le modal de timeout"""
+        modal = TimeoutModal(member, self.bot, interaction)
+        await interaction.response.send_modal(modal)
+    
+    async def show_kick_modal(self, interaction: discord.Interaction, member: discord.Member):
+        """Affiche le modal de kick"""
+        modal = KickModal(member, self.bot, interaction)
+        await interaction.response.send_modal(modal)
+    
+    async def show_ban_modal(self, interaction: discord.Interaction, member: discord.Member):
+        """Affiche le modal de ban"""
+        modal = BanModal(member, self.bot, interaction)
+        await interaction.response.send_modal(modal)
+
+class MemberSearchModal(discord.ui.Modal):
+    """Modal pour rechercher un membre manuellement"""
     
     def __init__(self, action_type: str, bot, interaction: discord.Interaction):
         super().__init__()
@@ -151,6 +164,19 @@ class MemberSearchModal(discord.ui.Modal, title="Recherche manuelle"):
         self.original_interaction = interaction
         self.user_id = interaction.user.id
         self.guild_id = interaction.guild.id
+        
+        # Créer le champ de saisie avec traduction
+        self.member_input = discord.ui.TextInput(
+            label=_("moderation.modals.member_input_label", self.user_id, self.guild_id),
+            placeholder=_("moderation.modals.member_input_placeholder", self.user_id, self.guild_id),
+            required=True,
+            max_length=100
+        )
+        self.add_item(self.member_input)
+    
+    @property
+    def title(self):
+        return _("moderation.modals.manual_search_title", self.user_id, self.guild_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
@@ -166,7 +192,7 @@ class MemberSearchModal(discord.ui.Modal, title="Recherche manuelle"):
                 member_id = int(member_text)
             else:
                 await interaction.response.send_message(
-                    f"{ERROR} Format invalide. Utilisez @membre ou l'ID numérique.",
+                    f"{ERROR} {_('moderation.member_select.invalid_format', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -175,7 +201,7 @@ class MemberSearchModal(discord.ui.Modal, title="Recherche manuelle"):
             member = interaction.guild.get_member(member_id)
             if not member:
                 await interaction.response.send_message(
-                    f"{ERROR} Membre introuvable sur ce serveur.",
+                    f"{ERROR} {_('moderation.member_select.member_not_found', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -187,7 +213,7 @@ class MemberSearchModal(discord.ui.Modal, title="Recherche manuelle"):
         except Exception as e:
             logger.error(f"Error in member search: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors de la recherche du membre.",
+                f"{ERROR} {_('moderation.member_select.search_error', self.user_id, self.guild_id)}",
                 ephemeral=True
             )
 
@@ -234,24 +260,24 @@ class MemberSearchModal(discord.ui.Modal, title="Recherche manuelle"):
             )
             
             embed = discord.Embed(
-                title=f"{WARNING} Avertissements de {member.display_name}",
+                title=f"{WARNING} {_('moderation.warnings.embed_title', self.user_id, self.guild_id, user=member.display_name)}",
                 color=discord.Color.orange(),
                 timestamp=datetime.now()
             )
             embed.set_thumbnail(url=member.display_avatar.url)
             
             if not warnings:
-                embed.description = f"{member.mention} n'a aucun avertissement."
+                embed.description = _('moderation.warnings.no_warnings', self.user_id, self.guild_id, user=member.mention)
             else:
                 for i, warning in enumerate(warnings, 1):
                     moderator = self.bot.get_user(warning['moderator_id'])
-                    moderator_name = moderator.display_name if moderator else "Inconnu"
+                    moderator_name = moderator.display_name if moderator else _("common.unknown", self.user_id, self.guild_id)
                     
                     embed.add_field(
-                        name=f"Avertissement #{i}",
-                        value=f"**Modérateur:** {moderator_name}\n"
-                              f"**Raison:** {warning['reason']}\n"
-                              f"**Date:** {warning['timestamp'].strftime('%d/%m/%Y %H:%M')}",
+                        name=_('moderation.warnings.warning_field', self.user_id, self.guild_id, number=i),
+                        value=_('moderation.warnings.warning_value', self.user_id, self.guild_id, 
+                               moderator=moderator_name, reason=warning['reason'], 
+                               timestamp=warning['timestamp'].strftime('%d/%m/%Y %H:%M')),
                         inline=False
                     )
                 
@@ -262,27 +288,12 @@ class MemberSearchModal(discord.ui.Modal, title="Recherche manuelle"):
         except Exception as e:
             logger.error(f"Error fetching warnings: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors de la récupération des avertissements.",
+                f"{ERROR} {_('moderation.errors.warnings_fetch_error', self.user_id, self.guild_id)}",
                 ephemeral=True
             )
 
-class TimeoutModal(discord.ui.Modal, title="Mettre en timeout"):
+class TimeoutModal(discord.ui.Modal):
     """Modal pour timeout un membre"""
-    
-    duration = discord.ui.TextInput(
-        label="Durée (en minutes)",
-        placeholder="Ex: 60 (maximum 2880 = 48h)",
-        required=True,
-        max_length=10
-    )
-    
-    reason = discord.ui.TextInput(
-        label="Raison",
-        placeholder="Raison du timeout",
-        required=True,
-        max_length=500,
-        style=discord.TextStyle.paragraph
-    )
     
     def __init__(self, member: discord.Member, bot, interaction: discord.Interaction):
         super().__init__()
@@ -291,6 +302,27 @@ class TimeoutModal(discord.ui.Modal, title="Mettre en timeout"):
         self.original_interaction = interaction
         self.user_id = interaction.user.id
         self.guild_id = interaction.guild.id
+        
+        # Créer les champs avec traduction
+        self.duration = discord.ui.TextInput(
+            label=_("moderation.modals.timeout_duration_label", self.user_id, self.guild_id),
+            placeholder=_("moderation.modals.timeout_duration_placeholder", self.user_id, self.guild_id),
+            required=True,
+            max_length=10
+        )
+        self.reason = discord.ui.TextInput(
+            label=_("common.reason", self.user_id, self.guild_id),
+            placeholder=_("moderation.modals.timeout_reason_placeholder", self.user_id, self.guild_id),
+            required=True,
+            max_length=500,
+            style=discord.TextStyle.paragraph
+        )
+        self.add_item(self.duration)
+        self.add_item(self.reason)
+    
+    @property
+    def title(self):
+        return _("moderation.modals.timeout_title", self.user_id, self.guild_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
@@ -300,7 +332,7 @@ class TimeoutModal(discord.ui.Modal, title="Mettre en timeout"):
             # Vérifier la durée
             if duration < 1 or duration > 2880:
                 await interaction.response.send_message(
-                    f"{ERROR} La durée doit être entre 1 et 2880 minutes (48h).",
+                    f"{ERROR} {_('moderation.timeout.invalid_duration', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -308,7 +340,7 @@ class TimeoutModal(discord.ui.Modal, title="Mettre en timeout"):
             # Vérifier les permissions
             if not interaction.user.guild_permissions.moderate_members:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous n'avez pas la permission de modérer les membres.",
+                    f"{ERROR} {_('moderation.permissions.no_moderate_permission', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -316,7 +348,7 @@ class TimeoutModal(discord.ui.Modal, title="Mettre en timeout"):
             # Vérifier si on peut timeout ce membre
             if self.member.top_role >= interaction.user.top_role and interaction.user != interaction.guild.owner:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous ne pouvez pas timeout un membre avec un rôle égal ou supérieur au vôtre.",
+                    f"{ERROR} {_('moderation.timeout.cannot_timeout_higher_role', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -334,39 +366,31 @@ class TimeoutModal(discord.ui.Modal, title="Mettre en timeout"):
             
             # Embed de confirmation
             embed = discord.Embed(
-                title=f"{WARNING} Membre mis en timeout",
-                description=f"{self.member.mention} a été mis en timeout pour {duration} minutes.",
+                title=f"{WARNING} {_('moderation.timeout.embed_title', self.user_id, self.guild_id)}",
+                description=_('moderation.timeout.embed_description', self.user_id, self.guild_id, user=self.member.mention, duration=duration),
                 color=discord.Color.orange(),
                 timestamp=datetime.now()
             )
-            embed.add_field(name="Raison", value=reason, inline=False)
-            embed.add_field(name="Modérateur", value=interaction.user.mention, inline=True)
-            embed.add_field(name="Durée", value=f"{duration} minutes", inline=True)
+            embed.add_field(name=_("common.reason", self.user_id, self.guild_id), value=reason, inline=False)
+            embed.add_field(name=_("moderation.timeout.moderator_field", self.user_id, self.guild_id), value=interaction.user.mention, inline=True)
+            embed.add_field(name=_("moderation.timeout.duration_field", self.user_id, self.guild_id), value=_('moderation.timeout.duration_value', self.user_id, self.guild_id, duration=duration), inline=True)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except ValueError:
             await interaction.response.send_message(
-                f"{ERROR} La durée doit être un nombre valide.",
+                f"{ERROR} {_('moderation.errors.invalid_duration_number', self.user_id, self.guild_id)}",
                 ephemeral=True
             )
         except Exception as e:
             logger.error(f"Error in timeout: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors du timeout: {str(e)}",
+                f"{ERROR} {_('moderation.errors.timeout_error', self.user_id, self.guild_id, error=str(e))}",
                 ephemeral=True
             )
 
-class KickModal(discord.ui.Modal, title="Expulser un membre"):
+class KickModal(discord.ui.Modal):
     """Modal pour kick un membre"""
-    
-    reason = discord.ui.TextInput(
-        label="Raison",
-        placeholder="Raison de l'expulsion",
-        required=True,
-        max_length=500,
-        style=discord.TextStyle.paragraph
-    )
     
     def __init__(self, member: discord.Member, bot, interaction: discord.Interaction):
         super().__init__()
@@ -375,6 +399,20 @@ class KickModal(discord.ui.Modal, title="Expulser un membre"):
         self.original_interaction = interaction
         self.user_id = interaction.user.id
         self.guild_id = interaction.guild.id
+        
+        # Créer le champ avec traduction
+        self.reason = discord.ui.TextInput(
+            label=_("common.reason", self.user_id, self.guild_id),
+            placeholder=_("moderation.modals.kick_reason_placeholder", self.user_id, self.guild_id),
+            required=True,
+            max_length=500,
+            style=discord.TextStyle.paragraph
+        )
+        self.add_item(self.reason)
+    
+    @property
+    def title(self):
+        return _("moderation.modals.kick_title", self.user_id, self.guild_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
@@ -383,7 +421,7 @@ class KickModal(discord.ui.Modal, title="Expulser un membre"):
             # Vérifier les permissions
             if not interaction.user.guild_permissions.kick_members:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous n'avez pas la permission d'expulser des membres.",
+                    f"{ERROR} {_('moderation.permissions.no_kick_permission', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -391,7 +429,7 @@ class KickModal(discord.ui.Modal, title="Expulser un membre"):
             # Vérifier si on peut kick ce membre
             if self.member.top_role >= interaction.user.top_role and interaction.user != interaction.guild.owner:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous ne pouvez pas expulser un membre avec un rôle égal ou supérieur au vôtre.",
+                    f"{ERROR} {_('moderation.kick.cannot_kick_higher_role', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -401,33 +439,25 @@ class KickModal(discord.ui.Modal, title="Expulser un membre"):
             
             # Embed de confirmation
             embed = discord.Embed(
-                title=f"{CROSS} Membre expulsé",
-                description=f"{self.member.display_name} a été expulsé du serveur.",
+                title=f"{CROSS} {_('moderation.kick.embed_title', self.user_id, self.guild_id)}",
+                description=_('moderation.kick.embed_description', self.user_id, self.guild_id, user=self.member.display_name),
                 color=discord.Color.red(),
                 timestamp=datetime.now()
             )
-            embed.add_field(name="Raison", value=reason, inline=False)
-            embed.add_field(name="Modérateur", value=interaction.user.mention, inline=True)
+            embed.add_field(name=_("moderation.kick.reason_field", self.user_id, self.guild_id), value=reason, inline=False)
+            embed.add_field(name=_("moderation.kick.moderator_field", self.user_id, self.guild_id), value=interaction.user.mention, inline=True)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error in kick: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors de l'expulsion: {str(e)}",
+                f"{ERROR} {_('moderation.errors.kick_error', self.user_id, self.guild_id, error=str(e))}",
                 ephemeral=True
             )
 
-class BanModal(discord.ui.Modal, title="Bannir un membre"):
+class BanModal(discord.ui.Modal):
     """Modal pour ban un membre"""
-    
-    reason = discord.ui.TextInput(
-        label="Raison",
-        placeholder="Raison du bannissement",
-        required=True,
-        max_length=500,
-        style=discord.TextStyle.paragraph
-    )
     
     def __init__(self, member: discord.Member, bot, interaction: discord.Interaction):
         super().__init__()
@@ -436,6 +466,20 @@ class BanModal(discord.ui.Modal, title="Bannir un membre"):
         self.original_interaction = interaction
         self.user_id = interaction.user.id
         self.guild_id = interaction.guild.id
+        
+        # Créer le champ avec traduction
+        self.reason = discord.ui.TextInput(
+            label=_("common.reason", self.user_id, self.guild_id),
+            placeholder=_("moderation.modals.ban_reason_placeholder", self.user_id, self.guild_id),
+            required=True,
+            max_length=500,
+            style=discord.TextStyle.paragraph
+        )
+        self.add_item(self.reason)
+    
+    @property
+    def title(self):
+        return _("moderation.modals.ban_title", self.user_id, self.guild_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
@@ -444,7 +488,7 @@ class BanModal(discord.ui.Modal, title="Bannir un membre"):
             # Vérifier les permissions
             if not interaction.user.guild_permissions.ban_members:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous n'avez pas la permission de bannir des membres.",
+                    f"{ERROR} {_('moderation.permissions.no_ban_permission', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -452,7 +496,7 @@ class BanModal(discord.ui.Modal, title="Bannir un membre"):
             # Vérifier si on peut ban ce membre
             if self.member.top_role >= interaction.user.top_role and interaction.user != interaction.guild.owner:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous ne pouvez pas bannir un membre avec un rôle égal ou supérieur au vôtre.",
+                    f"{ERROR} {_('moderation.ban.cannot_ban_higher_role', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -462,33 +506,25 @@ class BanModal(discord.ui.Modal, title="Bannir un membre"):
             
             # Embed de confirmation
             embed = discord.Embed(
-                title=f"{CROSS} Membre banni",
-                description=f"{self.member.display_name} a été banni du serveur.",
+                title=f"{CROSS} {_('moderation.ban.embed_title', self.user_id, self.guild_id)}",
+                description=_('moderation.ban.embed_description', self.user_id, self.guild_id, user=self.member.display_name),
                 color=discord.Color.red(),
                 timestamp=datetime.now()
             )
-            embed.add_field(name="Raison", value=reason, inline=False)
-            embed.add_field(name="Modérateur", value=interaction.user.mention, inline=True)
+            embed.add_field(name=_("moderation.ban.reason_field", self.user_id, self.guild_id), value=reason, inline=False)
+            embed.add_field(name=_("moderation.ban.moderator_field", self.user_id, self.guild_id), value=interaction.user.mention, inline=True)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error in ban: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors du bannissement: {str(e)}",
+                f"{ERROR} {_('moderation.errors.ban_error', self.user_id, self.guild_id, error=str(e))}",
                 ephemeral=True
             )
 
-class WarnModal(discord.ui.Modal, title="Avertir un membre"):
+class WarnModal(discord.ui.Modal):
     """Modal pour avertir un membre"""
-    
-    reason = discord.ui.TextInput(
-        label="Raison de l'avertissement",
-        placeholder="Raison de l'avertissement",
-        required=True,
-        max_length=500,
-        style=discord.TextStyle.paragraph
-    )
     
     def __init__(self, member: discord.Member, bot, interaction: discord.Interaction):
         super().__init__()
@@ -497,6 +533,20 @@ class WarnModal(discord.ui.Modal, title="Avertir un membre"):
         self.original_interaction = interaction
         self.user_id = interaction.user.id
         self.guild_id = interaction.guild.id
+        
+        # Créer le champ avec traduction
+        self.reason = discord.ui.TextInput(
+            label=_("moderation.modals.warn_reason_label", self.user_id, self.guild_id),
+            placeholder=_("moderation.modals.warn_reason_placeholder", self.user_id, self.guild_id),
+            required=True,
+            max_length=500,
+            style=discord.TextStyle.paragraph
+        )
+        self.add_item(self.reason)
+    
+    @property
+    def title(self):
+        return _("moderation.modals.warn_title", self.user_id, self.guild_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
@@ -505,7 +555,7 @@ class WarnModal(discord.ui.Modal, title="Avertir un membre"):
             # Vérifier les permissions
             if not interaction.user.guild_permissions.moderate_members:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous n'avez pas la permission de modérer les membres.",
+                    f"{ERROR} {_('moderation.permissions.no_moderate_permission', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -513,7 +563,7 @@ class WarnModal(discord.ui.Modal, title="Avertir un membre"):
             # Vérifier si on peut warn ce membre
             if self.member.top_role >= interaction.user.top_role and interaction.user != interaction.guild.owner:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous ne pouvez pas avertir un membre avec un rôle égal ou supérieur au vôtre.",
+                    f"{ERROR} {_('moderation.warn.cannot_warn_higher_role', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -527,24 +577,24 @@ class WarnModal(discord.ui.Modal, title="Avertir un membre"):
             
             # Embed de confirmation
             embed = discord.Embed(
-                title=f"{WARNING} Avertissement donné",
-                description=f"{self.member.mention} a reçu un avertissement.",
+                title=f"{WARNING} {_('moderation.warn.embed_title', self.user_id, self.guild_id)}",
+                description=_('moderation.warn.embed_description', self.user_id, self.guild_id, user=self.member.mention),
                 color=discord.Color.orange(),
                 timestamp=datetime.now()
             )
-            embed.add_field(name="Raison", value=reason, inline=False)
-            embed.add_field(name="Modérateur", value=interaction.user.mention, inline=True)
+            embed.add_field(name=_("common.reason", self.user_id, self.guild_id), value=reason, inline=False)
+            embed.add_field(name=_("moderation.warn.moderator_field", self.user_id, self.guild_id), value=interaction.user.mention, inline=True)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
             # Essayer d'envoyer un DM au membre
             try:
                 dm_embed = discord.Embed(
-                    title=f"{WARNING} Avertissement reçu",
-                    description=f"Vous avez reçu un avertissement sur **{interaction.guild.name}**",
+                    title=f"{WARNING} {_('moderation.warn.dm_title', self.user_id, self.guild_id)}",
+                    description=_('moderation.warn.dm_description', self.user_id, self.guild_id, server=interaction.guild.name),
                     color=discord.Color.orange()
                 )
-                dm_embed.add_field(name="Raison", value=reason, inline=False)
+                dm_embed.add_field(name=_("common.reason", self.user_id, self.guild_id), value=reason, inline=False)
                 await self.member.send(embed=dm_embed)
             except discord.Forbidden:
                 pass  # L'utilisateur a les DM désactivés
@@ -552,19 +602,12 @@ class WarnModal(discord.ui.Modal, title="Avertir un membre"):
         except Exception as e:
             logger.error(f"Error in warn: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors de l'avertissement: {str(e)}",
+                f"{ERROR} {_('moderation.errors.warn_error', self.user_id, self.guild_id, error=str(e))}",
                 ephemeral=True
             )
 
-class RoleAddModal(discord.ui.Modal, title="Ajouter un rôle"):
+class RoleAddModal(discord.ui.Modal):
     """Modal pour ajouter un rôle à un membre"""
-    
-    role_input = discord.ui.TextInput(
-        label="Nom ou ID du rôle",
-        placeholder="Ex: @rôle ou 123456789012345678",
-        required=True,
-        max_length=100
-    )
     
     def __init__(self, member: discord.Member, bot, interaction: discord.Interaction):
         super().__init__()
@@ -573,6 +616,19 @@ class RoleAddModal(discord.ui.Modal, title="Ajouter un rôle"):
         self.original_interaction = interaction
         self.user_id = interaction.user.id
         self.guild_id = interaction.guild.id
+        
+        # Créer le champ avec traduction
+        self.role_input = discord.ui.TextInput(
+            label=_("moderation.modals.role_input_label", self.user_id, self.guild_id),
+            placeholder=_("moderation.modals.role_input_placeholder", self.user_id, self.guild_id),
+            required=True,
+            max_length=100
+        )
+        self.add_item(self.role_input)
+    
+    @property
+    def title(self):
+        return _("moderation.modals.role_add_title", self.user_id, self.guild_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
@@ -592,7 +648,7 @@ class RoleAddModal(discord.ui.Modal, title="Ajouter un rôle"):
             
             if not role:
                 await interaction.response.send_message(
-                    f"{ERROR} Rôle introuvable.",
+                    f"{ERROR} {_('moderation.errors.role_not_found', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -600,7 +656,7 @@ class RoleAddModal(discord.ui.Modal, title="Ajouter un rôle"):
             # Vérifier les permissions
             if not interaction.user.guild_permissions.manage_roles:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous n'avez pas la permission de gérer les rôles.",
+                    f"{ERROR} {_('moderation.permissions.no_manage_roles_permission', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -608,7 +664,7 @@ class RoleAddModal(discord.ui.Modal, title="Ajouter un rôle"):
             # Vérifier si on peut gérer ce rôle
             if role >= interaction.user.top_role and interaction.user != interaction.guild.owner:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous ne pouvez pas gérer un rôle égal ou supérieur au vôtre.",
+                    f"{ERROR} {_('moderation.role_add.cannot_manage_role', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -616,7 +672,7 @@ class RoleAddModal(discord.ui.Modal, title="Ajouter un rôle"):
             # Ajouter le rôle
             if role in self.member.roles:
                 await interaction.response.send_message(
-                    f"{WARNING} {self.member.mention} a déjà le rôle {role.mention}.",
+                    f"{WARNING} {_('moderation.role_add.role_already_has', self.user_id, self.guild_id, user=self.member.mention, role=role.mention)}",
                     ephemeral=True
                 )
                 return
@@ -625,31 +681,24 @@ class RoleAddModal(discord.ui.Modal, title="Ajouter un rôle"):
             
             # Embed de confirmation
             embed = discord.Embed(
-                title=f"{CHECK} Rôle ajouté",
-                description=f"Le rôle {role.mention} a été ajouté à {self.member.mention}.",
+                title=f"{CHECK} {_('moderation.role_add.embed_title', self.user_id, self.guild_id)}",
+                description=_('moderation.role_add.embed_description', self.user_id, self.guild_id, role=role.mention, user=self.member.mention),
                 color=discord.Color.green(),
                 timestamp=datetime.now()
             )
-            embed.add_field(name="Modérateur", value=interaction.user.mention, inline=True)
+            embed.add_field(name=_("moderation.role_add.moderator_field", self.user_id, self.guild_id), value=interaction.user.mention, inline=True)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error in role add: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors de l'ajout du rôle: {str(e)}",
+                f"{ERROR} {_('moderation.errors.role_add_error', self.user_id, self.guild_id, error=str(e))}",
                 ephemeral=True
             )
 
-class RoleRemoveModal(discord.ui.Modal, title="Retirer un rôle"):
+class RoleRemoveModal(discord.ui.Modal):
     """Modal pour retirer un rôle d'un membre"""
-    
-    role_input = discord.ui.TextInput(
-        label="Nom ou ID du rôle",
-        placeholder="Ex: @rôle ou 123456789012345678",
-        required=True,
-        max_length=100
-    )
     
     def __init__(self, member: discord.Member, bot, interaction: discord.Interaction):
         super().__init__()
@@ -658,6 +707,19 @@ class RoleRemoveModal(discord.ui.Modal, title="Retirer un rôle"):
         self.original_interaction = interaction
         self.user_id = interaction.user.id
         self.guild_id = interaction.guild.id
+        
+        # Créer le champ avec traduction
+        self.role_input = discord.ui.TextInput(
+            label=_("moderation.modals.role_input_label", self.user_id, self.guild_id),
+            placeholder=_("moderation.modals.role_input_placeholder", self.user_id, self.guild_id),
+            required=True,
+            max_length=100
+        )
+        self.add_item(self.role_input)
+    
+    @property
+    def title(self):
+        return _("moderation.modals.role_remove_title", self.user_id, self.guild_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
@@ -677,7 +739,7 @@ class RoleRemoveModal(discord.ui.Modal, title="Retirer un rôle"):
             
             if not role:
                 await interaction.response.send_message(
-                    f"{ERROR} Rôle introuvable.",
+                    f"{ERROR} {_('moderation.errors.role_not_found', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -685,7 +747,7 @@ class RoleRemoveModal(discord.ui.Modal, title="Retirer un rôle"):
             # Vérifier les permissions
             if not interaction.user.guild_permissions.manage_roles:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous n'avez pas la permission de gérer les rôles.",
+                    f"{ERROR} {_('moderation.permissions.no_manage_roles_permission', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -693,7 +755,7 @@ class RoleRemoveModal(discord.ui.Modal, title="Retirer un rôle"):
             # Vérifier si on peut gérer ce rôle
             if role >= interaction.user.top_role and interaction.user != interaction.guild.owner:
                 await interaction.response.send_message(
-                    f"{ERROR} Vous ne pouvez pas gérer un rôle égal ou supérieur au vôtre.",
+                    f"{ERROR} {_('moderation.role_remove.cannot_manage_role', self.user_id, self.guild_id)}",
                     ephemeral=True
                 )
                 return
@@ -701,7 +763,7 @@ class RoleRemoveModal(discord.ui.Modal, title="Retirer un rôle"):
             # Retirer le rôle
             if role not in self.member.roles:
                 await interaction.response.send_message(
-                    f"{WARNING} {self.member.mention} n'a pas le rôle {role.mention}.",
+                    f"{WARNING} {_('moderation.role_remove.role_doesnt_have', self.user_id, self.guild_id, user=self.member.mention, role=role.mention)}",
                     ephemeral=True
                 )
                 return
@@ -710,19 +772,19 @@ class RoleRemoveModal(discord.ui.Modal, title="Retirer un rôle"):
             
             # Embed de confirmation
             embed = discord.Embed(
-                title=f"{CROSS} Rôle retiré",
-                description=f"Le rôle {role.mention} a été retiré de {self.member.mention}.",
+                title=f"{CROSS} {_('moderation.role_remove.embed_title', self.user_id, self.guild_id)}",
+                description=_('moderation.role_remove.embed_description', self.user_id, self.guild_id, role=role.mention, user=self.member.mention),
                 color=discord.Color.red(),
                 timestamp=datetime.now()
             )
-            embed.add_field(name="Modérateur", value=interaction.user.mention, inline=True)
+            embed.add_field(name=_("moderation.role_remove.moderator_field", self.user_id, self.guild_id), value=interaction.user.mention, inline=True)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
         except Exception as e:
             logger.error(f"Error in role remove: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors de la suppression du rôle: {str(e)}",
+                f"{ERROR} {_('moderation.errors.role_remove_error', self.user_id, self.guild_id, error=str(e))}",
                 ephemeral=True
             )
 
@@ -774,7 +836,7 @@ class ModerationView(discord.ui.View):
     async def moderation_select(self, interaction: discord.Interaction, select: discord.ui.Select):
         """Gestionnaire pour la sélection d'action de modération"""
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ Seul l'utilisateur qui a lancé la commande peut interagir.", ephemeral=True)
+            await interaction.response.send_message(_("moderation.member_select.unauthorized", self.user_id, self.guild_id), ephemeral=True)
             return
             
         value = select.values[0]
@@ -793,17 +855,15 @@ class ModerationView(discord.ui.View):
     async def show_member_management(self, interaction: discord.Interaction):
         """Affiche le menu de gestion des membres"""
         embed = discord.Embed(
-            title=f"{SHIELD} Gestion des membres",
-            description="Choisissez l'action à effectuer sur un membre",
+            title=f"{SHIELD} {_('moderation.member_management.title', self.user_id, self.guild_id)}",
+            description=_('moderation.member_management.description', self.user_id, self.guild_id),
             color=discord.Color.blue(),
             timestamp=datetime.now()
         )
         
         embed.add_field(
             name="🔨 Actions disponibles",
-            value="• **Timeout** - Mettre en sourdine temporairement\n"
-                  "• **Kick** - Expulser du serveur\n"
-                  "• **Ban** - Bannir du serveur",
+            value=_('moderation.member_management.available_actions_list', self.user_id, self.guild_id),
             inline=False
         )
         
@@ -813,16 +873,15 @@ class ModerationView(discord.ui.View):
     async def show_warnings_system(self, interaction: discord.Interaction):
         """Affiche le système d'avertissements"""
         embed = discord.Embed(
-            title=f"{WARNING} Système d'avertissements",
-            description="Gérez les avertissements des membres",
+            title=f"{WARNING} {_('moderation.warnings_system.title', self.user_id, self.guild_id)}",
+            description=_('moderation.warnings_system.description', self.user_id, self.guild_id),
             color=discord.Color.orange(),
             timestamp=datetime.now()
         )
         
         embed.add_field(
             name="📋 Actions disponibles",
-            value="• **Avertir** - Donner un avertissement\n"
-                  "• **Voir les avertissements** - Consulter l'historique",
+            value=_('moderation.warnings_system.available_actions_list', self.user_id, self.guild_id),
             inline=False
         )
         
@@ -832,17 +891,15 @@ class ModerationView(discord.ui.View):
     async def show_cleanup_options(self, interaction: discord.Interaction):
         """Affiche les options de nettoyage"""
         embed = discord.Embed(
-            title=f"{TRASH} Nettoyage des messages",
-            description="Supprimez des messages en masse",
+            title=f"{TRASH} {_('moderation.cleanup.title', self.user_id, self.guild_id)}",
+            description=_('moderation.cleanup.description', self.user_id, self.guild_id),
             color=discord.Color.red(),
             timestamp=datetime.now()
         )
         
         embed.add_field(
             name="🧹 Options de nettoyage",
-            value="• **Messages récents** - Supprimer les derniers messages\n"
-                  "• **Messages d'un utilisateur** - Supprimer les messages d'un membre\n"
-                  "• **Messages de bots** - Supprimer tous les messages de bots",
+            value=_('moderation.cleanup.options_list', self.user_id, self.guild_id),
             inline=False
         )
         
@@ -852,16 +909,15 @@ class ModerationView(discord.ui.View):
     async def show_role_management(self, interaction: discord.Interaction):
         """Affiche la gestion des rôles"""
         embed = discord.Embed(
-            title=f"🔒 Gestion des rôles",
-            description="Ajoutez ou retirez des rôles aux membres",
+            title=f"🔒 {_('moderation.role_management.title', self.user_id, self.guild_id)}",
+            description=_('moderation.role_management.description', self.user_id, self.guild_id),
             color=discord.Color.purple(),
             timestamp=datetime.now()
         )
         
         embed.add_field(
             name="🔧 Actions disponibles",
-            value="• **Ajouter un rôle** - Donner un rôle à un membre\n"
-                  "• **Retirer un rôle** - Enlever un rôle d'un membre",
+            value=_('moderation.role_management.available_actions_list', self.user_id, self.guild_id),
             inline=False
         )
         
@@ -875,33 +931,34 @@ class ModerationView(discord.ui.View):
             stats = await self.get_moderation_stats()
             
             embed = discord.Embed(
-                title=f"{CHART_BAR} Statistiques de modération",
-                description=f"Statistiques du serveur **{interaction.guild.name}**",
+                title=f"{CHART_BAR} {_('moderation.stats.title', self.user_id, self.guild_id)}",
+                description=_('moderation.stats.description', self.user_id, self.guild_id, guild_name=interaction.guild.name),
                 color=discord.Color.green(),
                 timestamp=datetime.now()
             )
             
             embed.add_field(
-                name="📊 Avertissements",
-                value=f"• Total: {stats['total_warnings']}\n"
-                      f"• Ce mois: {stats['warnings_this_month']}\n"
-                      f"• Cette semaine: {stats['warnings_this_week']}",
+                name=_('moderation.stats.warnings_title', self.user_id, self.guild_id),
+                value=_('moderation.stats.warnings_stats', self.user_id, self.guild_id, 
+                       total_warnings=stats['total_warnings'], warnings_this_month=stats['warnings_this_month'], 
+                       warnings_this_week=stats['warnings_this_week']),
                 inline=True
             )
             
             embed.add_field(
-                name="🔨 Actions de modération",
-                value=f"• Timeouts: {stats['total_timeouts']}\n"
-                      f"• Kicks: {stats['total_kicks']}\n"
-                      f"• Bans: {stats['total_bans']}",
+                name=_('moderation.stats.moderation_actions_title', self.user_id, self.guild_id),
+                value=_('moderation.stats.moderation_actions_stats', self.user_id, self.guild_id,
+                       total_timeouts=stats['total_timeouts'], total_kicks=stats['total_kicks'], 
+                       total_bans=stats['total_bans']),
                 inline=True
             )
             
             embed.add_field(
-                name="👥 Membres",
-                value=f"• Total: {interaction.guild.member_count}\n"
-                      f"• En ligne: {len([m for m in interaction.guild.members if m.status != discord.Status.offline])}\n"
-                      f"• Bots: {len([m for m in interaction.guild.members if m.bot])}",
+                name=_('moderation.stats.members_title', self.user_id, self.guild_id),
+                value=_('moderation.stats.members_stats', self.user_id, self.guild_id,
+                       total_members=interaction.guild.member_count, 
+                       online_members=len([m for m in interaction.guild.members if m.status != discord.Status.offline]),
+                       bot_count=len([m for m in interaction.guild.members if m.bot])),
                 inline=True
             )
             
@@ -910,7 +967,7 @@ class ModerationView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error showing moderation stats: {e}")
             await interaction.response.edit_message(
-                content=f"{ERROR} Erreur lors du chargement des statistiques.",
+                content=f"{ERROR} {_('moderation.stats.stats_error', self.user_id, self.guild_id)}",
                 embed=None, view=None
             )
     
@@ -968,8 +1025,8 @@ class MemberManagementView(discord.ui.View):
     @discord.ui.button(label="Timeout", style=discord.ButtonStyle.primary, emoji="🔇")
     async def timeout_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
-            title=f"🔇 Sélectionner un membre à timeout",
-            description="Choisissez un membre dans la liste ci-dessous :",
+            title=f"🔇 {_('moderation.member_management.timeout_title', self.user_id, self.guild_id)}",
+            description=_('moderation.member_management.select_member_description', self.user_id, self.guild_id),
             color=discord.Color.blue(),
             timestamp=datetime.now()
         )
@@ -979,8 +1036,8 @@ class MemberManagementView(discord.ui.View):
     @discord.ui.button(label="Kick", style=discord.ButtonStyle.secondary, emoji="👢")
     async def kick_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
-            title=f"👢 Sélectionner un membre à expulser",
-            description="Choisissez un membre dans la liste ci-dessous :",
+            title=f"👢 {_('moderation.member_management.kick_title', self.user_id, self.guild_id)}",
+            description=_('moderation.member_management.select_member_description', self.user_id, self.guild_id),
             color=discord.Color.orange(),
             timestamp=datetime.now()
         )
@@ -990,8 +1047,8 @@ class MemberManagementView(discord.ui.View):
     @discord.ui.button(label="Ban", style=discord.ButtonStyle.danger, emoji="🔨")
     async def ban_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
-            title=f"🔨 Sélectionner un membre à bannir",
-            description="Choisissez un membre dans la liste ci-dessous :",
+            title=f"🔨 {_('moderation.member_management.ban_title', self.user_id, self.guild_id)}",
+            description=_('moderation.member_management.select_member_description', self.user_id, self.guild_id),
             color=discord.Color.red(),
             timestamp=datetime.now()
         )
@@ -1011,8 +1068,8 @@ class WarningsSystemView(discord.ui.View):
     @discord.ui.button(label="Avertir", style=discord.ButtonStyle.secondary, emoji="⚠️")
     async def warn_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
-            title=f"⚠️ Sélectionner un membre à avertir",
-            description="Choisissez un membre dans la liste ci-dessous :",
+            title=f"⚠️ {_('moderation.warnings_system.warn_title', self.user_id, self.guild_id)}",
+            description=_('moderation.member_management.select_member_description', self.user_id, self.guild_id),
             color=discord.Color.orange(),
             timestamp=datetime.now()
         )
@@ -1022,8 +1079,8 @@ class WarningsSystemView(discord.ui.View):
     @discord.ui.button(label="Voir les avertissements", style=discord.ButtonStyle.primary, emoji="📋")
     async def view_warnings_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
-            title=f"📋 Consulter les avertissements d'un membre",
-            description="Choisissez un membre dans la liste ci-dessous :",
+            title=f"📋 {_('moderation.warnings_system.view_warnings_title', self.user_id, self.guild_id)}",
+            description=_('moderation.member_management.select_member_description', self.user_id, self.guild_id),
             color=discord.Color.blue(),
             timestamp=datetime.now()
         )
@@ -1043,7 +1100,7 @@ class CleanupView(discord.ui.View):
     @discord.ui.button(label="Nettoyer les messages", style=discord.ButtonStyle.danger, emoji="🧹")
     async def cleanup_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message(
-            f"{INFO} Fonctionnalité de nettoyage en cours de développement. Utilisez `/clear nombre` pour l'instant.",
+            f"{INFO} {_('moderation.cleanup.development_message', self.user_id, self.guild_id)}",
             ephemeral=True
         )
 
@@ -1060,8 +1117,8 @@ class RoleManagementView(discord.ui.View):
     @discord.ui.button(label="Ajouter un rôle", style=discord.ButtonStyle.success, emoji="➕")
     async def add_role_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
-            title=f"➕ Ajouter un rôle à un membre",
-            description="Choisissez un membre dans la liste ci-dessous :",
+            title=f"➕ {_('moderation.role_management.add_role_title', self.user_id, self.guild_id)}",
+            description=_('moderation.member_management.select_member_description', self.user_id, self.guild_id),
             color=discord.Color.green(),
             timestamp=datetime.now()
         )
@@ -1071,20 +1128,505 @@ class RoleManagementView(discord.ui.View):
     @discord.ui.button(label="Retirer un rôle", style=discord.ButtonStyle.danger, emoji="➖")
     async def remove_role_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
-            title=f"➖ Retirer un rôle d'un membre",
-            description="Choisissez un membre dans la liste ci-dessous :",
+            title=f"➖ {_('moderation.role_management.remove_role_title', self.user_id, self.guild_id)}",
+            description=_('moderation.member_management.select_member_description', self.user_id, self.guild_id),
             color=discord.Color.red(),
             timestamp=datetime.now()
         )
         view = MemberSelectView("role_remove", self.bot, interaction)
         await interaction.response.edit_message(embed=embed, view=view)
 
+class WarnModal(discord.ui.Modal):
+    """Modal pour avertir un membre"""
+    
+    def __init__(self, member: discord.Member, bot, interaction: discord.Interaction):
+        super().__init__(title=_('moderation.modals.warn.title', interaction.user.id, interaction.guild.id))
+        self.member = member
+        self.bot = bot
+        self.interaction = interaction
+        self.user_id = interaction.user.id
+        self.guild_id = interaction.guild.id
+        
+        self.reason = discord.ui.TextInput(
+            label=_('moderation.modals.warn.reason_label', self.user_id, self.guild_id),
+            placeholder=_('moderation.modals.warn.reason_placeholder', self.user_id, self.guild_id),
+            style=discord.TextStyle.paragraph,
+            required=True,
+            max_length=1000
+        )
+        self.add_item(self.reason)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        """Gestionnaire de soumission du modal"""
+        try:
+            # Enregistrer l'action dans la base de données
+            moderation_cog = self.bot.get_cog('Moderation')
+            await moderation_cog.log_moderation_action(
+                guild_id=self.guild_id,
+                user_id=self.member.id,
+                moderator_id=self.user_id,
+                action_type='warn',
+                reason=self.reason.value,
+                channel_id=interaction.channel.id,
+                message_id=interaction.message.id if interaction.message else None
+            )
+            
+            # Créer l'embed de confirmation
+            embed = discord.Embed(
+                title=f"{WARNING} {_('moderation.actions.warn_success', self.user_id, self.guild_id)}",
+                description=_('moderation.actions.warn_success_description', self.user_id, self.guild_id, 
+                            user=self.member.display_name, reason=self.reason.value),
+                color=discord.Color.orange(),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(
+                name=_('moderation.actions.user', self.user_id, self.guild_id),
+                value=f"{self.member.mention} ({self.member.display_name})",
+                inline=True
+            )
+            
+            embed.add_field(
+                name=_('moderation.actions.moderator', self.user_id, self.guild_id),
+                value=f"{interaction.user.mention} ({interaction.user.display_name})",
+                inline=True
+            )
+            
+            embed.set_footer(
+                text=_('moderation.actions.footer', self.user_id, self.guild_id),
+                icon_url=interaction.user.display_avatar.url
+            )
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error in WarnModal: {e}")
+            await interaction.response.send_message(
+                f"{ERROR} {_('moderation.errors.action_failed', self.user_id, self.guild_id)}",
+                ephemeral=True
+            )
+
+class TimeoutModal(discord.ui.Modal):
+    """Modal pour timeout un membre"""
+    
+    def __init__(self, member: discord.Member, bot, interaction: discord.Interaction):
+        super().__init__(title=_('moderation.modals.timeout.title', interaction.user.id, interaction.guild.id))
+        self.member = member
+        self.bot = bot
+        self.interaction = interaction
+        self.user_id = interaction.user.id
+        self.guild_id = interaction.guild.id
+        
+        self.duration = discord.ui.TextInput(
+            label=_('moderation.modals.timeout.duration_label', self.user_id, self.guild_id),
+            placeholder=_('moderation.modals.timeout.duration_placeholder', self.user_id, self.guild_id),
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=10
+        )
+        self.add_item(self.duration)
+        
+        self.reason = discord.ui.TextInput(
+            label=_('moderation.modals.timeout.reason_label', self.user_id, self.guild_id),
+            placeholder=_('moderation.modals.timeout.reason_placeholder', self.user_id, self.guild_id),
+            style=discord.TextStyle.paragraph,
+            required=True,
+            max_length=1000
+        )
+        self.add_item(self.reason)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        """Gestionnaire de soumission du modal"""
+        try:
+            # Parser la durée
+            duration_text = self.duration.value.lower()
+            duration_minutes = 0
+            
+            if 'h' in duration_text:
+                hours = int(''.join(filter(str.isdigit, duration_text.split('h')[0])))
+                duration_minutes += hours * 60
+            if 'm' in duration_text:
+                minutes = int(''.join(filter(str.isdigit, duration_text.split('m')[0])))
+                duration_minutes += minutes
+            elif duration_text.isdigit():
+                duration_minutes = int(duration_text)
+            
+            if duration_minutes <= 0 or duration_minutes > 10080:  # Max 7 jours
+                await interaction.response.send_message(
+                    f"{ERROR} {_('moderation.errors.invalid_duration', self.user_id, self.guild_id)}",
+                    ephemeral=True
+                )
+                return
+            
+            # Appliquer le timeout
+            timeout_until = datetime.now() + timedelta(minutes=duration_minutes)
+            await self.member.timeout(timeout_until, reason=self.reason.value)
+            
+            # Enregistrer l'action dans la base de données
+            moderation_cog = self.bot.get_cog('Moderation')
+            await moderation_cog.log_moderation_action(
+                guild_id=self.guild_id,
+                user_id=self.member.id,
+                moderator_id=self.user_id,
+                action_type='timeout',
+                reason=self.reason.value,
+                duration_minutes=duration_minutes,
+                channel_id=interaction.channel.id,
+                message_id=interaction.message.id if interaction.message else None
+            )
+            
+            # Créer l'embed de confirmation
+            embed = discord.Embed(
+                title=f"{CLOCK} {_('moderation.actions.timeout_success', self.user_id, self.guild_id)}",
+                description=_('moderation.actions.timeout_success_description', self.user_id, self.guild_id, 
+                            user=self.member.display_name, duration=duration_minutes, reason=self.reason.value),
+                color=discord.Color.red(),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(
+                name=_('moderation.actions.user', self.user_id, self.guild_id),
+                value=f"{self.member.mention} ({self.member.display_name})",
+                inline=True
+            )
+            
+            embed.add_field(
+                name=_('moderation.actions.duration', self.user_id, self.guild_id),
+                value=f"{duration_minutes} minutes",
+                inline=True
+            )
+            
+            embed.add_field(
+                name=_('moderation.actions.moderator', self.user_id, self.guild_id),
+                value=f"{interaction.user.mention} ({interaction.user.display_name})",
+                inline=True
+            )
+            
+            embed.set_footer(
+                text=_('moderation.actions.footer', self.user_id, self.guild_id),
+                icon_url=interaction.user.display_avatar.url
+            )
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error in TimeoutModal: {e}")
+            await interaction.response.send_message(
+                f"{ERROR} {_('moderation.errors.action_failed', self.user_id, self.guild_id)}",
+                ephemeral=True
+            )
+
+class KickModal(discord.ui.Modal):
+    """Modal pour kick un membre"""
+    
+    def __init__(self, member: discord.Member, bot, interaction: discord.Interaction):
+        super().__init__(title=_('moderation.modals.kick.title', interaction.user.id, interaction.guild.id))
+        self.member = member
+        self.bot = bot
+        self.interaction = interaction
+        self.user_id = interaction.user.id
+        self.guild_id = interaction.guild.id
+        
+        self.reason = discord.ui.TextInput(
+            label=_('moderation.modals.kick.reason_label', self.user_id, self.guild_id),
+            placeholder=_('moderation.modals.kick.reason_placeholder', self.user_id, self.guild_id),
+            style=discord.TextStyle.paragraph,
+            required=True,
+            max_length=1000
+        )
+        self.add_item(self.reason)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        """Gestionnaire de soumission du modal"""
+        try:
+            # Kick le membre
+            await self.member.kick(reason=self.reason.value)
+            
+            # Enregistrer l'action dans la base de données
+            moderation_cog = self.bot.get_cog('Moderation')
+            await moderation_cog.log_moderation_action(
+                guild_id=self.guild_id,
+                user_id=self.member.id,
+                moderator_id=self.user_id,
+                action_type='kick',
+                reason=self.reason.value,
+                channel_id=interaction.channel.id,
+                message_id=interaction.message.id if interaction.message else None
+            )
+            
+            # Créer l'embed de confirmation
+            embed = discord.Embed(
+                title=f"{CROSS} {_('moderation.actions.kick_success', self.user_id, self.guild_id)}",
+                description=_('moderation.actions.kick_success_description', self.user_id, self.guild_id, 
+                            user=self.member.display_name, reason=self.reason.value),
+                color=discord.Color.red(),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(
+                name=_('moderation.actions.user', self.user_id, self.guild_id),
+                value=f"{self.member.display_name} (ID: {self.member.id})",
+                inline=True
+            )
+            
+            embed.add_field(
+                name=_('moderation.actions.moderator', self.user_id, self.guild_id),
+                value=f"{interaction.user.mention} ({interaction.user.display_name})",
+                inline=True
+            )
+            
+            embed.set_footer(
+                text=_('moderation.actions.footer', self.user_id, self.guild_id),
+                icon_url=interaction.user.display_avatar.url
+            )
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error in KickModal: {e}")
+            await interaction.response.send_message(
+                f"{ERROR} {_('moderation.errors.action_failed', self.user_id, self.guild_id)}",
+                ephemeral=True
+            )
+
+class BanModal(discord.ui.Modal):
+    """Modal pour ban un membre"""
+    
+    def __init__(self, member: discord.Member, bot, interaction: discord.Interaction):
+        super().__init__(title=_('moderation.modals.ban.title', interaction.user.id, interaction.guild.id))
+        self.member = member
+        self.bot = bot
+        self.interaction = interaction
+        self.user_id = interaction.user.id
+        self.guild_id = interaction.guild.id
+        
+        self.duration = discord.ui.TextInput(
+            label=_('moderation.modals.ban.duration_label', self.user_id, self.guild_id),
+            placeholder=_('moderation.modals.ban.duration_placeholder', self.user_id, self.guild_id),
+            style=discord.TextStyle.short,
+            required=False,
+            max_length=10
+        )
+        self.add_item(self.duration)
+        
+        self.reason = discord.ui.TextInput(
+            label=_('moderation.modals.ban.reason_label', self.user_id, self.guild_id),
+            placeholder=_('moderation.modals.ban.reason_placeholder', self.user_id, self.guild_id),
+            style=discord.TextStyle.paragraph,
+            required=True,
+            max_length=1000
+        )
+        self.add_item(self.reason)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        """Gestionnaire de soumission du modal"""
+        try:
+            # Parser la durée si fournie
+            duration_minutes = None
+            if self.duration.value:
+                duration_text = self.duration.value.lower()
+                duration_minutes = 0
+                
+                if 'd' in duration_text:
+                    days = int(''.join(filter(str.isdigit, duration_text.split('d')[0])))
+                    duration_minutes += days * 24 * 60
+                elif 'h' in duration_text:
+                    hours = int(''.join(filter(str.isdigit, duration_text.split('h')[0])))
+                    duration_minutes += hours * 60
+                elif 'm' in duration_text:
+                    minutes = int(''.join(filter(str.isdigit, duration_text.split('m')[0])))
+                    duration_minutes += minutes
+                elif duration_text.isdigit():
+                    duration_minutes = int(duration_text)
+                
+                if duration_minutes <= 0:
+                    duration_minutes = None
+            
+            # Ban le membre
+            await self.member.ban(reason=self.reason.value, delete_message_days=0)
+            
+            # Enregistrer l'action dans la base de données
+            moderation_cog = self.bot.get_cog('Moderation')
+            await moderation_cog.log_moderation_action(
+                guild_id=self.guild_id,
+                user_id=self.member.id,
+                moderator_id=self.user_id,
+                action_type='ban',
+                reason=self.reason.value,
+                duration_minutes=duration_minutes,
+                channel_id=interaction.channel.id,
+                message_id=interaction.message.id if interaction.message else None
+            )
+            
+            # Créer l'embed de confirmation
+            embed = discord.Embed(
+                title=f"{TRASH} {_('moderation.actions.ban_success', self.user_id, self.guild_id)}",
+                description=_('moderation.actions.ban_success_description', self.user_id, self.guild_id, 
+                            user=self.member.display_name, reason=self.reason.value),
+                color=discord.Color.red(),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(
+                name=_('moderation.actions.user', self.user_id, self.guild_id),
+                value=f"{self.member.display_name} (ID: {self.member.id})",
+                inline=True
+            )
+            
+            if duration_minutes:
+                embed.add_field(
+                    name=_('moderation.actions.duration', self.user_id, self.guild_id),
+                    value=f"{duration_minutes} minutes",
+                    inline=True
+                )
+            
+            embed.add_field(
+                name=_('moderation.actions.moderator', self.user_id, self.guild_id),
+                value=f"{interaction.user.mention} ({interaction.user.display_name})",
+                inline=True
+            )
+            
+            embed.set_footer(
+                text=_('moderation.actions.footer', self.user_id, self.guild_id),
+                icon_url=interaction.user.display_avatar.url
+            )
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error in BanModal: {e}")
+            await interaction.response.send_message(
+                f"{ERROR} {_('moderation.errors.action_failed', self.user_id, self.guild_id)}",
+                ephemeral=True
+            )
+
 class Moderation(commands.Cog):
     """Système de modération complet avec menu interactif"""
     
     def __init__(self, bot):
         self.bot = bot
-        self.validator = InputValidator()
+    
+    async def log_moderation_action(self, guild_id: int, user_id: int, moderator_id: int, 
+                                   action_type: str, reason: str = None, duration_minutes: int = None,
+                                   channel_id: int = None, message_id: int = None, 
+                                   evidence_urls: list = None):
+        """Enregistre une action de modération dans la base de données"""
+        try:
+            from db import get_database
+            db = await get_database()
+            
+            # Convertir evidence_urls en JSON si fourni
+            evidence_json = None
+            if evidence_urls:
+                import json
+                evidence_json = json.dumps(evidence_urls)
+            
+            # Calculer expires_at pour les actions temporaires
+            expires_at = None
+            if action_type in ['timeout', 'ban'] and duration_minutes:
+                from datetime import datetime, timedelta
+                expires_at = datetime.now() + timedelta(minutes=duration_minutes)
+            
+            query = """
+                INSERT INTO moderation_history 
+                (guild_id, user_id, moderator_id, action_type, reason, duration_minutes, 
+                 evidence_urls, channel_id, message_id, expires_at, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            await db.execute(query, (
+                guild_id, user_id, moderator_id, action_type, reason, duration_minutes,
+                evidence_json, channel_id, message_id, expires_at, True
+            ))
+            
+            logger.info(f"Moderation action logged: {action_type} by {moderator_id} on {user_id} in {guild_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to log moderation action: {e}")
+    
+    async def get_moderation_history(self, guild_id: int, user_id: int = None, 
+                                   action_type: str = None, limit: int = 50, offset: int = 0):
+        """Récupère l'historique de modération avec filtres optionnels"""
+        try:
+            from db import get_database
+            db = await get_database()
+            
+            # Construire la requête avec filtres
+            where_conditions = ["guild_id = %s"]
+            params = [guild_id]
+            
+            if user_id:
+                where_conditions.append("user_id = %s")
+                params.append(user_id)
+            
+            if action_type:
+                where_conditions.append("action_type = %s")
+                params.append(action_type)
+            
+            where_clause = " AND ".join(where_conditions)
+            
+            query = f"""
+                SELECT mh.*, 
+                       u.username as user_name, u.discriminator as user_discriminator,
+                       m.username as moderator_name, m.discriminator as moderator_discriminator
+                FROM moderation_history mh
+                LEFT JOIN user_cache u ON mh.user_id = u.user_id
+                LEFT JOIN user_cache m ON mh.moderator_id = m.user_id
+                WHERE {where_clause}
+                ORDER BY mh.timestamp DESC
+                LIMIT %s OFFSET %s
+            """
+            params.extend([limit, offset])
+            
+            results = await db.fetch(query, params)
+            return results
+            
+        except Exception as e:
+            logger.error(f"Failed to get moderation history: {e}")
+            return []
+    
+    async def get_moderation_stats(self, guild_id: int):
+        """Récupère les statistiques de modération pour un serveur"""
+        try:
+            from db import get_database
+            db = await get_database()
+            
+            # Statistiques générales
+            stats_query = """
+                SELECT 
+                    action_type,
+                    COUNT(*) as count,
+                    COUNT(DISTINCT user_id) as unique_users,
+                    COUNT(DISTINCT moderator_id) as unique_moderators
+                FROM moderation_history 
+                WHERE guild_id = %s AND timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                GROUP BY action_type
+            """
+            stats = await db.fetch(stats_query, (guild_id,))
+            
+            # Top modérateurs
+            moderators_query = """
+                SELECT 
+                    moderator_id,
+                    COUNT(*) as action_count,
+                    m.username as moderator_name,
+                    m.discriminator as moderator_discriminator
+                FROM moderation_history mh
+                LEFT JOIN user_cache m ON mh.moderator_id = m.user_id
+                WHERE guild_id = %s AND timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                GROUP BY moderator_id
+                ORDER BY action_count DESC
+                LIMIT 10
+            """
+            moderators = await db.fetch(moderators_query, (guild_id,))
+            
+            return {
+                'stats': stats,
+                'top_moderators': moderators
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get moderation stats: {e}")
+            return {'stats': [], 'top_moderators': []}
         
     @app_commands.command(name="moderation", description="Menu de modération complet")
     @log_command_usage
@@ -1096,44 +1638,182 @@ class Moderation(commands.Cog):
         # Vérifier les permissions
         if not interaction.user.guild_permissions.moderate_members:
             await interaction.response.send_message(
-                f"{ERROR} Vous n'avez pas la permission de modérer les membres.",
+                f"{ERROR} {_('moderation.permissions.no_moderate_permission', user_id, guild_id)}",
                 ephemeral=True
             )
             return
         
         # Créer l'embed principal
         embed = discord.Embed(
-            title=f"{SHIELD} Centre de Modération",
-            description=f"Bienvenue dans le centre de modération de **{interaction.guild.name}**\n"
-                       f"Sélectionnez une catégorie d'action ci-dessous.",
+            title=f"{SHIELD} {_('moderation.main_menu.title', user_id, guild_id)}",
+            description=_('moderation.main_menu.description', user_id, guild_id, guild_name=interaction.guild.name),
             color=discord.Color.blue(),
             timestamp=datetime.now()
         )
         
         embed.add_field(
             name="🔧 Actions disponibles",
-            value="• **Gestion des membres** - Timeout, kick, ban\n"
-                  "• **Système d'avertissements** - Avertir et consulter\n"
-                  "• **Nettoyage** - Supprimer des messages\n"
-                  "• **Gestion des rôles** - Ajouter/retirer des rôles\n"
-                  "• **Statistiques** - Voir les stats de modération",
+            value=_('moderation.main_menu.available_actions_list', user_id, guild_id),
             inline=False
         )
         
         embed.add_field(
             name="ℹ️ Information",
-            value="Ce menu vous donne accès à toutes les fonctionnalités\n"
-                  "de modération du bot en un seul endroit.",
+            value=_('moderation.main_menu.info', user_id, guild_id),
             inline=False
         )
         
         embed.set_footer(
-            text=f"Modérateur: {interaction.user.display_name}",
+            text=_('moderation.main_menu.footer', user_id, guild_id, moderator=interaction.user.display_name),
             icon_url=interaction.user.display_avatar.url
         )
         
         view = ModerationView(self.bot, interaction)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    
+    @app_commands.command(name="moderation_history", description="Affiche l'historique des actions de modération")
+    @app_commands.describe(
+        user="Utilisateur à filtrer (optionnel)",
+        action="Type d'action à filtrer (optionnel)",
+        limit="Nombre d'entrées à afficher (défaut: 10, max: 50)"
+    )
+    @app_commands.choices(action=[
+        app_commands.Choice(name="Warn", value="warn"),
+        app_commands.Choice(name="Timeout", value="timeout"),
+        app_commands.Choice(name="Kick", value="kick"),
+        app_commands.Choice(name="Ban", value="ban"),
+        app_commands.Choice(name="Unban", value="unban"),
+        app_commands.Choice(name="Unmute", value="unmute")
+    ])
+    @log_command_usage
+    async def moderation_history(self, interaction: discord.Interaction, 
+                               user: discord.Member = None, 
+                               action: str = None, 
+                               limit: int = 10):
+        """Affiche l'historique des actions de modération avec filtres"""
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        
+        # Vérifier les permissions
+        if not interaction.user.guild_permissions.moderate_members:
+            await interaction.response.send_message(
+                f"{ERROR} {_('moderation.permissions.no_moderate_permission', user_id, guild_id)}",
+                ephemeral=True
+            )
+            return
+        
+        # Limiter le nombre d'entrées
+        limit = min(max(limit, 1), 50)
+        
+        # Récupérer l'historique
+        history = await self.get_moderation_history(
+            guild_id=guild_id,
+            user_id=user.id if user else None,
+            action_type=action,
+            limit=limit
+        )
+        
+        if not history:
+            embed = discord.Embed(
+                title=f"{INFO} {_('moderation.history.no_history', user_id, guild_id)}",
+                description=_('moderation.history.no_history_description', user_id, guild_id),
+                color=discord.Color.orange()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        # Créer l'embed avec l'historique
+        embed = discord.Embed(
+            title=f"{CHART_BAR} {_('moderation.history.title', user_id, guild_id)}",
+            description=_('moderation.history.description', user_id, guild_id, count=len(history)),
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        
+        # Ajouter les filtres appliqués
+        filters = []
+        if user:
+            filters.append(f"**{_('moderation.history.filter_user', user_id, guild_id)}:** {user.display_name}")
+        if action:
+            action_names = {
+                'warn': _('moderation.actions.warn', user_id, guild_id),
+                'timeout': _('moderation.actions.timeout', user_id, guild_id),
+                'kick': _('moderation.actions.kick', user_id, guild_id),
+                'ban': _('moderation.actions.ban', user_id, guild_id),
+                'unban': _('moderation.actions.unban', user_id, guild_id),
+                'unmute': _('moderation.actions.unmute', user_id, guild_id)
+            }
+            filters.append(f"**{_('moderation.history.filter_action', user_id, guild_id)}:** {action_names.get(action, action)}")
+        
+        if filters:
+            embed.add_field(
+                name=_('moderation.history.filters_applied', user_id, guild_id),
+                value="\n".join(filters),
+                inline=False
+            )
+        
+        # Ajouter les entrées d'historique
+        for i, entry in enumerate(history[:10]):  # Limiter à 10 pour éviter la limite Discord
+            # Formater les noms d'utilisateur
+            user_name = f"{entry['user_name']}#{entry['user_discriminator']}" if entry['user_name'] else f"<@{entry['user_id']}>"
+            moderator_name = f"{entry['moderator_name']}#{entry['moderator_discriminator']}" if entry['moderator_name'] else f"<@{entry['moderator_id']}>"
+            
+            # Emoji pour le type d'action
+            action_emojis = {
+                'warn': WARNING,
+                'timeout': CLOCK,
+                'kick': CROSS,
+                'ban': TRASH,
+                'unban': CHECK,
+                'unmute': CHECK
+            }
+            
+            action_emoji = action_emojis.get(entry['action_type'], '❓')
+            
+            # Formater la durée si applicable
+            duration_text = ""
+            if entry['duration_minutes']:
+                hours = entry['duration_minutes'] // 60
+                minutes = entry['duration_minutes'] % 60
+                if hours > 0:
+                    duration_text = f" ({hours}h{minutes}m)"
+                else:
+                    duration_text = f" ({minutes}m)"
+            
+            # Formater la date
+            timestamp = entry['timestamp']
+            date_str = timestamp.strftime("%d/%m/%Y %H:%M")
+            
+            value = f"**{action_emoji} {entry['action_type'].upper()}{duration_text}**\n"
+            value += f"👤 **{_('moderation.history.user', user_id, guild_id)}:** {user_name}\n"
+            value += f"🛡️ **{_('moderation.history.moderator', user_id, guild_id)}:** {moderator_name}\n"
+            value += f"📅 **{_('moderation.history.date', user_id, guild_id)}:** {date_str}\n"
+            if entry['reason']:
+                value += f"📝 **{_('moderation.history.reason', user_id, guild_id)}:** {entry['reason'][:100]}{'...' if len(entry['reason']) > 100 else ''}"
+            
+            embed.add_field(
+                name=f"{i+1}. {entry['action_type'].upper()}",
+                value=value,
+                inline=False
+            )
+        
+        # Ajouter les statistiques si pas de filtres spécifiques
+        if not user and not action:
+            stats = await self.get_moderation_stats(guild_id)
+            if stats['stats']:
+                stats_text = ""
+                for stat in stats['stats'][:5]:  # Top 5 actions
+                    stats_text += f"**{stat['action_type'].upper()}:** {stat['count']}\n"
+                
+                embed.add_field(
+                    name=_('moderation.history.stats_30_days', user_id, guild_id),
+                    value=stats_text,
+                    inline=True
+                )
+        
+        embed.set_footer(text=_('moderation.history.footer', user_id, guild_id, limit=limit))
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Moderation(bot))

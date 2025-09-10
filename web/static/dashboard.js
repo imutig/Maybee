@@ -601,7 +601,7 @@ class Dashboard {
             levelRolesList.innerHTML = `
                 <div class="level-role-empty">
                     <i class="fas fa-medal"></i>
-                    <p>No level roles configured yet. Click "Add Level Role" to get started!</p>
+                    <p data-translate="xp_system.no_level_roles">No level roles configured yet. Click "Add Level Role" to get started!</p>
                 </div>
             `;
             return;
@@ -626,7 +626,7 @@ class Dashboard {
             levelRoleItem.innerHTML = `
                 <div class="level-role-grid">
                     <input type="number" class="level-role-level" 
-                           placeholder="Level" min="1" value="">
+                           placeholder="Level" min="1" value="" data-translate="xp_system.level_placeholder">
                     <select class="level-role-role">
                         <option value="">Select a role...</option>
                     </select>
@@ -777,7 +777,7 @@ class Dashboard {
         levelRoleItem.innerHTML = `
             <div class="level-role-grid">
                 <input type="number" class="level-role-level" 
-                       placeholder="Level" min="1" value="${levelRole.level}">
+                       placeholder="Level" min="1" value="${levelRole.level}" data-translate="xp_system.level_placeholder">
                 <select class="level-role-role">
                     <option value="">Select a role...</option>
                 </select>
@@ -1515,7 +1515,7 @@ class Dashboard {
                                     <label class="form-label">Menu Title</label>
                                     <input type="text" id="menuTitle" class="form-input" 
                                            value="${isEdit ? this.escapeHtml(menu.title) : ''}" 
-                                           placeholder="Select Your Role" required maxlength="256">
+                                           placeholder="Select Your Role" required maxlength="256" data-translate="role_menus.select_role_placeholder">
                                 </div>
                                 
                                 <div class="form-group">
@@ -1528,7 +1528,7 @@ class Dashboard {
                                 <div class="form-group full-width">
                                     <label class="form-label">Description</label>
                                     <textarea id="menuDescription" class="form-textarea" rows="3" 
-                                              placeholder="Choose a role from the dropdown below">${isEdit ? this.escapeHtml(menu.description || '') : ''}</textarea>
+                                              placeholder="Choose a role from the dropdown below" data-translate="role_menus.description_placeholder">${isEdit ? this.escapeHtml(menu.description || '') : ''}</textarea>
                                 </div>
                                 
                                 <div class="form-group">

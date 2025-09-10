@@ -4927,6 +4927,266 @@ async def debug_ticket_logs(
             "google_drive_connected": False
         }
 
+# Moderation History Endpoints
+@app.get("/api/moderation/history/{guild_id}")
+async def get_moderation_history(
+    guild_id: int,
+    user_id: Optional[int] = None,
+    action_type: Optional[str] = None,
+    date_filter: Optional[str] = None,
+    limit: int = 25,
+    offset: int = 0
+):
+    """Récupère l'historique de modération avec filtres"""
+    try:
+        db = await get_database()
+        
+        # Construire la requête avec filtres
+        where_conditions = ["guild_id = %s"]
+        params = [guild_id]
+        
+        if user_id:
+            where_conditions.append("user_id = %s")
+            params.append(user_id)
+        
+        if action_type:
+            where_conditions.append("action_type = %s")
+            params.append(action_type)
+        
+        # Filtre par date
+        if date_filter:
+            if date_filter == "today":
+                where_conditions.append("DATE(timestamp) = CURDATE()")
+            elif date_filter == "week":
+                where_conditions.append("timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)")
+            elif date_filter == "month":
+                where_conditions.append("timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)")
+        
+        where_clause = " AND ".join(where_conditions)
+        
+        # Requête principale
+        query = f"""
+            SELECT mh.*, 
+                   u.username as user_name, u.discriminator as user_discriminator,
+                   m.username as moderator_name, m.discriminator as moderator_discriminator
+            FROM moderation_history mh
+            LEFT JOIN user_cache u ON mh.user_id = u.user_id
+            LEFT JOIN user_cache m ON mh.moderator_id = m.user_id
+            WHERE {where_clause}
+            ORDER BY mh.timestamp DESC
+            LIMIT %s OFFSET %s
+        """
+        params.extend([limit, offset])
+        
+        results = await db.fetch(query, params)
+        
+        # Compter le total pour la pagination
+        count_query = f"""
+            SELECT COUNT(*) as total
+            FROM moderation_history mh
+            WHERE {where_clause}
+        """
+        count_params = params[:-2]  # Enlever limit et offset
+        count_result = await db.fetchone(count_query, count_params)
+        total_count = count_result['total'] if count_result else 0
+        
+        # Formater les résultats
+        formatted_results = []
+        for row in results:
+            formatted_results.append({
+                "id": row['id'],
+                "user_id": row['user_id'],
+                "user_name": row['user_name'],
+                "user_discriminator": row['user_discriminator'],
+                "moderator_id": row['moderator_id'],
+                "moderator_name": row['moderator_name'],
+                "moderator_discriminator": row['moderator_discriminator'],
+                "action_type": row['action_type'],
+                "reason": row['reason'],
+                "duration_minutes": row['duration_minutes'],
+                "timestamp": row['timestamp'].isoformat() if row['timestamp'] else None,
+                "expires_at": row['expires_at'].isoformat() if row['expires_at'] else None,
+                "is_active": row['is_active']
+            })
+        
+        return {
+            "success": True,
+            "data": formatted_results,
+            "pagination": {
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
+                "has_more": offset + limit < total_count
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error getting moderation history: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/api/moderation/stats/{guild_id}")
+async def get_moderation_stats(guild_id: int):
+    """Récupère les statistiques de modération"""
+    try:
+        db = await get_database()
+        
+        # Statistiques générales
+        stats_query = """
+            SELECT 
+                action_type,
+                COUNT(*) as count,
+                COUNT(DISTINCT user_id) as unique_users,
+                COUNT(DISTINCT moderator_id) as unique_moderators
+            FROM moderation_history 
+            WHERE guild_id = %s AND timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            GROUP BY action_type
+        """
+        stats = await db.fetch(stats_query, (guild_id,))
+        
+        # Top modérateurs
+        moderators_query = """
+            SELECT 
+                moderator_id,
+                COUNT(*) as action_count,
+                m.username as moderator_name,
+                m.discriminator as moderator_discriminator
+            FROM moderation_history mh
+            LEFT JOIN user_cache m ON mh.moderator_id = m.user_id
+            WHERE guild_id = %s AND timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            GROUP BY moderator_id
+            ORDER BY action_count DESC
+            LIMIT 10
+        """
+        moderators = await db.fetch(moderators_query, (guild_id,))
+        
+        # Statistiques globales
+        total_query = """
+            SELECT 
+                COUNT(*) as total_actions,
+                COUNT(DISTINCT user_id) as unique_users,
+                COUNT(DISTINCT moderator_id) as unique_moderators
+            FROM moderation_history 
+            WHERE guild_id = %s AND timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        """
+        total_stats = await db.fetchone(total_query, (guild_id,))
+        
+        return {
+            "success": True,
+            "data": {
+                "stats": [dict(stat) for stat in stats],
+                "top_moderators": [dict(mod) for mod in moderators],
+                "totals": dict(total_stats) if total_stats else {
+                    "total_actions": 0,
+                    "unique_users": 0,
+                    "unique_moderators": 0
+                }
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error getting moderation stats: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/moderation/export/{guild_id}")
+async def export_moderation_history(
+    guild_id: int,
+    user_id: Optional[int] = None,
+    action_type: Optional[str] = None,
+    date_filter: Optional[str] = None
+):
+    """Exporte l'historique de modération en CSV"""
+    try:
+        db = await get_database()
+        
+        # Construire la requête avec filtres (même logique que get_moderation_history)
+        where_conditions = ["guild_id = %s"]
+        params = [guild_id]
+        
+        if user_id:
+            where_conditions.append("user_id = %s")
+            params.append(user_id)
+        
+        if action_type:
+            where_conditions.append("action_type = %s")
+            params.append(action_type)
+        
+        if date_filter:
+            if date_filter == "today":
+                where_conditions.append("DATE(timestamp) = CURDATE()")
+            elif date_filter == "week":
+                where_conditions.append("timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)")
+            elif date_filter == "month":
+                where_conditions.append("timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)")
+        
+        where_clause = " AND ".join(where_conditions)
+        
+        # Requête pour l'export (pas de limite)
+        query = f"""
+            SELECT mh.*, 
+                   u.username as user_name, u.discriminator as user_discriminator,
+                   m.username as moderator_name, m.discriminator as moderator_discriminator
+            FROM moderation_history mh
+            LEFT JOIN user_cache u ON mh.user_id = u.user_id
+            LEFT JOIN user_cache m ON mh.moderator_id = m.user_id
+            WHERE {where_clause}
+            ORDER BY mh.timestamp DESC
+        """
+        
+        results = await db.fetch(query, params)
+        
+        # Créer le CSV
+        import csv
+        import io
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # En-têtes
+        writer.writerow([
+            'ID', 'User ID', 'User Name', 'Moderator ID', 'Moderator Name',
+            'Action Type', 'Reason', 'Duration (minutes)', 'Timestamp', 'Expires At', 'Is Active'
+        ])
+        
+        # Données
+        for row in results:
+            writer.writerow([
+                row['id'],
+                row['user_id'],
+                f"{row['user_name']}#{row['user_discriminator']}" if row['user_name'] else f"User {row['user_id']}",
+                row['moderator_id'],
+                f"{row['moderator_name']}#{row['moderator_discriminator']}" if row['moderator_name'] else f"Moderator {row['moderator_id']}",
+                row['action_type'],
+                row['reason'] or '',
+                row['duration_minutes'] or '',
+                row['timestamp'].isoformat() if row['timestamp'] else '',
+                row['expires_at'].isoformat() if row['expires_at'] else '',
+                'Yes' if row['is_active'] else 'No'
+            ])
+        
+        csv_content = output.getvalue()
+        output.close()
+        
+        return {
+            "success": True,
+            "data": {
+                "csv_content": csv_content,
+                "filename": f"moderation_history_{guild_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error exporting moderation history: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 # Production server startup
 if __name__ == "__main__":
     # Get port from environment variable (Railway sets this)

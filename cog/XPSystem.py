@@ -3,11 +3,14 @@ from discord import app_commands
 from discord.ext import commands, tasks
 import random
 import asyncio
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Literal
 from i18n import _
 from .command_logger import log_command_usage
 from custom_emojis import TROPHY, STAR, GEM, FIRE, ARROW_UP
+
+logger = logging.getLogger(__name__)
 
 class XPMultiplier:
     """XP multiplier system for events and boosts"""
@@ -40,18 +43,18 @@ class XPMultiplier:
         if self.bot and multiplier_type in ["text", "voice", "base"]:
             try:
                 sql = "SELECT xp_multiplier FROM guild_config WHERE guild_id = %s"
-                print(f"🔍 DEBUG: Executing SQL: {sql} with guild_id={guild_id}")
+                logger.debug(f"Executing SQL: {sql} with guild_id={guild_id}")
                 result = await self.bot.db.query(sql, (str(guild_id),), fetchone=True)
-                print(f"🔍 DEBUG: Database result: {result}")
+                logger.debug(f"Database result: {result}")
                 if result and result.get('xp_multiplier'):
                     multiplier = float(result['xp_multiplier'])
-                    print(f"🔢 Using database multiplier {multiplier}x for guild {guild_id}")
+                    logger.debug(f"Using database multiplier {multiplier}x for guild {guild_id}")
                 else:
-                    print(f"🔍 DEBUG: No result or no xp_multiplier found for guild {guild_id}")
+                    logger.debug(f"No result or no xp_multiplier found for guild {guild_id}")
             except Exception as e:
-                print(f"⚠️ Could not fetch multiplier from database: {e}")
+                logger.warning(f"Could not fetch multiplier from database: {e}")
                 import traceback
-                print(f"🔍 DEBUG: Full traceback: {traceback.format_exc()}")
+                logger.debug(f"Full traceback: {traceback.format_exc()}")
         
         # Check permanent multipliers (from /xpmultiplier command)
         if guild_id in self.multipliers and multiplier_type in self.multipliers[guild_id]:
@@ -72,17 +75,18 @@ class XPMultiplier:
                 
         return multiplier
 
-class SetXPChannelModal(discord.ui.Modal, title="Attribuer salon annonces XP"):
-    channel_id = discord.ui.TextInput(
-        label="ID du salon",
-        placeholder="Entrez l'ID du salon où envoyer les annonces XP",
-        style=discord.TextStyle.short
-    )
-
+class SetXPChannelModal(discord.ui.Modal):
     def __init__(self, bot, guild_id):
-        super().__init__()
+        super().__init__(title=_('xp_system.modals.set_xp_channel.title', 0, guild_id))
         self.bot = bot
         self.guild_id = guild_id
+        
+        self.channel_id = discord.ui.TextInput(
+            label=_('xp_system.modals.set_xp_channel.channel_id_label', 0, guild_id),
+            placeholder=_('xp_system.modals.set_xp_channel.channel_id_placeholder', 0, guild_id),
+            style=discord.TextStyle.short
+        )
+        self.add_item(self.channel_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         user_id = interaction.user.id
@@ -109,22 +113,25 @@ class SetXPChannelModal(discord.ui.Modal, title="Attribuer salon annonces XP"):
             await interaction.response.send_message(
                 _("xp_system.config.invalid_number", user_id, guild_id), ephemeral=True)
 
-class SetRoleLevelModal(discord.ui.Modal, title="Attribuer rôle à un niveau"):
-    level = discord.ui.TextInput(
-        label="Niveau",
-        placeholder="Entrez le niveau (nombre entier)",
-        style=discord.TextStyle.short
-    )
-    role_id = discord.ui.TextInput(
-        label="ID du rôle",
-        placeholder="Entrez l'ID du rôle à attribuer",
-        style=discord.TextStyle.short
-    )
-
+class SetRoleLevelModal(discord.ui.Modal):
     def __init__(self, bot, guild_id):
-        super().__init__()
+        super().__init__(title=_('xp_system.modals.set_role_level.title', 0, guild_id))
         self.bot = bot
         self.guild_id = guild_id
+        
+        self.level = discord.ui.TextInput(
+            label=_('xp_system.modals.set_role_level.level_label', 0, guild_id),
+            placeholder=_('xp_system.modals.set_role_level.level_placeholder', 0, guild_id),
+            style=discord.TextStyle.short
+        )
+        self.add_item(self.level)
+        
+        self.role_id = discord.ui.TextInput(
+            label=_('xp_system.modals.set_role_level.role_id_label', 0, guild_id),
+            placeholder=_('xp_system.modals.set_role_level.role_id_placeholder', 0, guild_id),
+            style=discord.TextStyle.short
+        )
+        self.add_item(self.role_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         user_id = interaction.user.id
@@ -158,16 +165,29 @@ class ConfigLevelView(discord.ui.View):
         super().__init__(timeout=120)
         self.bot = bot
         self.guild_id = guild_id
+        
+        # Add buttons with translated labels
+        self.add_item(discord.ui.Button(
+            label=_('xp_system.buttons.set_xp_channel', 0, guild_id),
+            style=discord.ButtonStyle.green,
+            custom_id="set_xp_channel"
+        ))
+        self.add_item(discord.ui.Button(
+            label=_('xp_system.buttons.set_role_level', 0, guild_id),
+            style=discord.ButtonStyle.blurple,
+            custom_id="set_role_level"
+        ))
 
-    @discord.ui.button(label="Attribuer salon annonces XP", style=discord.ButtonStyle.green)
-    async def set_xp_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        modal = SetXPChannelModal(self.bot, self.guild_id)
-        await interaction.response.send_modal(modal)
-
-    @discord.ui.button(label="Attribuer rôle à un niveau", style=discord.ButtonStyle.blurple)
-    async def set_role_level(self, interaction: discord.Interaction, button: discord.ui.Button):
-        modal = SetRoleLevelModal(self.bot, self.guild_id)
-        await interaction.response.send_modal(modal)
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.data.get("custom_id") == "set_xp_channel":
+            modal = SetXPChannelModal(self.bot, self.guild_id)
+            await interaction.response.send_modal(modal)
+            return True
+        elif interaction.data.get("custom_id") == "set_role_level":
+            modal = SetRoleLevelModal(self.bot, self.guild_id)
+            await interaction.response.send_modal(modal)
+            return True
+        return False
 
 class XPSystem(commands.Cog):
     def __init__(self, bot):
@@ -176,7 +196,7 @@ class XPSystem(commands.Cog):
         self.xp_batch = {}  # For batching XP updates
         self.batch_size = 50  # Process batches of 50 XP updates
         self.xp_multiplier = XPMultiplier(bot)  # XP multiplier system
-        print("✅ XPSystem cog chargé")
+        logger.info("XPSystem cog loaded")
 
     def _calculate_level(self, xp: int) -> int:
         """
@@ -206,7 +226,7 @@ class XPSystem(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         if not self.voice_xp_loop.is_running():
-            print("▶️ Démarrage de la boucle XP vocale depuis on_ready.")
+            logger.info("Starting voice XP loop from on_ready")
             self.voice_xp_loop.start()
 
         
@@ -215,41 +235,41 @@ class XPSystem(commands.Cog):
 
     @tasks.loop(minutes=10)
     async def voice_xp_loop(self):
-        print("🔁 Boucle XP vocale démarrée.")
+        logger.info("Voice XP loop started")
 
         for guild in self.bot.guilds:
-            print(f"📂 Serveur : {guild.name} ({guild.id})")
+            logger.debug(f"Processing guild: {guild.name} ({guild.id})")
 
             for vc in guild.voice_channels:
-                print(f"🔊 Salon vocal : {vc.name} | Membres : {len(vc.members)}")
+                logger.debug(f"Voice channel: {vc.name} | Members: {len(vc.members)}")
 
                 if len(vc.members) <= 1:
-                    print("⛔ Ignoré : seulement 1 personne ou moins dans le vocal.")
+                    logger.debug("Skipped: only 1 person or less in voice")
                     continue
 
                 for member in vc.members:
-                    print(f"👤 Membre : {member.display_name} ({member.id})")
+                    logger.debug(f"Member: {member.display_name} ({member.id})")
 
                     if member.bot:
-                        print("🤖 Ignoré : c'est un bot.")
+                        logger.debug("Skipped: bot user")
                         continue
 
                     if member.voice.self_mute or member.voice.self_deaf:
-                        print("🔇 Ignoré : utilisateur s'est mis en mute/sourdine.")
+                        logger.debug("Skipped: user self-muted/deafened")
                         continue
 
                     if member.voice.mute or member.voice.deaf:
-                        print("🔕 Ignoré : mute/sourdine forcée par le serveur.")
+                        logger.debug("Skipped: server-muted/deafened")
                         continue
 
-                    print("✅ Ajout de 15 XP vocal à", member.display_name)
+                    logger.debug(f"Adding 15 voice XP to {member.display_name}")
                     leveled_up, level = await self.add_xp(member.id, guild.id, 15, source="voice")
 
                     if leveled_up:
-                        print(f"🆙 {member.display_name} est monté niveau {level} !")
+                        logger.info(f"Level up: {member.display_name} reached level {level}")
                         await self.handle_level_up(guild, member, level)
 
-        print("✅ Boucle XP vocale terminée.\n")
+        logger.info("Voice XP loop completed")
 
     async def add_xp(self, user_id, guild_id, amount, source="text"):
         """Add XP to a user with improved performance and history tracking"""
@@ -275,14 +295,8 @@ class XPSystem(commands.Cog):
             text_xp = data["text_xp"] + actual_xp_gained if source == "text" else data["text_xp"]
             voice_xp = data["voice_xp"] + actual_xp_gained if source == "voice" else data["voice_xp"]
             
-            # Debug: Show XP breakdown
-            print(f"🔍 XP Breakdown - User {user_id}: Total={data['xp']} -> {data['xp'] + actual_xp_gained}, Text={data['text_xp']} -> {text_xp}, Voice={data['voice_xp']} -> {voice_xp}")
-            
-            # Enhanced logging
-            if guild_multiplier != 1.0:
-                print(f"⚡ XP Gained: {base_xp} base XP × {guild_multiplier}x multiplier = {actual_xp_gained} XP ({source}) - User {user_id} in guild {guild_id}")
-            else:
-                print(f"📈 XP Gained: {actual_xp_gained} XP ({source}) - User {user_id} in guild {guild_id}")
+            # Log XP gain (only for debugging, not spam)
+            logger.debug(f"XP gained: {actual_xp_gained} ({source}) - User {user_id} in guild {guild_id}")
             
             new_xp = data["xp"] + actual_xp_gained
             new_level = self._calculate_level(new_xp)
@@ -378,17 +392,17 @@ class XPSystem(commands.Cog):
             if guild_config.get("level_up_channel"):
                 channel_id = int(guild_config["level_up_channel"])
                 level_up_channel = self.bot.get_channel(channel_id)
-                print(f"🔍 DEBUG: Using level_up_channel from guild_config: {guild_config['level_up_channel']} (converted to {channel_id})")
-                print(f"🔍 DEBUG: Channel object: {level_up_channel}")
+                logger.debug(f"Using level_up_channel from guild_config: {guild_config['level_up_channel']} (converted to {channel_id})")
+                logger.debug(f"Channel object: {level_up_channel}")
         
         if not level_up_channel and xp_config and xp_config.get("xp_channel"):
             channel_id = int(xp_config["xp_channel"])
             level_up_channel = self.bot.get_channel(channel_id)
-            print(f"🔍 DEBUG: Using xp_channel from xp_config: {xp_config['xp_channel']} (converted to {channel_id})")
-            print(f"🔍 DEBUG: Channel object: {level_up_channel}")
+            logger.debug(f"Using xp_channel from xp_config: {xp_config['xp_channel']} (converted to {channel_id})")
+            logger.debug(f"Channel object: {level_up_channel}")
         
-        print(f"🎉 DEBUG: Level up - {member.display_name} reached level {level} in {guild.name}")
-        print(f"🎉 DEBUG: Level up enabled: {level_up_enabled}, Channel: {level_up_channel}")
+        logger.debug(f"Level up - {member.display_name} reached level {level} in {guild.name}")
+        logger.debug(f"Level up enabled: {level_up_enabled}, Channel: {level_up_channel}")
         
         gained_roles = []
 
@@ -450,11 +464,11 @@ class XPSystem(commands.Cog):
 
             try:
                 await level_up_channel.send(content=f"{member.mention}", embed=embed)
-                print(f"✅ DEBUG: Level up message sent to {level_up_channel.name}")
+                logger.debug(f"Level up message sent to {level_up_channel.name}")
             except Exception as e:
-                print(f"❌ DEBUG: Failed to send level up message: {e}")
+                logger.warning(f"Failed to send level up message: {e}")
         else:
-            print(f"⚠️ DEBUG: Level up message not sent - enabled: {level_up_enabled}, channel: {bool(level_up_channel)}")
+            logger.debug(f"Level up message not sent - enabled: {level_up_enabled}, channel: {bool(level_up_channel)}")
 
 
     # Configuration command removed - use unified /config command instead
@@ -485,7 +499,7 @@ class XPSystem(commands.Cog):
                 # User has no XP data
                 no_xp_msg = _("commands.level.no_xp", user_id, guild_id)
                 embed = discord.Embed(
-                    title=f"{TROPHY} Niveau de {target_user.display_name}",
+                    title=f"{TROPHY} {_('xp_system.commands.xp.title', user_id, guild_id, user=target_user.display_name)}",
                     description=no_xp_msg,
                     color=discord.Color.blue()
                 )
@@ -515,55 +529,55 @@ class XPSystem(commands.Cog):
             
             # Create embed
             embed = discord.Embed(
-                title=f"{TROPHY} Niveau de {target_user.display_name}",
+                title=f"{TROPHY} {_('xp_system.commands.xp.title', user_id, guild_id, user=target_user.display_name)}",
                 color=discord.Color.blue()
             )
             
             # Add fields
             embed.add_field(
-                name=f"{TROPHY} Niveau",
+                name=f"{TROPHY} {_('xp_system.commands.xp.level', user_id, guild_id)}",
                 value=f"**{calculated_level}**",
                 inline=True
             )
             
             embed.add_field(
-                name=f"{STAR} XP total",
+                name=f"{STAR} {_('xp_system.commands.xp.total_xp', user_id, guild_id)}",
                 value=f"**{total_xp:,}** XP",
                 inline=True
             )
             
             embed.add_field(
-                name=f"{ARROW_UP} Progression",
+                name=f"{ARROW_UP} {_('xp_system.commands.xp.progress', user_id, guild_id)}",
                 value=f"**{progress_xp:,}** / **{level_xp_range:,}** XP\n`{bar}` {progress_percentage:.1%}",
                 inline=False
             )
             
             embed.add_field(
-                name=f"💬 XP texte",
+                name=f"💬 {_('xp_system.commands.xp.text_xp', user_id, guild_id)}",
                 value=f"**{text_xp:,}** XP",
                 inline=True
             )
             
             embed.add_field(
-                name=f"🎤 XP vocal",
+                name=f"🎤 {_('xp_system.commands.xp.voice_xp', user_id, guild_id)}",
                 value=f"**{voice_xp:,}** XP",
                 inline=True
             )
             
             embed.add_field(
-                name="Next Level",
-                value=f"**{xp_needed:,}** XP needed",
+                name=_('xp_system.commands.xp.next_level', user_id, guild_id),
+                value=f"**{xp_needed:,}** {_('xp_system.commands.xp.xp_needed', user_id, guild_id)}",
                 inline=True
             )
             
             embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
-            embed.set_footer(text=f"Level {calculated_level} • {total_xp:,} total XP")
+            embed.set_footer(text=_('xp_system.commands.xp.footer', user_id, guild_id, level=calculated_level, total_xp=total_xp))
             
             await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             print(f"❌ Error in xp command: {e}")
-            await interaction.response.send_message("❌ An error occurred while fetching XP data.", ephemeral=True)
+            await interaction.response.send_message(_('xp_system.commands.xp.error', user_id, guild_id), ephemeral=True)
 
     @app_commands.command(name="leaderboard", description="Show XP leaderboard")
     @app_commands.describe(
@@ -610,7 +624,7 @@ class XPSystem(commands.Cog):
                            ORDER BY weekly_xp DESC
                            LIMIT 10"""
                 color = discord.Color.blue()
-                title_suffix = " (Text)"
+                title_suffix = f" ({_('xp_system.leaderboard.types.text', user_id, guild_id)})"
             elif type == "voice":
                 query = """SELECT user_id, SUM(xp_gained) as weekly_xp
                            FROM xp_history 
@@ -619,7 +633,7 @@ class XPSystem(commands.Cog):
                            ORDER BY weekly_xp DESC
                            LIMIT 10"""
                 color = discord.Color.green()
-                title_suffix = " (Voice)"
+                title_suffix = f" ({_('xp_system.leaderboard.types.voice', user_id, guild_id)})"
             else:  # total
                 query = """SELECT user_id, SUM(xp_gained) as weekly_xp
                            FROM xp_history 
@@ -630,15 +644,8 @@ class XPSystem(commands.Cog):
                 color = discord.Color.gold()
                 title_suffix = ""
             
-            print(f"🔍 Weekly Leaderboard Debug - Type: {type}, Guild: {guild_id}")
-            print(f"📊 Query: {query}")
-            
+            logger.debug(f"Weekly Leaderboard Debug - Type: {type}, Guild: {guild_id}")
             weekly_data = await self.bot.db.query(query, (guild_id, week_ago), fetchall=True)
-            
-            print(f"📋 Results: {len(weekly_data) if weekly_data else 0} rows")
-            if weekly_data:
-                for i, row in enumerate(weekly_data[:3]):  # Show first 3 results
-                    print(f"  Row {i+1}: {row}")
             
             if not weekly_data:
                 await interaction.response.send_message(
@@ -657,7 +664,7 @@ class XPSystem(commands.Cog):
             leaderboard_text = ""
             for i, data in enumerate(weekly_data, 1):
                 user = self.bot.get_user(data["user_id"])
-                username = user.display_name if user else "Unknown User"
+                username = user.display_name if user else _('xp_system.leaderboard.unknown_user', user_id, guild_id)
                 
                 medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
                 leaderboard_text += f"{medal} **{username}**: {data['weekly_xp']} XP\n"
@@ -703,7 +710,7 @@ class XPSystem(commands.Cog):
                            ORDER BY monthly_xp DESC
                            LIMIT 10"""
                 color = discord.Color.blue()
-                title_suffix = " (Text)"
+                title_suffix = f" ({_('xp_system.leaderboard.types.text', user_id, guild_id)})"
             elif type == "voice":
                 query = """SELECT user_id, SUM(xp_gained) as monthly_xp
                            FROM xp_history 
@@ -712,7 +719,7 @@ class XPSystem(commands.Cog):
                            ORDER BY monthly_xp DESC
                            LIMIT 10"""
                 color = discord.Color.green()
-                title_suffix = " (Voice)"
+                title_suffix = f" ({_('xp_system.leaderboard.types.voice', user_id, guild_id)})"
             else:  # total
                 query = """SELECT user_id, SUM(xp_gained) as monthly_xp
                            FROM xp_history 
@@ -723,15 +730,8 @@ class XPSystem(commands.Cog):
                 color = discord.Color.purple()
                 title_suffix = ""
             
-            print(f"🔍 Monthly Leaderboard Debug - Type: {type}, Guild: {guild_id}")
-            print(f"📊 Query: {query}")
-            
+            logger.debug(f"Monthly Leaderboard Debug - Type: {type}, Guild: {guild_id}")
             monthly_data = await self.bot.db.query(query, (guild_id, month_ago), fetchall=True)
-            
-            print(f"📋 Results: {len(monthly_data) if monthly_data else 0} rows")
-            if monthly_data:
-                for i, row in enumerate(monthly_data[:3]):  # Show first 3 results
-                    print(f"  Row {i+1}: {row}")
             
             if not monthly_data:
                 await interaction.response.send_message(
@@ -750,7 +750,7 @@ class XPSystem(commands.Cog):
             leaderboard_text = ""
             for i, data in enumerate(monthly_data, 1):
                 user = self.bot.get_user(data["user_id"])
-                username = user.display_name if user else "Unknown User"
+                username = user.display_name if user else _('xp_system.leaderboard.unknown_user', user_id, guild_id)
                 
                 medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
                 leaderboard_text += f"{medal} **{username}**: {data['monthly_xp']} XP\n"
@@ -786,29 +786,24 @@ class XPSystem(commands.Cog):
             # Get all-time XP data based on type
             if type == "total":
                 query = """SELECT user_id, xp FROM xp_data WHERE guild_id = %s ORDER BY xp DESC LIMIT 10"""
-                field_name = f"{STAR} XP total"
+                field_name = f"{STAR} {_('xp_system.leaderboard.types.total', user_id, guild_id)}"
                 color = discord.Color.gold()
                 xp_field = "xp"
             elif type == "text":
                 query = """SELECT user_id, text_xp FROM xp_data WHERE guild_id = %s ORDER BY text_xp DESC LIMIT 10"""
-                field_name = f"💬 XP texte"
+                field_name = f"💬 {_('xp_system.leaderboard.types.text', user_id, guild_id)}"
                 color = discord.Color.blue()
                 xp_field = "text_xp"
             else:  # voice
                 query = """SELECT user_id, voice_xp FROM xp_data WHERE guild_id = %s ORDER BY voice_xp DESC LIMIT 10"""
-                field_name = f"🎤 XP vocal"
+                field_name = f"🎤 {_('xp_system.leaderboard.types.voice', user_id, guild_id)}"
                 color = discord.Color.green()
                 xp_field = "voice_xp"
             
             rows = await self.bot.db.query(query, (guild_id,), fetchall=True)
             
             # Debug: Show what data was retrieved
-            print(f"🔍 Leaderboard Debug - Type: {type}, Guild: {guild_id}")
-            print(f"📊 Query: {query}")
-            print(f"📋 Results: {len(rows) if rows else 0} rows")
-            if rows:
-                for i, row in enumerate(rows[:3]):  # Show first 3 results
-                    print(f"  Row {i+1}: {row}")
+            logger.debug(f"Leaderboard Debug - Type: {type}, Guild: {guild_id}")
             
             if not rows:
                 await interaction.response.send_message(
@@ -819,7 +814,7 @@ class XPSystem(commands.Cog):
             
             # Create embed
             embed = discord.Embed(
-                title=f"{TROPHY} Top 10 XP ({type.title()})",
+                title=f"{TROPHY} {_('xp_system.alltime_leaderboard.title', user_id, guild_id, type=type.title())}",
                 color=color,
                 timestamp=datetime.utcnow()
             )
@@ -827,7 +822,7 @@ class XPSystem(commands.Cog):
             leaderboard_text = ""
             for i, row in enumerate(rows, 1):
                 member = interaction.guild.get_member(row["user_id"])
-                name = member.display_name if member else f"Unknown User"
+                name = member.display_name if member else _('xp_system.leaderboard.unknown_user', user_id, guild_id)
                 
                 medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
                 leaderboard_text += f"{medal} **{name}**: {row[xp_field]} XP\n"
@@ -867,8 +862,8 @@ class XPSystem(commands.Cog):
         lines = []
         for row in rows:
             role = interaction.guild.get_role(row["role_id"])
-            role_name = role.mention if role else f"Rôle ID {row['role_id']} (introuvable)"
-            lines.append(f"Niveau {row['level']} → {role_name}")
+            role_name = role.mention if role else _('xp_system.level_roles.role_not_found', user_id, guild_id, role_id=row['role_id'])
+            lines.append(_('xp_system.level_roles.level_role_format', user_id, guild_id, level=row['level'], role=role_name))
 
         embed = discord.Embed(
             title=_("xp_system.level_roles.title", user_id, guild_id),

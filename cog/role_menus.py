@@ -4,6 +4,7 @@ from discord.ext import commands, tasks
 from discord import app_commands
 import logging
 from typing import List, Dict, Optional
+from i18n import _
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class RoleMenuDropdown(discord.ui.Select):
             
             if not guild or not member:
                 logger.error(f"❌ Invalid guild or member in role menu interaction")
-                await interaction.response.send_message("❌ Could not process role selection.", ephemeral=True)
+                await interaction.response.send_message(_('role_menus.error.cannot_process', interaction.user.id, guild.id), ephemeral=True)
                 return
             
             selected_role_ids = [int(value) for value in self.values]
@@ -51,7 +52,7 @@ class RoleMenuDropdown(discord.ui.Select):
             bot_member = guild.get_member(self.bot.user.id)
             if not bot_member:
                 logger.error(f"❌ Bot member not found in guild {guild.id}")
-                await interaction.response.send_message("❌ Bot member not found.", ephemeral=True)
+                await interaction.response.send_message(_('role_menus.error.bot_not_found', interaction.user.id, guild.id), ephemeral=True)
                 return
             
             # Get all roles from this menu for removal logic
@@ -63,7 +64,7 @@ class RoleMenuDropdown(discord.ui.Select):
             
             if not menu_options:
                 logger.error(f"❌ No options found for menu {self.menu_data['id']}")
-                await interaction.response.send_message("❌ Menu configuration error.", ephemeral=True)
+                await interaction.response.send_message(_('role_menus.error.menu_config', interaction.user.id, guild.id), ephemeral=True)
                 return
                 
             menu_role_ids = [option['role_id'] for option in menu_options]
@@ -106,7 +107,7 @@ class RoleMenuDropdown(discord.ui.Select):
                     for role in roles_to_remove:
                         changes_made.append(f"➖ Removed {role.name}")
                 except discord.Forbidden:
-                    await interaction.response.send_message("❌ I don't have permission to remove some roles.", ephemeral=True)
+                    await interaction.response.send_message(_('role_menus.error.no_permission_remove', interaction.user.id, guild.id), ephemeral=True)
                     return
                 except Exception as e:
                     logger.error(f"Error removing roles: {e}")
@@ -117,16 +118,16 @@ class RoleMenuDropdown(discord.ui.Select):
                     for role in roles_to_add:
                         changes_made.append(f"➕ Added {role.name}")
                 except discord.Forbidden:
-                    await interaction.response.send_message("❌ I don't have permission to add some roles.", ephemeral=True)
+                    await interaction.response.send_message(_('role_menus.error.no_permission_add', interaction.user.id, guild.id), ephemeral=True)
                     return
                 except Exception as e:
                     logger.error(f"Error adding roles: {e}")
             
             # Send response
             if changes_made:
-                response = "✅ **Role Update Successful!**\n" + "\n".join(changes_made)
+                response = f"✅ **{_('role_menus.success.title', interaction.user.id, guild.id)}**\n" + "\n".join(changes_made)
             else:
-                response = "ℹ️ No role changes were needed."
+                response = _('role_menus.success.no_changes', interaction.user.id, guild.id)
             
             await interaction.response.send_message(response, ephemeral=True)
             
@@ -134,7 +135,7 @@ class RoleMenuDropdown(discord.ui.Select):
             logger.error(f"❌ Error in role menu callback: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
-            await interaction.response.send_message("❌ An error occurred while processing your selection.", ephemeral=True)
+            await interaction.response.send_message(_('role_menus.error.processing_error', interaction.user.id, guild.id), ephemeral=True)
 
 class RoleMenuView(discord.ui.View):
     def __init__(self, bot, menu_data: Dict, options_data: List[Dict]):
@@ -276,7 +277,7 @@ class RoleMenus(commands.Cog):
             
             embed = discord.Embed(
                 title=menu_data['title'],
-                description=menu_data['description'] or "Select a role from the dropdown below:",
+                description=menu_data['description'] or _('role_menus.default_description', guild_id=menu_data['guild_id']),
                 color=color
             )
             
@@ -292,7 +293,7 @@ class RoleMenus(commands.Cog):
                 
                 if role_list:
                     embed.add_field(
-                        name="Available Roles",
+                        name=_('role_menus.available_roles', guild_id=menu_data['guild_id']),
                         value="\n".join(role_list),
                         inline=False
                     )

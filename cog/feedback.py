@@ -4,6 +4,7 @@ from discord.ext import commands
 from discord import app_commands
 from datetime import datetime
 import asyncio
+from i18n import _
 
 class Feedback(commands.Cog):
     """Feedback collection system for bot improvement"""
@@ -29,7 +30,7 @@ class Feedback(commands.Cog):
         
         # Create feedback embed
         embed = discord.Embed(
-            title=f"📝 New Feedback - {type.title()}",
+            title=f"📝 {_('feedback.new_feedback', interaction.user.id, interaction.guild.id)} - {_('feedback.types.' + type, interaction.user.id, interaction.guild.id)}",
             description=message,
             color=discord.Color.blue(),
             timestamp=datetime.now()
@@ -37,10 +38,10 @@ class Feedback(commands.Cog):
         
         # Add user info
         embed.add_field(
-            name="👤 User Info",
-            value=f"**User:** {interaction.user.mention} ({interaction.user.id})\n"
-                  f"**Server:** {interaction.guild.name} ({interaction.guild.id})\n"
-                  f"**Members:** {interaction.guild.member_count}",
+            name=f"👤 {_('feedback.user_info', interaction.user.id, interaction.guild.id)}",
+            value=f"**{_('feedback.user', interaction.user.id, interaction.guild.id)}:** {interaction.user.mention} ({interaction.user.id})\n"
+                  f"**{_('feedback.server', interaction.user.id, interaction.guild.id)}:** {interaction.guild.name} ({interaction.guild.id})\n"
+                  f"**{_('feedback.members', interaction.user.id, interaction.guild.id)}:** {interaction.guild.member_count}",
             inline=False
         )
         
@@ -53,7 +54,7 @@ class Feedback(commands.Cog):
         }
         
         embed.set_footer(
-            text=f"{type_emojis.get(type, '📝')} Feedback from {interaction.user.display_name}",
+            text=f"{type_emojis.get(type, '📝')} {_('feedback.footer', interaction.user.id, interaction.guild.id, user=interaction.user.display_name)}",
             icon_url=interaction.user.display_avatar.url
         )
         
@@ -79,27 +80,27 @@ class Feedback(commands.Cog):
         
         # Confirm to user
         thank_you_embed = discord.Embed(
-            title="✅ Feedback Submitted!",
-            description="Thank you for your feedback! This helps us improve Maybee.",
+            title=f"✅ {_('feedback.submitted', interaction.user.id, interaction.guild.id)}",
+            description=_('feedback.thank_you', interaction.user.id, interaction.guild.id),
             color=discord.Color.green()
         )
         
         if type == "bug":
             thank_you_embed.add_field(
-                name="🐛 Bug Reports",
-                value="We'll investigate this issue and work on a fix. Thanks for helping us improve!",
+                name=f"🐛 {_('feedback.bug_reports', interaction.user.id, interaction.guild.id)}",
+                value=_('feedback.bug_message', interaction.user.id, interaction.guild.id),
                 inline=False
             )
         elif type == "feature":
             thank_you_embed.add_field(
-                name="💡 Feature Requests", 
-                value="We'll consider this feature for future updates. Great suggestion!",
+                name=f"💡 {_('feedback.feature_requests', interaction.user.id, interaction.guild.id)}", 
+                value=_('feedback.feature_message', interaction.user.id, interaction.guild.id),
                 inline=False
             )
         elif type == "question":
             thank_you_embed.add_field(
-                name="❓ Questions",
-                value="We'll try to get back to you soon. Check our documentation at github.com/imutig/Maybee",
+                name=f"❓ {_('feedback.questions', interaction.user.id, interaction.guild.id)}",
+                value=_('feedback.question_message', interaction.user.id, interaction.guild.id),
                 inline=False
             )
         

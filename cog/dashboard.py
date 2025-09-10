@@ -15,23 +15,23 @@ class Dashboard(commands.Cog):
         user_id = interaction.user.id
         guild_id = interaction.guild.id if interaction.guild else None
         
-        # Créer un embed avec le lien du dashboard
+        # Create an embed with the dashboard link
         embed = discord.Embed(
             title=f"{GLOBE} {_('commands.dashboard.title', user_id, guild_id)}",
             description=_("commands.dashboard.description", user_id, guild_id),
-            color=0xFAC10C,  # Couleur jaune miel Maybee
+            color=0xFAC10C,  # Maybee honey yellow color
             url="https://web-production-448ba.up.railway.app/"
         )
         
         embed.add_field(
             name=f"{GLOBE} {_('commands.dashboard.link_title', user_id, guild_id)}",
-            value="[🌐 **Accéder au Dashboard**](https://web-production-448ba.up.railway.app/)",
+            value=f"[🌐 **{_('commands.dashboard.access_link', user_id, guild_id)}**](https://web-production-448ba.up.railway.app/)",
             inline=False
         )
         
         embed.add_field(
             name=f"{TROPHY} {_('commands.dashboard.features_title', user_id, guild_id)}",
-            value=f"• {SHIELD} **Gestion des rôles automatiques**\n• {TROPHY} **Système de niveaux et XP**\n• {USERS} **Configuration des messages de bienvenue**\n• {TICKET} **Logs des tickets**\n• {CHART_BAR} **Statistiques du serveur**\n• {SUCCESS} **Et bien plus encore !**",
+            value=_('commands.dashboard.features_list', user_id, guild_id),
             inline=False
         )
         

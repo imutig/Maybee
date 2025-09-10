@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from i18n import _
 from .command_logger import log_command_usage
@@ -92,7 +92,7 @@ class ServerLogsCog(commands.Cog):
             title=f"👋 {_('config_system.server_logs.log_events.member_joined', 0, member.guild.id)}",
             description=f"{member.mention} has joined the server",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         embed.add_field(
@@ -130,7 +130,7 @@ class ServerLogsCog(commands.Cog):
             title=f"👋 {_('config_system.server_logs.log_events.member_left', 0, member.guild.id)}",
             description=f"**{member.display_name}** has left the server",
             color=discord.Color.red(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         embed.add_field(
@@ -171,7 +171,7 @@ class ServerLogsCog(commands.Cog):
                     title=f"🔊 {_('config_system.server_logs.log_events.voice_joined', 0, member.guild.id)}",
                     description=f"{member.mention} joined {after.channel.mention}",
                     color=discord.Color.blue(),
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
                 )
                 
                 embed.add_field(
@@ -204,7 +204,7 @@ class ServerLogsCog(commands.Cog):
                     title=f"🔇 {_('config_system.server_logs.log_events.voice_left', 0, member.guild.id)}",
                     description=f"{member.mention} left {before.channel.mention}",
                     color=discord.Color.orange(),
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
                 )
                 
                 embed.add_field(
@@ -237,7 +237,7 @@ class ServerLogsCog(commands.Cog):
                     title=f"🔄 {_('config_system.server_logs.log_events.voice_switched', 0, member.guild.id)}",
                     description=f"{member.mention} switched from {before.channel.mention} to {after.channel.mention}",
                     color=discord.Color.purple(),
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
                 )
                 
                 embed.add_field(
@@ -264,52 +264,52 @@ class ServerLogsCog(commands.Cog):
             # Check for mute changes
             if before.mute != after.mute:
                 if after.mute:
-                    voice_changes.append("🔇 Muted")
+                    voice_changes.append(_('server_logs.voice_changes.muted', 0, member.guild.id))
                 else:
-                    voice_changes.append("🔊 Unmuted")
+                    voice_changes.append(_('server_logs.voice_changes.unmuted', 0, member.guild.id))
             
             # Check for deaf changes
             if before.deaf != after.deaf:
                 if after.deaf:
-                    voice_changes.append("🔇 Deafened")
+                    voice_changes.append(_('server_logs.voice_changes.deafened', 0, member.guild.id))
                 else:
-                    voice_changes.append("🔊 Undeafened")
+                    voice_changes.append(_('server_logs.voice_changes.undeafened', 0, member.guild.id))
             
             # Check for self mute changes
             if before.self_mute != after.self_mute:
                 if after.self_mute:
-                    voice_changes.append("🔇 Self-muted")
+                    voice_changes.append(_('server_logs.voice_changes.self_muted', 0, member.guild.id))
                 else:
-                    voice_changes.append("🔊 Self-unmuted")
+                    voice_changes.append(_('server_logs.voice_changes.self_unmuted', 0, member.guild.id))
             
             # Check for self deaf changes
             if before.self_deaf != after.self_deaf:
                 if after.self_deaf:
-                    voice_changes.append("🔇 Self-deafened")
+                    voice_changes.append(_('server_logs.voice_changes.self_deafened', 0, member.guild.id))
                 else:
-                    voice_changes.append("🔊 Self-undeafened")
+                    voice_changes.append(_('server_logs.voice_changes.self_undeafened', 0, member.guild.id))
             
             # Check for stream changes
             if before.self_stream != after.self_stream:
                 if after.self_stream:
-                    voice_changes.append("📺 Started streaming")
+                    voice_changes.append(_('server_logs.voice_changes.started_streaming', 0, member.guild.id))
                 else:
-                    voice_changes.append("📺 Stopped streaming")
+                    voice_changes.append(_('server_logs.voice_changes.stopped_streaming', 0, member.guild.id))
             
             # Check for video changes
             if before.self_video != after.self_video:
                 if after.self_video:
-                    voice_changes.append("📹 Started video")
+                    voice_changes.append(_('server_logs.voice_changes.started_video', 0, member.guild.id))
                 else:
-                    voice_changes.append("📹 Stopped video")
+                    voice_changes.append(_('server_logs.voice_changes.stopped_video', 0, member.guild.id))
             
             # Log voice state changes if any
             if voice_changes and config.get('log_voice_state_changes', True):
                 embed = discord.Embed(
-                    title=f"🎤 Voice State Changed",
-                    description=f"{member.mention} changed voice state in {after.channel.mention}",
+                    title=f"🎤 {_('server_logs.voice_state_changed', 0, member.guild.id)}",
+                    description=_('server_logs.voice_state_description', 0, member.guild.id, member=member.mention, channel=after.channel.mention),
                     color=discord.Color.cyan(),
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
                 )
                 
                 embed.add_field(
@@ -325,7 +325,7 @@ class ServerLogsCog(commands.Cog):
                 )
                 
                 embed.add_field(
-                    name="Changes",
+                    name=_('server_logs.changes', 0, member.guild.id),
                     value="\n".join(voice_changes),
                     inline=False
                 )
@@ -375,11 +375,11 @@ class ServerLogsCog(commands.Cog):
         embed = discord.Embed(
             title=f"🗑️ {_('config_system.server_logs.log_events.message_deleted', 0, message.guild.id)}",
             color=discord.Color.red(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         embed.add_field(
-            name="Author",
+            name=_('server_logs.author', 0, message.guild.id),
             value=f"{message.author.mention}\n({message.author.name})",
             inline=True
         )
@@ -459,11 +459,11 @@ class ServerLogsCog(commands.Cog):
         embed = discord.Embed(
             title=f"✏️ {_('config_system.server_logs.log_events.message_edited', 0, before.guild.id)}",
             color=discord.Color.yellow(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         embed.add_field(
-            name="Author",
+            name=_('server_logs.author', 0, before.guild.id),
             value=f"{before.author.mention}\n({before.author.name})",
             inline=True
         )
@@ -527,7 +527,7 @@ class ServerLogsCog(commands.Cog):
             embed = discord.Embed(
                 title=f"📝 {_('config_system.server_logs.log_events.nickname_changed', 0, before.guild.id)}",
                 color=discord.Color.blue(),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             )
             
             embed.add_field(
@@ -562,7 +562,7 @@ class ServerLogsCog(commands.Cog):
                 embed = discord.Embed(
                     title=f"🎭 {_('config_system.server_logs.log_events.roles_changed', 0, before.guild.id)}",
                     color=discord.Color.purple(),
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
                 )
                 
                 embed.add_field(
@@ -592,9 +592,9 @@ class ServerLogsCog(commands.Cog):
                     async for entry in before.guild.audit_logs(limit=5, action=discord.AuditLogAction.member_role_update):
                         if entry.target and entry.target.id == after.id:
                             # Check if the change happened recently (within last 10 seconds)
-                            if (datetime.utcnow() - entry.created_at).total_seconds() < 10:
+                            if (datetime.now(datetime.timezone.utc) - entry.created_at).total_seconds() < 10:
                                 embed.add_field(
-                                    name="👤 Modified by",
+                                    name=_('server_logs.modified_by', 0, before.guild.id),
                                     value=f"{entry.user.mention}\n({entry.user.display_name})",
                                     inline=True
                                 )
@@ -619,7 +619,7 @@ class ServerLogsCog(commands.Cog):
             title=f"📢 {_('config_system.server_logs.log_events.channel_created', 0, channel.guild.id)}",
             description=f"Channel {channel.mention} was created",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         embed.add_field(
@@ -656,7 +656,7 @@ class ServerLogsCog(commands.Cog):
             title=f"🗑️ {_('config_system.server_logs.log_events.channel_deleted', 0, channel.guild.id)}",
             description=f"Channel **{channel.name}** was deleted",
             color=discord.Color.red(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         embed.add_field(
@@ -690,26 +690,26 @@ class ServerLogsCog(commands.Cog):
             return
         
         embed = discord.Embed(
-            title=f"🎭 Role Created",
-            description=f"Role **{role.name}** was created",
+            title=f"🎭 {_('server_logs.role_created', 0, role.guild.id)}",
+            description=_('server_logs.role_created_description', 0, role.guild.id, role_name=role.name),
             color=discord.Color.green(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         embed.add_field(
-            name="Role",
+            name=_('server_logs.role', 0, role.guild.id),
             value=f"{role.mention}\n({role.name})",
             inline=True
         )
         
         embed.add_field(
-            name="Color",
-            value=f"#{role.color.value:06x}" if role.color.value != 0 else "Default",
+            name=_('server_logs.color', 0, role.guild.id),
+            value=f"#{role.color.value:06x}" if role.color.value != 0 else _('server_logs.default', 0, role.guild.id),
             inline=True
         )
         
         embed.add_field(
-            name="Position",
+            name=_('server_logs.position', 0, role.guild.id),
             value=f"{role.position}",
             inline=True
         )
@@ -719,9 +719,9 @@ class ServerLogsCog(commands.Cog):
             async for entry in role.guild.audit_logs(limit=5, action=discord.AuditLogAction.role_create):
                 if entry.target and entry.target.id == role.id:
                     # Check if the change happened recently (within last 10 seconds)
-                    if (datetime.utcnow() - entry.created_at).total_seconds() < 10:
+                    if (datetime.now(timezone.utc) - entry.created_at).total_seconds() < 10:
                         embed.add_field(
-                            name="👤 Created by",
+                            name=_('server_logs.created_by', 0, role.guild.id),
                             value=f"{entry.user.mention}\n({entry.user.display_name})",
                             inline=True
                         )
@@ -742,26 +742,26 @@ class ServerLogsCog(commands.Cog):
             return
         
         embed = discord.Embed(
-            title=f"🗑️ Role Deleted",
-            description=f"Role **{role.name}** was deleted",
+            title=f"🗑️ {_('server_logs.role_deleted', 0, role.guild.id)}",
+            description=_('server_logs.role_deleted_description', 0, role.guild.id, role_name=role.name),
             color=discord.Color.red(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         embed.add_field(
-            name="Role",
+            name=_('server_logs.role', 0, role.guild.id),
             value=f"**{role.name}**",
             inline=True
         )
         
         embed.add_field(
-            name="Color",
-            value=f"#{role.color.value:06x}" if role.color.value != 0 else "Default",
+            name=_('server_logs.color', 0, role.guild.id),
+            value=f"#{role.color.value:06x}" if role.color.value != 0 else _('server_logs.default', 0, role.guild.id),
             inline=True
         )
         
         embed.add_field(
-            name="Position",
+            name=_('server_logs.position', 0, role.guild.id),
             value=f"{role.position}",
             inline=True
         )
@@ -771,9 +771,9 @@ class ServerLogsCog(commands.Cog):
             async for entry in role.guild.audit_logs(limit=5, action=discord.AuditLogAction.role_delete):
                 if entry.target and entry.target.id == role.id:
                     # Check if the change happened recently (within last 10 seconds)
-                    if (datetime.utcnow() - entry.created_at).total_seconds() < 10:
+                    if (datetime.now(timezone.utc) - entry.created_at).total_seconds() < 10:
                         embed.add_field(
-                            name="👤 Deleted by",
+                            name=_('server_logs.deleted_by', 0, role.guild.id),
                             value=f"{entry.user.mention}\n({entry.user.display_name})",
                             inline=True
                         )
@@ -797,47 +797,47 @@ class ServerLogsCog(commands.Cog):
         
         # Check for name changes
         if before.name != after.name:
-            changes.append(f"**Name:** {before.name} → {after.name}")
+            changes.append(_('server_logs.role_changes.name', 0, after.guild.id, before=before.name, after=after.name))
         
         # Check for color changes
         if before.color != after.color:
-            before_color = f"#{before.color.value:06x}" if before.color.value != 0 else "Default"
-            after_color = f"#{after.color.value:06x}" if after.color.value != 0 else "Default"
-            changes.append(f"**Color:** {before_color} → {after_color}")
+            before_color = f"#{before.color.value:06x}" if before.color.value != 0 else _('server_logs.default', 0, after.guild.id)
+            after_color = f"#{after.color.value:06x}" if after.color.value != 0 else _('server_logs.default', 0, after.guild.id)
+            changes.append(_('server_logs.role_changes.color', 0, after.guild.id, before=before_color, after=after_color))
         
         # Check for permission changes
         if before.permissions != after.permissions:
-            changes.append("**Permissions:** Modified")
+            changes.append(_('server_logs.role_changes.permissions', 0, after.guild.id))
         
         # Check for position changes
         if before.position != after.position:
-            changes.append(f"**Position:** {before.position} → {after.position}")
+            changes.append(_('server_logs.role_changes.position', 0, after.guild.id, before=before.position, after=after.position))
         
         # Check for mentionable changes
         if before.mentionable != after.mentionable:
-            changes.append(f"**Mentionable:** {before.mentionable} → {after.mentionable}")
+            changes.append(_('server_logs.role_changes.mentionable', 0, after.guild.id, before=before.mentionable, after=after.mentionable))
         
         # Check for hoist changes
         if before.hoist != after.hoist:
-            changes.append(f"**Hoist:** {before.hoist} → {after.hoist}")
+            changes.append(_('server_logs.role_changes.hoist', 0, after.guild.id, before=before.hoist, after=after.hoist))
         
         # Only log if there are actual changes
         if changes:
             embed = discord.Embed(
-                title=f"✏️ Role Updated",
-                description=f"Role {after.mention} was updated",
+                title=f"✏️ {_('server_logs.role_updated', 0, after.guild.id)}",
+                description=_('server_logs.role_updated_description', 0, after.guild.id, role=after.mention),
                 color=discord.Color.yellow(),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             )
             
             embed.add_field(
-                name="Role",
+                name=_('server_logs.role', 0, after.guild.id),
                 value=f"{after.mention}\n({after.name})",
                 inline=True
             )
             
             embed.add_field(
-                name="Changes",
+                name=_('server_logs.changes', 0, after.guild.id),
                 value="\n".join(changes),
                 inline=False
             )
@@ -847,9 +847,9 @@ class ServerLogsCog(commands.Cog):
                 async for entry in after.guild.audit_logs(limit=5, action=discord.AuditLogAction.role_update):
                     if entry.target and entry.target.id == after.id:
                         # Check if the change happened recently (within last 10 seconds)
-                        if (datetime.utcnow() - entry.created_at).total_seconds() < 10:
+                        if (datetime.now(timezone.utc) - entry.created_at).total_seconds() < 10:
                             embed.add_field(
-                                name="👤 Updated by",
+                                name=_('server_logs.updated_by', 0, after.guild.id),
                                 value=f"{entry.user.mention}\n({entry.user.display_name})",
                                 inline=True
                             )
@@ -873,48 +873,48 @@ class ServerLogsCog(commands.Cog):
         
         # Check for name changes
         if before.name != after.name:
-            changes.append(f"**Name:** {before.name} → {after.name}")
+            changes.append(_('server_logs.channel_changes.name', 0, after.guild.id, before=before.name, after=after.name))
         
         # Check for topic changes (text channels)
         if hasattr(before, 'topic') and hasattr(after, 'topic'):
             if before.topic != after.topic:
-                before_topic = before.topic[:50] + "..." if before.topic and len(before.topic) > 50 else before.topic or "None"
-                after_topic = after.topic[:50] + "..." if after.topic and len(after.topic) > 50 else after.topic or "None"
-                changes.append(f"**Topic:** {before_topic} → {after_topic}")
+                before_topic = before.topic[:50] + "..." if before.topic and len(before.topic) > 50 else before.topic or _('server_logs.none', 0, after.guild.id)
+                after_topic = after.topic[:50] + "..." if after.topic and len(after.topic) > 50 else after.topic or _('server_logs.none', 0, after.guild.id)
+                changes.append(_('server_logs.channel_changes.topic', 0, after.guild.id, before=before_topic, after=after_topic))
         
         # Check for category changes
         if before.category != after.category:
-            before_cat = before.category.name if before.category else "None"
-            after_cat = after.category.name if after.category else "None"
-            changes.append(f"**Category:** {before_cat} → {after_cat}")
+            before_cat = before.category.name if before.category else _('server_logs.none', 0, after.guild.id)
+            after_cat = after.category.name if after.category else _('server_logs.none', 0, after.guild.id)
+            changes.append(_('server_logs.channel_changes.category', 0, after.guild.id, before=before_cat, after=after_cat))
         
         # Check for permission changes
         if before.overwrites != after.overwrites:
-            changes.append("**Permissions:** Modified")
+            changes.append(_('server_logs.channel_changes.permissions', 0, after.guild.id))
         
         # Only log if there are actual changes
         if changes:
             embed = discord.Embed(
-                title=f"✏️ Channel Updated",
-                description=f"Channel {after.mention} was updated",
+                title=f"✏️ {_('server_logs.channel_updated', 0, after.guild.id)}",
+                description=_('server_logs.channel_updated_description', 0, after.guild.id, channel=after.mention),
                 color=discord.Color.yellow(),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             )
             
             embed.add_field(
-                name="Channel",
+                name=_('server_logs.channel', 0, after.guild.id),
                 value=f"{after.mention}\n({after.name})",
                 inline=True
             )
             
             embed.add_field(
-                name="Type",
+                name=_('server_logs.type', 0, after.guild.id),
                 value=f"{after.type}".replace("_", " ").title(),
                 inline=True
             )
             
             embed.add_field(
-                name="Changes",
+                name=_('server_logs.changes', 0, after.guild.id),
                 value="\n".join(changes),
                 inline=False
             )
@@ -924,9 +924,9 @@ class ServerLogsCog(commands.Cog):
                 async for entry in after.guild.audit_logs(limit=5, action=discord.AuditLogAction.channel_update):
                     if entry.target and entry.target.id == after.id:
                         # Check if the change happened recently (within last 10 seconds)
-                        if (datetime.utcnow() - entry.created_at).total_seconds() < 10:
+                        if (datetime.now(timezone.utc) - entry.created_at).total_seconds() < 10:
                             embed.add_field(
-                                name="👤 Updated by",
+                                name=_('server_logs.updated_by', 0, after.guild.id),
                                 value=f"{entry.user.mention}\n({entry.user.display_name})",
                                 inline=True
                             )

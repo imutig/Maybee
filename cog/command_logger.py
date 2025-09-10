@@ -14,29 +14,22 @@ def log_command_usage(func: Callable) -> Callable:
     """
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        print(f"🔍 [COMMAND LOGGER] Décorateur appelé pour la fonction: {func.__name__}")
-        print(f"🔍 [COMMAND LOGGER] Arguments reçus: {len(args)} args, {len(kwargs)} kwargs")
+        # Debug logs removed to reduce console spam
         
         # Trouver l'interaction dans les arguments pour récupérer les détails avant exécution
         interaction = None
         bot_instance = None
         
         for i, arg in enumerate(args):
-            print(f"🔍 [COMMAND LOGGER] Arg {i}: {type(arg)}")
             if isinstance(arg, discord.Interaction):
                 interaction = arg
-                print(f"🔍 [COMMAND LOGGER] Interaction trouvée: {interaction.command.name if interaction.command else 'No command'}")
             elif hasattr(arg, 'bot'):  # Si c'est un cog, récupérer le bot
                 bot_instance = arg.bot
-                print(f"🔍 [COMMAND LOGGER] Bot trouvé via cog: {bot_instance is not None}")
         
         # Exécuter la commande originale
         result = await func(*args, **kwargs)
         
-        print(f"🔍 [COMMAND LOGGER] Commande exécutée, maintenant logging...")
-        
         if not interaction:
-            print(f"❌ [COMMAND LOGGER] Interaction non trouvée dans les arguments")
             return result
         
         # Logger l'utilisation si c'est une commande app_commands
@@ -45,24 +38,18 @@ def log_command_usage(func: Callable) -> Callable:
                 # Fallback: essayer d'importer le bot global
                 from main import bot
                 bot_instance = bot
-                print(f"🔍 [COMMAND LOGGER] Bot importé depuis main: {bot_instance is not None}")
+                pass
             
-            print(f"🔍 [COMMAND LOGGER] Bot instance: {bot_instance is not None}")
-            print(f"🔍 [COMMAND LOGGER] Cogs disponibles: {list(bot_instance.cogs.keys())}")
-            
-            dm_logs_cog = bot_instance.get_cog('DMLogsSystem')
-            print(f"🔍 [COMMAND LOGGER] DMLogsSystem cog trouvé: {dm_logs_cog is not None}")
-            if dm_logs_cog and hasattr(dm_logs_cog, 'log_command_usage'):
-                # Essayer de récupérer le nom de la commande depuis l'interaction
-                command_name = interaction.command.name if interaction.command else func.__name__
-                print(f"🔍 [COMMAND LOGGER] Logging command: {command_name}")
+            if bot_instance:
+                dm_logs_cog = bot_instance.get_cog('DMLogsSystem')
+                if dm_logs_cog and hasattr(dm_logs_cog, 'log_command_usage'):
+                    # Essayer de récupérer le nom de la commande depuis l'interaction
+                    command_name = interaction.command.name if interaction.command else func.__name__
                 
-                # Récupérer les détails supplémentaires spécifiques à la commande
-                extra_details = await _get_command_details(func.__name__, interaction, args, kwargs, result)
-                
-                await dm_logs_cog.log_command_usage(command_name, interaction.user, interaction.guild, extra_details)
-            else:
-                print(f"❌ [COMMAND LOGGER] DMLogsSystem cog non trouvé ou méthode manquante")
+                    # Récupérer les détails supplémentaires spécifiques à la commande
+                    extra_details = await _get_command_details(func.__name__, interaction, args, kwargs, result)
+                    
+                    await dm_logs_cog.log_command_usage(command_name, interaction.user, interaction.guild, extra_details)
         except Exception as e:
             print(f"❌ [COMMAND LOGGER] Erreur lors du logging: {e}")
         
@@ -92,7 +79,7 @@ async def _get_command_details(command_name: str, interaction: discord.Interacti
             # Pour warn: membre warn et raison
             if len(args) >= 3:  # self, interaction, member
                 member = args[2] if len(args) > 2 else kwargs.get('member', None)
-                reason = kwargs.get('reason', 'Aucune raison spécifiée')
+                reason = kwargs.get('reason', 'No reason specified')
                 details = {
                     "warned_user": member.display_name if member else "N/A",
                     "reason": reason
@@ -103,7 +90,7 @@ async def _get_command_details(command_name: str, interaction: discord.Interacti
             if len(args) >= 3:
                 member = args[2] if len(args) > 2 else kwargs.get('member', None)
                 duration = kwargs.get('duration', 'N/A')
-                reason = kwargs.get('reason', 'Aucune raison spécifiée')
+                reason = kwargs.get('reason', 'No reason specified')
                 details = {
                     "timed_out_user": member.display_name if member else "N/A",
                     "duration_minutes": duration,
@@ -130,7 +117,7 @@ async def _get_command_details(command_name: str, interaction: discord.Interacti
                 "channel": interaction.channel.name if interaction.channel else "N/A"
             }
         
-        print(f"🔍 [COMMAND LOGGER] Détails extraits pour {command_name}: {details}")
+        # Debug log removed
         
     except Exception as e:
         print(f"❌ [COMMAND LOGGER] Erreur lors de l'extraction des détails: {e}")

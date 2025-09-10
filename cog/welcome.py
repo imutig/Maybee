@@ -19,13 +19,12 @@ class Welcome(commands.Cog):
         )
         
         if result:
-            print(f"🔍 DEBUG: Raw welcome_config result: {dict(result) if result else None}")
             # Check if title columns exist, if not add default values
             config_dict = dict(result)
             if 'welcome_title' not in config_dict:
-                config_dict['welcome_title'] = '👋 New member!'
+                config_dict['welcome_title'] = _('welcome_system.default_welcome_title', 0, guild_id)
             if 'goodbye_title' not in config_dict:  
-                config_dict['goodbye_title'] = '👋 Departure'
+                config_dict['goodbye_title'] = _('welcome_system.default_goodbye_title', 0, guild_id)
             return config_dict
             
         # If no welcome_config, check guild_config table for dashboard consistency
@@ -74,9 +73,6 @@ class Welcome(commands.Cog):
 
     def format_message(self, template: str, member: discord.Member):
         """Format welcome/goodbye message with member and guild information"""
-        print(f"🔧 DEBUG: Formatting template: '{template}'")
-        print(f"🔧 DEBUG: Member: {member.display_name} ({member.mention})")
-        
         result = template\
             .replace("{memberName}", member.display_name)\
             .replace("{memberMention}", member.mention)\
@@ -90,16 +86,12 @@ class Welcome(commands.Cog):
             .replace("{displayname}", member.display_name)\
             .replace("{userMention}", member.mention)
         
-        print(f"🔧 DEBUG: Formatted result: '{result}'")
         return result
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
         guild_id = member.guild.id
-        print(f"🎉 DEBUG: Member joined - {member.display_name} in guild {guild_id}")
-        
         config = await self.get_welcome_config(guild_id)
-        print(f"🔍 DEBUG: Welcome config for guild {guild_id}: {config}")
         
         # Handle auto-role assignment first
         await self.handle_auto_roles(member, config)
@@ -113,11 +105,7 @@ class Welcome(commands.Cog):
             auto_role_enabled = config.get("auto_role_enabled", False)
             auto_role_ids = config.get("auto_role_ids")
             
-            print(f"🔧 DEBUG: Auto-role enabled: {auto_role_enabled}")
-            print(f"🔧 DEBUG: Auto-role IDs: {auto_role_ids}")
-            
             if not auto_role_enabled or not auto_role_ids:
-                print(f"⚠️ DEBUG: Auto-role disabled or no roles configured")
                 return
             
             # Parse role IDs if they're stored as JSON string
@@ -126,11 +114,9 @@ class Welcome(commands.Cog):
                 try:
                     auto_role_ids = json.loads(auto_role_ids)
                 except json.JSONDecodeError:
-                    print(f"❌ DEBUG: Failed to parse auto_role_ids JSON: {auto_role_ids}")
                     return
             
             if not isinstance(auto_role_ids, list):
-                print(f"❌ DEBUG: auto_role_ids is not a list: {type(auto_role_ids)}")
                 return
             
             # Assign roles to the new member
@@ -145,35 +131,19 @@ class Welcome(commands.Cog):
                         if role.position < member.guild.me.top_role.position:
                             await member.add_roles(role, reason="Auto-role assignment on member join")
                             roles_assigned.append(role.name)
-                            print(f"✅ DEBUG: Assigned role {role.name} to {member.display_name}")
                         else:
-                            roles_failed.append(f"{role.name} (insufficient permissions)")
-                            print(f"❌ DEBUG: Cannot assign role {role.name} - insufficient permissions")
+                            roles_failed.append(f"{role.name} ({_('welcome_system.insufficient_permissions', 0, member.guild.id)})")
                     else:
-                        roles_failed.append(f"Role ID {role_id} (not found)")
-                        print(f"❌ DEBUG: Role with ID {role_id} not found")
+                        roles_failed.append(f"Role ID {role_id} ({_('welcome_system.role_not_found', 0, member.guild.id)})")
                 except Exception as e:
-                    roles_failed.append(f"Role ID {role_id} (error: {str(e)})")
-                    print(f"❌ DEBUG: Error assigning role {role_id}: {e}")
+                    roles_failed.append(f"Role ID {role_id} ({_('welcome_system.error', 0, member.guild.id)}: {str(e)})")
             
-            if roles_assigned:
-                print(f"🎉 DEBUG: Successfully assigned {len(roles_assigned)} roles to {member.display_name}: {', '.join(roles_assigned)}")
-            
-            if roles_failed:
-                print(f"⚠️ DEBUG: Failed to assign {len(roles_failed)} roles to {member.display_name}: {', '.join(roles_failed)}")
-                
         except Exception as e:
-            print(f"❌ DEBUG: Error in auto-role assignment for {member.display_name}: {e}")
+            pass  # Silently handle auto-role assignment errors
 
     async def send_welcome_message(self, member, config):
         """Send welcome message to the configured channel"""
         channel_id = config.get("welcome_channel")
-        print(f"📢 DEBUG: Welcome channel ID: {channel_id}")
-        
-    async def send_welcome_message(self, member, config):
-        """Send welcome message to the configured channel"""
-        channel_id = config.get("welcome_channel")
-        print(f"📢 DEBUG: Welcome channel ID: {channel_id}")
         
         guild_id = member.guild.id
         
@@ -181,25 +151,18 @@ class Welcome(commands.Cog):
         message = config.get("welcome_message")
         if not message:
             message = _("welcome_system.default_welcome_message", member.id, guild_id)
-        print(f"💬 DEBUG: Welcome message: {message}")
 
         if channel_id:
             channel = self.bot.get_channel(channel_id)
-            print(f"🏠 DEBUG: Welcome channel object: {channel}")
             if channel:
                 # Use custom title or default
-                welcome_title = config.get("welcome_title", "👋 New member!")
-                print(f"🏷️ DEBUG: Raw welcome title: '{welcome_title}'")
+                welcome_title = config.get("welcome_title", _('welcome_system.default_welcome_title', member.id, guild_id))
                 
                 # Format the title with placeholders
                 formatted_title = self.format_message(welcome_title, member)
-                print(f"🏷️ DEBUG: Formatted welcome title: '{formatted_title}'")
                 
                 # Format the message with placeholders
                 formatted_message = self.format_message(message, member)
-                print(f"💬 DEBUG: Formatted welcome message: '{formatted_message}'")
-                
-                print(f"🔍 DEBUG: Full config: {config}")
                 embed = Embed(
                     title=formatted_title,
                     description=formatted_message,
@@ -225,17 +188,12 @@ class Welcome(commands.Cog):
                                     inline=field.get("inline", False)
                                 )
                     except Exception as e:
-                        print(f"⚠️ DEBUG: Error processing welcome fields: {e}")
+                        pass  # Silently handle field processing errors
                 
                 try:
                     await channel.send(embed=embed)
-                    print(f"✅ DEBUG: Welcome message sent successfully to {channel.name}")
                 except Exception as e:
-                    print(f"❌ DEBUG: Failed to send welcome message: {e}")
-            else:
-                print(f"❌ DEBUG: Could not find welcome channel with ID {channel_id}")
-        else:
-            print(f"⚠️ DEBUG: No welcome channel configured for guild {guild_id}")
+                    pass  # Silently handle send errors
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
@@ -252,16 +210,13 @@ class Welcome(commands.Cog):
             channel = self.bot.get_channel(channel_id)
             if channel:
                 # Use custom title or default
-                goodbye_title = config.get("goodbye_title", "👋 Departure")
-                print(f"🏷️ DEBUG: Raw goodbye title: '{goodbye_title}'")
+                goodbye_title = config.get("goodbye_title", _('welcome_system.default_goodbye_title', member.id, guild_id))
                 
                 # Format the title with placeholders
                 formatted_title = self.format_message(goodbye_title, member)
-                print(f"🏷️ DEBUG: Formatted goodbye title: '{formatted_title}'")
                 
                 # Format the message with placeholders
                 formatted_message = self.format_message(message, member)
-                print(f"💬 DEBUG: Formatted goodbye message: '{formatted_message}'")
                 
                 embed = Embed(
                     title=formatted_title,
@@ -288,7 +243,7 @@ class Welcome(commands.Cog):
                                     inline=field.get("inline", False)
                                 )
                     except Exception as e:
-                        print(f"⚠️ DEBUG: Error processing goodbye fields: {e}")
+                        pass  # Silently handle field processing errors
                 
                 await channel.send(embed=embed)
 

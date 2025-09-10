@@ -22,7 +22,7 @@ class Avatar(commands.Cog):
         guild_id = interaction.guild.id if interaction.guild else None
         user = user or interaction.user
         
-        title = f"{AVATAR} Avatar de {user.display_name}"
+        title = f"{AVATAR} {_('commands.avatar.embed_title', user_id, guild_id, user=user.display_name)}"
         embed = discord.Embed(title=title, color=discord.Color.blue())
         embed.set_image(url=user.display_avatar.url)
         await interaction.response.send_message(embed=embed)

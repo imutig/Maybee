@@ -11,8 +11,10 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Tuple
 from collections import defaultdict, deque
-from services import handle_errors, rate_limit, ValidationMixin, DatabaseError
-from monitoring import profile_performance
+# Removed imports: services and monitoring modules were deleted
+# These decorators and classes will be replaced with simple alternatives
+from i18n import _
+from custom_emojis import GOLD_MEDAL, SILVER_MEDAL, BRONZE_MEDAL
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +50,6 @@ class XPBatchProcessor:
         if len(self.pending_updates) >= self.batch_size:
             await self.process_batch()
     
-    @profile_performance("xp_batch_process")
     async def process_batch(self):
         """Process the current batch of XP updates"""
         if not self.pending_updates or self.processing:
@@ -215,7 +216,7 @@ class XPBatchProcessor:
         if self.pending_updates:
             await self.process_batch()
 
-class EnhancedXPSystem(commands.Cog, ValidationMixin):
+class EnhancedXPSystem(commands.Cog):
     """Enhanced XP System with batch processing and better performance"""
     
     def __init__(self, bot):
@@ -290,8 +291,6 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
         user="User to check XP for (defaults to yourself)",
         detailed="Show detailed statistics including recent activity"
     )
-    @handle_errors
-    @rate_limit(cooldown=10)
     async def check_xp(self, interaction: discord.Interaction, 
                       user: Optional[discord.Member] = None, 
                       detailed: bool = False):
@@ -324,8 +323,8 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
             
             if not xp_data:
                 embed = discord.Embed(
-                    title="📊 XP Status",
-                    description=f"{target_user.mention} has no XP yet!",
+                    title=f"📊 {_('xp.status.title', interaction.user.id, interaction.guild.id)}",
+                    description=_('xp.status.no_xp', interaction.user.id, interaction.guild.id, user=target_user.mention),
                     color=discord.Color.blue()
                 )
                 await interaction.response.send_message(embed=embed)
@@ -344,7 +343,7 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
             
             # Create embed
             color = discord.Color.gold() if detailed else discord.Color.blue()
-            title = "📊 Detailed XP Statistics" if detailed else "📊 XP Status"
+            title = f"📊 {_('xp.detailed.title', interaction.user.id, interaction.guild.id)}" if detailed else f"📊 {_('xp.status.title', interaction.user.id, interaction.guild.id)}"
             
             embed = discord.Embed(
                 title=title,
@@ -355,24 +354,24 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
             
             # Basic information
             embed.add_field(
-                name="👤 User",
+                name=f"👤 {_('xp.fields.user', interaction.user.id, interaction.guild.id)}",
                 value=target_user.mention,
                 inline=True
             )
             embed.add_field(
-                name="🏆 Level",
+                name=f"🏆 {_('xp.fields.level', interaction.user.id, interaction.guild.id)}",
                 value=f"**{level}**",
                 inline=True
             )
             embed.add_field(
-                name="⭐ Total XP",
+                name=f"⭐ {_('xp.fields.total_xp', interaction.user.id, interaction.guild.id)}",
                 value=f"**{current_xp:,}** XP",
                 inline=True
             )
             
             # Progress information
             embed.add_field(
-                name="📈 Progress to Next Level",
+                name=f"📈 {_('xp.fields.progress', interaction.user.id, interaction.guild.id)}",
                 value=f"{progress_bar}\n**{progress_xp:,}** / **{needed_xp:,}** XP ({progress_percentage:.1f}%)",
                 inline=False
             )
@@ -380,17 +379,17 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
             if detailed:
                 # Detailed statistics
                 embed.add_field(
-                    name="📝 Text XP",
+                    name=f"📝 {_('xp.fields.text_xp', interaction.user.id, interaction.guild.id)}",
                     value=f"**{text_xp:,}** XP",
                     inline=True
                 )
                 embed.add_field(
-                    name="🎤 Voice XP", 
+                    name=f"🎤 {_('xp.fields.voice_xp', interaction.user.id, interaction.guild.id)}", 
                     value=f"**{voice_xp:,}** XP",
                     inline=True
                 )
                 embed.add_field(
-                    name="🎯 XP Needed",
+                    name=f"🎯 {_('xp.fields.xp_needed', interaction.user.id, interaction.guild.id)}",
                     value=f"**{xp_needed_for_next:,}** XP",
                     inline=True
                 )
@@ -415,42 +414,40 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
                             activity_text += f"**{day_data[0]}**: {day_data[1]} XP\n"
                         
                         embed.add_field(
-                            name="📅 Recent Activity (Last 5 Days)",
+                            name=f"📅 {_('xp.fields.recent_activity', interaction.user.id, interaction.guild.id)}",
                             value=activity_text,
                             inline=False
                         )
                 except Exception as e:
                     logger.debug(f"Could not fetch recent activity: {e}")
                 
-                embed.set_footer(text="💡 Use '/xp detailed:False' for a quick overview")
+                embed.set_footer(text=_('xp.footer.detailed', interaction.user.id, interaction.guild.id))
             else:
                 # Quick stats for non-detailed view
                 embed.add_field(
-                    name="📝 Text XP",
+                    name=f"📝 {_('xp.fields.text_xp', interaction.user.id, interaction.guild.id)}",
                     value=f"{text_xp:,}",
                     inline=True
                 )
                 embed.add_field(
-                    name="🎤 Voice XP",
+                    name=f"🎤 {_('xp.fields.voice_xp', interaction.user.id, interaction.guild.id)}",
                     value=f"{voice_xp:,}",
                     inline=True
                 )
                 embed.add_field(
-                    name="🎯 XP Needed",
+                    name=f"🎯 {_('xp.fields.xp_needed', interaction.user.id, interaction.guild.id)}",
                     value=f"{xp_needed_for_next:,}",
                     inline=True
                 )
-                embed.set_footer(text="💡 Use '/xp detailed:True' for detailed statistics")
+                embed.set_footer(text=_('xp.footer.quick', interaction.user.id, interaction.guild.id))
             
             await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in check_xp command: {e}")
-            raise DatabaseError("Failed to retrieve XP data")
+            raise Exception(_('xp.error.retrieve_data', interaction.user.id, interaction.guild.id))
     
     @app_commands.command(name="leaderboard", description="Show the server XP leaderboard")
-    @handle_errors
-    @rate_limit(cooldown=30)
     async def leaderboard(self, interaction: discord.Interaction, page: int = 1):
         """Show XP leaderboard with pagination"""
         try:
@@ -479,12 +476,12 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
             total_pages = (total_count[0] + 9) // 10 if total_count else 1
             
             embed = discord.Embed(
-                title=f"🏆 XP Leaderboard - Page {page}/{total_pages}",
+                title=f"🏆 {_('xp.leaderboard.title', interaction.user.id, interaction.guild.id)} - {_('xp.leaderboard.page', interaction.user.id, interaction.guild.id)} {page}/{total_pages}",
                 color=discord.Color.gold()
             )
             
             if not leaderboard_data:
-                embed.description = "No XP data found for this server."
+                embed.description = _('xp.leaderboard.no_data', interaction.user.id, interaction.guild.id)
             else:
                 description = ""
                 for i, (user_id, xp, level) in enumerate(leaderboard_data, start=offset + 1):
@@ -493,24 +490,24 @@ class EnhancedXPSystem(commands.Cog, ValidationMixin):
                     
                     # Add medal for top 3
                     if i == 1:
-                        medal = "🥇"
+                        medal = GOLD_MEDAL
                     elif i == 2:
-                        medal = "🥈"
+                        medal = SILVER_MEDAL
                     elif i == 3:
-                        medal = "🥉"
+                        medal = BRONZE_MEDAL
                     else:
                         medal = f"**{i}.**"
                     
-                    description += f"{medal} {username} - Level {level} ({xp:,} XP)\n"
+                    description += f"{medal} {username} - {_('xp.leaderboard.level', interaction.user.id, interaction.guild.id)} {level} ({xp:,} XP)\n"
                 
                 embed.description = description
             
-            embed.set_footer(text=f"Page {page} of {total_pages}")
+            embed.set_footer(text=_('xp.leaderboard.footer', interaction.user.id, interaction.guild.id, page=page, total=total_pages))
             await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in leaderboard command: {e}")
-            raise DatabaseError("Failed to retrieve leaderboard data")
+            raise Exception(_('xp.error.retrieve_leaderboard', interaction.user.id, interaction.guild.id))
     
     def _calculate_xp_for_level(self, level: int) -> int:
         """Calculate total XP required for a specific level"""

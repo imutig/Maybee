@@ -39,8 +39,8 @@
                 <!-- User Menu -->
                 <div class="action-item user-menu">
                     <button class="action-btn user-btn" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <img id="userAvatar" src="" alt="Avatar" class="user-avatar" style="display: none;">
-                        <span id="username">Loading...</span>
+                        <img id="userAvatar" src="" alt="Avatar" class="user-avatar" style="display: none;" data-translate="common.avatar_alt">
+                        <span id="username" data-translate="common.loading">Loading...</span>
                         <i class="fas fa-chevron-down ms-1"></i>
                     </button>
                     <ul class="dropdown-menu modern-dropdown">
@@ -111,7 +111,7 @@
                     <div class="nav-icon">
                         <i class="fas fa-history"></i>
                     </div>
-                    <span class="nav-text">Ticket Logs</span>
+                    <span class="nav-text" data-translate="navigation.ticket_logs">Logs de ticket</span>
                 </a>
                 
                 <a class="nav-item" href="#embed" data-translate="navigation.embed_system">
@@ -236,9 +236,9 @@
                 <div class="tab-pane fade" id="xp-settings">
                     <div class="content-card">
                         <div class="card-header">
-                            <h3 class="card-title" data-translate="xp_system.title">
+                            <h3 class="card-title">
                                 <i class="fas fa-trophy me-2"></i>
-                                XP System Configuration
+                                <span data-translate="xp_system.title">Configuration du Système XP</span>
                             </h3>
                             <div class="card-actions">
                                 <button class="action-btn-small" type="button" id="resetXPBtn" style="background: #dc3545; border-color: #dc3545;">
@@ -252,7 +252,9 @@
                                 <div class="settings-grid">
                                     <!-- General Settings -->
                                     <div class="settings-section">
-                                        <h4 class="section-title" data-translate="xp_system.general_settings">General Settings</h4>
+                                        <h4 class="section-title">
+                                            <span data-translate="xp_system.general_settings">Paramètres Généraux</span>
+                                        </h4>
                                         
                                         <div class="form-group">
                                             <div class="toggle-switch">
@@ -274,7 +276,9 @@
 
                                     <!-- Level Up Settings -->
                                     <div class="settings-section">
-                                        <h4 class="section-title" data-translate="xp_system.level_up_settings">Level Up Settings</h4>
+                                        <h4 class="section-title">
+                                            <span data-translate="xp_system.level_up_settings">Paramètres de Montée de Niveau</span>
+                                        </h4>
                                         
                                         <div class="form-group">
                                             <div class="toggle-switch">
@@ -305,9 +309,9 @@
                                     <div class="settings-section">
                                         <h4 class="section-title">
                                             <i class="fas fa-medal me-2"></i>
-                                            Level Roles
+                                            <span data-translate="xp_system.level_roles_title">Level Roles</span>
                                         </h4>
-                                        <div class="form-hint mb-3">Configure roles that are automatically assigned when users reach specific levels. Users will only receive the HIGHEST level role they qualify for. Use the sync button to update all existing users retroactively.</div>
+                                        <div class="form-hint mb-3" data-translate="xp_system.level_roles_description">Configure roles that are automatically assigned when users reach specific levels. Users will only receive the HIGHEST level role they qualify for. Use the sync button to update all existing users retroactively.</div>
                                         
                                         <div id="levelRolesList" class="level-roles-list">
                                             <!-- Level roles will be populated here -->
@@ -316,7 +320,7 @@
                                         <div class="form-group">
                                             <button type="button" class="btn-secondary" id="addLevelRoleBtn">
                                                 <i class="fas fa-plus"></i>
-                                                Add Level Role
+                                                <span data-translate="xp_system.add_level_role">Add Level Role</span>
                                             </button>
                                         </div>
                                     </div>
@@ -350,70 +354,178 @@
                             <div class="settings-grid">
                                 <!-- Moderation Actions -->
                                 <div class="settings-section">
-                                    <h4 class="section-title" data-translate="moderation.execute_action">Execute Action</h4>
+                                    <h4 class="section-title">
+                                        <span data-translate="moderation.execute_action">Exécuter une Action</span>
+                                    </h4>
                                     
                                     <div class="form-group">
-                                        <label class="form-label" data-translate="moderation.select_member">Select Member</label>
+                                        <label class="form-label">
+                                            <span data-translate="moderation.select_member">Sélectionner un Membre</span>
+                                        </label>
                                         <select id="memberSelect" class="form-select">
-                                            <option value="" data-translate="moderation.choose_member">Choose a member...</option>
+                                            <option value="" data-translate="moderation.choose_member">Choisir un membre...</option>
                                         </select>
                                     </div>
 
                                     <div class="form-group">
                                         <label class="form-label" data-translate="moderation.action">Action</label>
                                         <select id="moderationAction" class="form-select">
-                                            <option value="" data-translate="moderation.select_action">Select action...</option>
-                                            <option value="warn" data-translate="moderation.warn">Warn</option>
+                                            <option value="" data-translate="moderation.select_action">Sélectionner une action...</option>
+                                            <option value="warn" data-translate="moderation.warn">Avertir</option>
                                             <option value="timeout" data-translate="moderation.timeout">Timeout</option>
-                                            <option value="kick" data-translate="moderation.kick">Kick</option>
-                                            <option value="ban" data-translate="moderation.ban">Ban</option>
+                                            <option value="kick" data-translate="moderation.kick">Expulser</option>
+                                            <option value="ban" data-translate="moderation.ban">Bannir</option>
                                         </select>
                                     </div>
 
                                     <div class="form-group" id="timeoutDuration" style="display: none;">
-                                        <label class="form-label" data-translate="moderation.timeout_duration">Timeout Duration (minutes)</label>
+                                        <label class="form-label">
+                                            <span data-translate="moderation.timeout_duration">Durée du Timeout (minutes)</span>
+                                        </label>
                                         <input type="number" id="timeoutMinutes" class="form-input" min="1" max="10080" value="60">
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="form-label" data-translate="moderation.reason">Reason</label>
-                                        <textarea id="moderationReason" class="form-textarea" rows="3" data-translate="moderation.reason_placeholder" placeholder="Enter reason for this action..."></textarea>
+                                        <label class="form-label">
+                                            <span data-translate="moderation.reason">Raison</span>
+                                        </label>
+                                        <textarea id="moderationReason" class="form-textarea" rows="3" data-translate="moderation.reason_placeholder" placeholder="Entrez la raison de cette action..."></textarea>
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="form-label" data-translate="moderation.notification_channel">Notification Channel</label>
+                                        <label class="form-label">
+                                            <span data-translate="moderation.notification_channel">Canal de Notification</span>
+                                        </label>
                                         <select id="moderationChannel" class="form-select">
-                                            <option value="" data-translate="moderation.no_notification">No notification</option>
+                                            <option value="" data-translate="moderation.no_notification">Aucune notification</option>
                                         </select>
-                                        <div class="form-hint" data-translate="moderation.notification_channel_description">Channel to log this action</div>
+                                        <div class="form-hint" data-translate="moderation.notification_channel_description">Canal pour enregistrer cette action</div>
                                     </div>
 
                                     <div class="form-actions">
                                         <button type="button" class="btn-danger" id="executeModerationBtn">
                                             <i class="fas fa-gavel me-2"></i>
-                                            <span data-translate="moderation.execute_action">Execute Action</span>
+                                            <span data-translate="moderation.execute_action">Exécuter l'Action</span>
                                         </button>
                                     </div>
                                 </div>
 
                                 <!-- Moderation History -->
                                 <div class="settings-section">
-                                    <h4 class="section-title" data-translate="moderation.recent_actions">Recent Actions</h4>
+                                    <div class="section-header">
+                                        <h4 class="section-title" data-translate="moderation.history.title">Moderation History</h4>
+                                        <div class="history-controls">
+                                            <button type="button" class="btn-outline btn-sm" id="refreshHistoryBtn">
+                                                <i class="fas fa-sync-alt"></i>
+                                                <span data-translate="common.refresh">Actualiser</span>
+                                            </button>
+                                            <button type="button" class="btn-outline btn-sm" id="exportHistoryBtn">
+                                                <i class="fas fa-download"></i>
+                                                <span data-translate="moderation.export_history">Exporter</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Filters -->
+                                    <div class="history-filters">
+                                        <div class="filter-row">
+                                            <div class="filter-group">
+                                                <label class="filter-label" data-translate="moderation.filter_user">Filter by User</label>
+                                                <input type="text" id="historyUserFilter" class="form-input" placeholder="Username or ID" data-translate="moderation.filter_user_placeholder">
+                                            </div>
+                                            <div class="filter-group">
+                                                <label class="filter-label" data-translate="moderation.filter_action">Filter by Action</label>
+                                                <select id="historyActionFilter" class="form-select">
+                                                    <option value="" data-translate="moderation.all_actions">All Actions</option>
+                                                    <option value="warn" data-translate="moderation.actions.warn">Warn</option>
+                                                    <option value="timeout" data-translate="moderation.actions.timeout">Timeout</option>
+                                                    <option value="kick" data-translate="moderation.actions.kick">Kick</option>
+                                                    <option value="ban" data-translate="moderation.actions.ban">Ban</option>
+                                                    <option value="unban" data-translate="moderation.actions.unban">Unban</option>
+                                                    <option value="unmute" data-translate="moderation.actions.unmute">Unmute</option>
+                                                </select>
+                                            </div>
+                                            <div class="filter-group">
+                                                <label class="filter-label" data-translate="moderation.filter_date">Filter by Date</label>
+                                                <select id="historyDateFilter" class="form-select">
+                                                    <option value="" data-translate="moderation.all_time">All Time</option>
+                                                    <option value="today" data-translate="moderation.today">Today</option>
+                                                    <option value="week" data-translate="moderation.this_week">This Week</option>
+                                                    <option value="month" data-translate="moderation.this_month">This Month</option>
+                                                </select>
+                                            </div>
+                                            <div class="filter-group">
+                                                <label class="filter-label" data-translate="moderation.limit">Limit</label>
+                                                <select id="historyLimitFilter" class="form-select">
+                                                    <option value="10">10</option>
+                                                    <option value="25" selected>25</option>
+                                                    <option value="50">50</option>
+                                                    <option value="100">100</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="filter-actions">
+                                            <button type="button" class="btn-primary" id="applyHistoryFiltersBtn">
+                                                <i class="fas fa-filter"></i>
+                                                <span data-translate="moderation.apply_filters">Apply Filters</span>
+                                            </button>
+                                            <button type="button" class="btn-outline" id="clearHistoryFiltersBtn">
+                                                <i class="fas fa-times"></i>
+                                                <span data-translate="moderation.clear_filters">Clear Filters</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Statistics -->
+                                    <div class="history-stats" id="moderationStats">
+                                        <div class="stats-grid">
+                                            <div class="stat-item">
+                                                <div class="stat-value" id="totalActions">0</div>
+                                                <div class="stat-label" data-translate="moderation.total_actions">Total Actions</div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-value" id="uniqueUsers">0</div>
+                                                <div class="stat-label" data-translate="moderation.unique_users">Unique Users</div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-value" id="activeModerators">0</div>
+                                                <div class="stat-label" data-translate="moderation.active_moderators">Active Moderators</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- History Table -->
                                     <div class="table-container">
                                         <table class="modern-table">
                                             <thead>
                                                 <tr>
-                                                    <th data-translate="common.user">User</th>
-                                                    <th data-translate="moderation.action">Action</th>
-                                                    <th data-translate="common.date">Date</th>
+                                                    <th data-translate="moderation.history.user">User</th>
+                                                    <th data-translate="moderation.history.action">Action</th>
+                                                    <th data-translate="moderation.history.moderator">Moderator</th>
+                                                    <th data-translate="moderation.history.reason">Reason</th>
+                                                    <th data-translate="moderation.history.date">Date</th>
+                                                    <th data-translate="moderation.history.duration">Duration</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="moderationHistoryTable">
                                                 <tr>
-                                                    <td colspan="3" class="no-data" data-translate="overview.no_history">No moderation history</td>
+                                                    <td colspan="6" class="no-data" data-translate="moderation.loading_history">Loading moderation history...</td>
                                                 </tr>
                                             </tbody>
                                         </table>
+                                    </div>
+                                    
+                                    <!-- Pagination -->
+                                    <div class="pagination-container" id="moderationPagination" style="display: none;">
+                                        <button type="button" class="btn-outline" id="prevPageBtn" disabled>
+                                            <i class="fas fa-chevron-left"></i>
+                                            <span data-translate="common.previous">Previous</span>
+                                        </button>
+                                        <span class="pagination-info" id="paginationInfo">Page 1 of 1</span>
+                                        <button type="button" class="btn-outline" id="nextPageBtn" disabled>
+                                            <span data-translate="common.next">Next</span>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -462,7 +574,7 @@
 
                                         <div class="form-group">
                                             <label class="form-label">Welcome Message</label>
-                                            <textarea id="welcomeMessage" class="form-textarea" rows="4" placeholder="Welcome {user} to {server}!"></textarea>
+                                            <textarea id="welcomeMessage" class="form-textarea" rows="4" placeholder="Welcome {user} to {server}!" data-translate="welcome_system.welcome_message_placeholder"></textarea>
                                             <div class="form-hint">
                                                 <strong>Available placeholders:</strong><br>
                                                 <code>{user}</code> - Member mention (@User) • 
@@ -528,7 +640,7 @@
 
                                         <div class="form-group">
                                             <label class="form-label">Goodbye Message</label>
-                                            <textarea id="goodbyeMessage" class="form-textarea" rows="4" placeholder="Goodbye {user}, thanks for being part of {server}!"></textarea>
+                                            <textarea id="goodbyeMessage" class="form-textarea" rows="4" placeholder="Goodbye {user}, thanks for being part of {server}!" data-translate="welcome_system.goodbye_message_placeholder"></textarea>
                                             <div class="form-hint">
                                                 <strong>Available placeholders:</strong><br>
                                                 <code>{user}</code> - Member mention (@User) • 
@@ -624,7 +736,7 @@
                             <div class="card-actions">
                                 <button class="action-btn-small" type="button" id="refreshRoleMenusBtn">
                                     <i class="fas fa-sync-alt"></i>
-                                    <span>Refresh</span>
+                                    <span data-translate="common.refresh">Actualiser</span>
                                 </button>
                                 <button class="action-btn-small" type="button" id="createRoleMenuBtn">
                                     <span>Create Menu</span>
@@ -664,7 +776,9 @@
                                 <div class="settings-grid">
                                     <!-- General Log Settings -->
                                     <div class="settings-section">
-                                        <h4 class="section-title">General Settings</h4>
+                                        <h4 class="section-title">
+                                            <span data-translate="server_logs.general_settings">Paramètres Généraux</span>
+                                        </h4>
                                         
                                         <div class="form-group">
                                             <div class="toggle-switch">
@@ -873,7 +987,9 @@
                         <div class="card-content">
                             <!-- System Toggle -->
                             <div class="settings-section">
-                                <h4 class="section-title">General Settings</h4>
+                                <h4 class="section-title">
+                                    <span data-translate="ticket_system.general_settings">Paramètres Généraux</span>
+                                </h4>
                                 
                                 <div class="form-group">
                                     <div class="toggle-switch">
@@ -922,24 +1038,24 @@
                         <div class="card-header">
                             <h3 class="card-title">
                                 <i class="fas fa-history me-2"></i>
-                                Ticket Logs Consultation
+                                <span data-translate="ticket_logs.title">Logs de ticket</span>
                             </h3>
-                            <p class="card-subtitle">Consultez les logs des tickets archivés</p>
+                            <p class="card-subtitle" data-translate="ticket_logs.subtitle">Consult archived ticket logs</p>
                         </div>
                         <div class="card-content">
                             <!-- User Selection -->
                             <div class="settings-section">
                                 <h4 class="section-title">
                                     <i class="fas fa-user-search me-2"></i>
-                                    Sélection d'utilisateur
+                                    <span data-translate="ticket_logs.user_selection">User Selection</span>
                                 </h4>
                                 <div class="form-group">
-                                    <label class="form-label">Rechercher un utilisateur</label>
+                                    <label class="form-label" data-translate="ticket_logs.search_user">Search User</label>
                                     <div class="input-group">
-                                        <input type="text" id="userSearchInput" class="form-input" placeholder="Nom d'utilisateur ou ID Discord">
+                                        <input type="text" id="userSearchInput" class="form-input" data-translate="ticket_logs.search_placeholder" placeholder="Username or Discord ID">
                                         <button type="button" class="btn-primary" onclick="dashboard.searchUser()">
                                             <i class="fas fa-search me-2"></i>
-                                            Rechercher
+                                            <span data-translate="common.search">Search</span>
                                         </button>
                                     </div>
                                 </div>
@@ -949,7 +1065,7 @@
                             <div class="settings-section" id="userResultsSection" style="display: none;">
                                 <h4 class="section-title">
                                     <i class="fas fa-search me-2"></i>
-                                    Résultats de recherche
+                                    <span data-translate="ticket_logs.search_results">Search Results</span>
                                 </h4>
                                 <div id="userResultsList" class="users-list">
                                     <!-- Users will be populated here -->
@@ -960,7 +1076,7 @@
                             <div class="settings-section" id="userTicketsSection" style="display: none;">
                                 <h4 class="section-title">
                                     <i class="fas fa-ticket-alt me-2"></i>
-                                    Tickets de l'utilisateur
+                                    <span data-translate="ticket_logs.user_tickets">User Tickets</span>
                                 </h4>
                                 <div class="user-info" id="selectedUserInfo">
                                     <!-- Selected user info will be shown here -->
@@ -972,8 +1088,8 @@
                                     <div class="empty-icon">
                                         <i class="fas fa-ticket-alt"></i>
                                     </div>
-                                    <h4>Aucun ticket trouvé</h4>
-                                    <p>Cet utilisateur n'a pas encore créé de tickets</p>
+                                    <h4 data-translate="ticket_logs.no_tickets_found">No tickets found</h4>
+                                    <p data-translate="ticket_logs.no_tickets_description">This user hasn't created any tickets yet</p>
                                 </div>
                             </div>
                             
@@ -982,7 +1098,7 @@
                                 <div class="modal-dialog modal-xl">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h5 class="modal-title" id="ticketDetailsModalTitle">Détails du ticket</h5>
+                                            <h5 class="modal-title" id="ticketDetailsModalTitle" data-translate="ticket_logs.ticket_details">Ticket Details</h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                         </div>
                                         <div class="modal-body">
@@ -991,7 +1107,7 @@
                                             </div>
                                         </div>
                                         <div class="modal-footer">
-                                            <button type="button" class="btn-outline" data-bs-dismiss="modal">Fermer</button>
+                                            <button type="button" class="btn-outline" data-bs-dismiss="modal" data-translate="common.close">Close</button>
                                         </div>
                                     </div>
                                 </div>
@@ -1067,13 +1183,13 @@
                                         
                                         <div class="form-group">
                                             <label class="form-label">Title</label>
-                                            <input type="text" id="embedTitle" class="form-control" placeholder="Embed title..." maxlength="256">
+                                            <input type="text" id="embedTitle" class="form-control" placeholder="Embed title..." maxlength="256" data-translate="embed_system.title_placeholder">
                                             <div class="form-hint">Maximum 256 characters</div>
                                         </div>
 
                                         <div class="form-group">
                                             <label class="form-label">Description</label>
-                                            <textarea id="embedDescription" class="form-textarea" rows="4" placeholder="Embed description..." maxlength="4096"></textarea>
+                                            <textarea id="embedDescription" class="form-textarea" rows="4" placeholder="Embed description..." maxlength="4096" data-translate="embed_system.description_placeholder"></textarea>
                                             <div class="form-hint">Maximum 4096 characters. Supports Discord markdown</div>
                                         </div>
 
@@ -1082,12 +1198,12 @@
                                             <div class="color-picker-group">
                                                 <input type="color" id="embedColor" class="form-input color-picker" value="#5865F2">
                                                 <div class="color-presets">
-                                                    <button type="button" class="color-preset" data-color="#5865F2" title="Discord Blurple"></button>
-                                                    <button type="button" class="color-preset" data-color="#57F287" title="Green"></button>
-                                                    <button type="button" class="color-preset" data-color="#FEE75C" title="Yellow"></button>
-                                                    <button type="button" class="color-preset" data-color="#ED4245" title="Red"></button>
-                                                    <button type="button" class="color-preset" data-color="#EB459E" title="Pink"></button>
-                                                    <button type="button" class="color-preset" data-color="#00D9FF" title="Cyan"></button>
+                                                    <button type="button" class="color-preset" data-color="#5865F2" title="Discord Blurple" data-translate="embed_system.color_discord_blurple"></button>
+                                                    <button type="button" class="color-preset" data-color="#57F287" title="Green" data-translate="embed_system.color_green"></button>
+                                                    <button type="button" class="color-preset" data-color="#FEE75C" title="Yellow" data-translate="embed_system.color_yellow"></button>
+                                                    <button type="button" class="color-preset" data-color="#ED4245" title="Red" data-translate="embed_system.color_red"></button>
+                                                    <button type="button" class="color-preset" data-color="#EB459E" title="Pink" data-translate="embed_system.color_pink"></button>
+                                                    <button type="button" class="color-preset" data-color="#00D9FF" title="Cyan" data-translate="embed_system.color_cyan"></button>
                                                 </div>
                                             </div>
                                             <div class="form-hint">Click color presets or use the color picker</div>
@@ -1127,7 +1243,7 @@
                                         <div id="embedAuthorContainer" style="display: none;">
                                             <div class="form-group">
                                                 <label class="form-label">Author Name</label>
-                                                <input type="text" id="embedAuthorName" class="form-control" placeholder="Author name..." maxlength="256">
+                                                <input type="text" id="embedAuthorName" class="form-control" placeholder="Author name..." maxlength="256" data-translate="embed_system.author_name_placeholder">
                                             </div>
 
                                             <div class="form-group">
@@ -1153,7 +1269,7 @@
                                         <div id="embedFooterContainer" style="display: none;">
                                             <div class="form-group">
                                                 <label class="form-label">Footer Text</label>
-                                                <input type="text" id="embedFooterText" class="form-control" placeholder="Footer text..." maxlength="2048">
+                                                <input type="text" id="embedFooterText" class="form-control" placeholder="Footer text..." maxlength="2048" data-translate="embed_system.footer_text_placeholder">
                                             </div>
 
                                             <div class="form-group">
@@ -1223,7 +1339,7 @@
                                     </button>
                                     <button type="button" class="btn-secondary" id="previewEmbedBtn">
                                         <i class="fas fa-eye me-2"></i>
-                                        Refresh Preview
+                                        <span data-translate="embed_system.refresh_preview">Actualiser l'Aperçu</span>
                                     </button>
                                     <button type="button" class="btn-outline" id="clearEmbedBtn">
                                         <i class="fas fa-trash me-2"></i>
@@ -1283,7 +1399,7 @@
 
                             <div class="form-group">
                                 <label class="form-label">Footer Text (optional)</label>
-                                <input type="text" id="ticketEmbedFooter" class="form-input" placeholder="Support Team">
+                                <input type="text" id="ticketEmbedFooter" class="form-input" placeholder="Support Team" data-translate="ticket_system.support_team_placeholder">
                             </div>
                         </div>
 
@@ -1330,7 +1446,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Button Label</label>
-                        <input type="text" class="form-input button-label" placeholder="Support Ticket" required>
+                        <input type="text" class="form-input button-label" placeholder="Support Ticket" required data-translate="ticket_system.support_ticket_placeholder">
                     </div>
                     
                     <div class="form-group">
@@ -1376,7 +1492,7 @@
                 
                 <div class="form-group">
                     <label class="form-label">Initial Message (optional)</label>
-                    <textarea class="form-textarea button-initial-message" rows="2" placeholder="Thank you for creating a ticket! Our team will be with you shortly."></textarea>
+                    <textarea class="form-textarea button-initial-message" rows="2" placeholder="Thank you for creating a ticket! Our team will be with you shortly." data-translate="ticket_system.initial_message_placeholder"></textarea>
                 </div>
             </div>
         </div>
@@ -1448,10 +1564,11 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Initialize language data from backend
-        window.langData = {{ lang_data | tojson }};
-        window.currentLang = "{{ current_lang }}";
-        window.supportedLanguages = {{ supported_languages | tojson }};
+        window.langData = "{{ lang_data | tojson | safe }}";
+        window.currentLang = "{{ current_lang | safe }}";
+        window.supportedLanguages = "{{ supported_languages | tojson | safe }}";
     </script>
     <script src="/static/dashboard.js?v={{ timestamp }}"></script>
+    <script src="/static/moderation.js?v={{ timestamp }}"></script>
 </body>
 </html>

@@ -155,6 +155,31 @@ CREATE TABLE IF NOT EXISTS timeouts (
     INDEX idx_timestamp (timestamp)
 );
 
+-- Comprehensive moderation history table
+CREATE TABLE IF NOT EXISTS moderation_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    guild_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    moderator_id BIGINT NOT NULL,
+    action_type ENUM('warn', 'timeout', 'kick', 'ban', 'unban', 'unmute') NOT NULL,
+    reason TEXT,
+    duration_minutes INT NULL, -- For timeout actions
+    evidence_urls TEXT NULL, -- JSON array of evidence URLs
+    channel_id BIGINT NULL, -- Channel where action was taken
+    message_id BIGINT NULL, -- Message that triggered the action (if any)
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NULL, -- For temporary actions like timeout/ban
+    is_active BOOLEAN DEFAULT TRUE, -- For temporary actions
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_guild_user (guild_id, user_id),
+    INDEX idx_moderator (moderator_id),
+    INDEX idx_action_type (action_type),
+    INDEX idx_timestamp (timestamp),
+    INDEX idx_expires_at (expires_at),
+    INDEX idx_is_active (is_active)
+);
+
 -- XP History table for tracking XP gains
 CREATE TABLE IF NOT EXISTS xp_history (
     id INT AUTO_INCREMENT PRIMARY KEY,

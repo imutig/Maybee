@@ -11,8 +11,9 @@ from datetime import datetime, timezone
 from i18n import _
 from .command_logger import log_command_usage
 
-from services import handle_errors, rate_limit
-from monitoring import logger
+# Services and monitoring modules removed during cleanup
+import logging
+logger = logging.getLogger(__name__)
 
 class DisboardConfig(commands.Cog):
     """Configuration system for Disboard bump reminders"""
@@ -20,11 +21,11 @@ class DisboardConfig(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.command(name="disboard", description="Configurer le système de rappel Disboard")
+    @app_commands.command(name="disboard", description="Configure Disboard reminder system")
     @app_commands.describe(
-        action="Action à effectuer (setup/status/reset)",
-        channel="Salon pour les rappels (optionnel)",
-        role="Rôle à ping pour les rappels (optionnel)"
+        action="Action to perform (setup/status/reset)",
+        channel="Channel for reminders (optional)",
+        role="Role to ping for reminders (optional)"
     )
     @app_commands.choices(action=[
         app_commands.Choice(name="setup", value="setup"),
@@ -51,14 +52,14 @@ class DisboardConfig(commands.Cog):
                 await self._reset_config(interaction, guild_id)
             else:
                 await interaction.response.send_message(
-                    "❌ Action invalide. Utilisez `setup`, `status` ou `reset`.",
+                    _("commands.disboard.invalid_action", guild_id=guild_id),
                     ephemeral=True
                 )
                 
         except Exception as e:
             logger.error(f"Error in disboard config command: {e}")
             await interaction.response.send_message(
-                "❌ Erreur lors de la configuration du système Disboard.",
+                _("commands.disboard.setup_error", guild_id=guild_id),
                 ephemeral=True
             )
     
@@ -96,7 +97,7 @@ class DisboardConfig(commands.Cog):
             
             # Create confirmation embed
             embed = discord.Embed(
-                title="⚙️ Configuration Disboard",
+                title=_("commands.disboard.title", guild_id=guild_id),
                 description=_("commands.disboard.setup_success", guild_id=guild_id, action=action),
                 color=discord.Color.green(),
                 timestamp=datetime.now()
@@ -129,7 +130,7 @@ class DisboardConfig(commands.Cog):
         except Exception as e:
             logger.error(f"Error setting up Disboard config: {e}")
             await interaction.response.send_message(
-                "❌ Erreur lors de la configuration.",
+                _("commands.disboard.config_error", guild_id=guild_id),
                 ephemeral=True
             )
     
@@ -145,18 +146,18 @@ class DisboardConfig(commands.Cog):
             
             if not config:
                 embed = discord.Embed(
-                    title="⚙️ Configuration Disboard",
+                    title=_("commands.disboard.title", guild_id=guild_id),
                     description=_("commands.disboard.not_configured", guild_id=guild_id),
                     color=discord.Color.orange(),
                     timestamp=datetime.now()
                 )
                 embed.add_field(
                     name=_("commands.disboard.status", guild_id=guild_id), 
-                    value="❌ Non configuré", 
+                    value=_("commands.disboard.disabled", guild_id=guild_id), 
                     inline=True
                 )
                 embed.add_field(
-                    name="Action", 
+                    name=_("commands.disboard.action", guild_id=guild_id), 
                     value=_("commands.disboard.use_setup", guild_id=guild_id), 
                     inline=True
                 )
@@ -165,13 +166,13 @@ class DisboardConfig(commands.Cog):
             
             # Get reminder channel
             reminder_channel = interaction.guild.get_channel(config['reminder_channel_id'])
-            channel_status = reminder_channel.mention if reminder_channel else "❌ Salon introuvable"
+            channel_status = reminder_channel.mention if reminder_channel else _("commands.disboard.channel_not_found", guild_id=guild_id)
             
             # Get bump role
             bump_role = None
             if config['bump_role_id']:
                 bump_role = interaction.guild.get_role(config['bump_role_id'])
-            role_status = bump_role.mention if bump_role else "❌ Aucun rôle configuré"
+            role_status = bump_role.mention if bump_role else _("commands.disboard.no_role_configured", guild_id=guild_id)
             
             # Get bump statistics
             bump_stats = await self.bot.db.query(
@@ -182,8 +183,8 @@ class DisboardConfig(commands.Cog):
             
             # Create status embed
             embed = discord.Embed(
-                title="⚙️ Configuration Disboard",
-                description="Configuration actuelle du système de rappel",
+                title=_("commands.disboard.title", guild_id=guild_id),
+                description=_("commands.disboard.current_config", guild_id=guild_id),
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
@@ -210,13 +211,13 @@ class DisboardConfig(commands.Cog):
             
             if bump_stats and bump_stats['total_bumps']:
                 embed.add_field(
-                    name="Total des bumps", 
+                    name=_("commands.disboard.total_bumps", guild_id=guild_id), 
                     value=f"**{bump_stats['total_bumps']}**", 
                     inline=True
                 )
                 if bump_stats['last_bump']:
                     embed.add_field(
-                        name="Dernier bump", 
+                        name=_("commands.disboard.last_bump", guild_id=guild_id), 
                         value=f"<t:{int(bump_stats['last_bump'].timestamp())}:R>", 
                         inline=True
                     )
@@ -228,7 +229,7 @@ class DisboardConfig(commands.Cog):
         except Exception as e:
             logger.error(f"Error showing Disboard status: {e}")
             await interaction.response.send_message(
-                "❌ Erreur lors de la récupération du statut.",
+                _("commands.disboard.status_error", guild_id=guild_id),
                 ephemeral=True
             )
     
@@ -243,13 +244,13 @@ class DisboardConfig(commands.Cog):
             
             # Create confirmation embed
             embed = discord.Embed(
-                title="⚙️ Configuration Disboard",
+                title=_("commands.disboard.title", guild_id=guild_id),
                 description=_("commands.disboard.reset_success", guild_id=guild_id),
                 color=discord.Color.orange(),
                 timestamp=datetime.now()
             )
             embed.add_field(
-                name="Action", 
+                name=_("commands.disboard.action", guild_id=guild_id), 
                 value=_("commands.disboard.config_deleted", guild_id=guild_id), 
                 inline=True
             )
@@ -265,7 +266,7 @@ class DisboardConfig(commands.Cog):
         except Exception as e:
             logger.error(f"Error resetting Disboard config: {e}")
             await interaction.response.send_message(
-                "❌ Erreur lors de la réinitialisation.",
+                _("commands.disboard.reset_error", guild_id=guild_id),
                 ephemeral=True
             )
 

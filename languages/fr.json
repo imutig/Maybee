@@ -3,7 +3,9 @@
     "name": "Français",
     "code": "fr",
     "flag": "🇫🇷",
-    "contributors": ["iMutig"]
+    "contributors": [
+      "iMutig"
+    ]
   },
   "common": {
     "error": "Erreur",
@@ -16,6 +18,7 @@
     "disabled": "Désactivé",
     "none": "Aucun",
     "unknown": "Inconnu",
+    "reason": "Raison",
     "loading": "Chargement...",
     "cancel": "Annuler",
     "confirm": "Confirmer",
@@ -37,17 +40,17 @@
     "permissions": "Permissions"
   },
   "errors": {
-    "no_permission": "❌ Vous n'avez pas la permission d'utiliser cette commande.",
-    "admin_only": "❌ Cette commande est réservée aux administrateurs.",
-    "missing_permissions": "❌ Je n'ai pas les permissions requises pour effectuer cette action.",
-    "user_not_found": "❌ Utilisateur introuvable.",
-    "channel_not_found": "❌ Salon introuvable.",
+    "invalid_duration_number": "❌ La durée doit être un nombre valide.",
+    "timeout_error": "❌ Erreur lors du timeout : {error}",
+    "kick_error": "❌ Erreur lors de l'expulsion : {error}",
+    "ban_error": "❌ Erreur lors du bannissement : {error}",
+    "warn_error": "❌ Erreur lors de l'avertissement : {error}",
+    "role_add_error": "❌ Erreur lors de l'ajout du rôle : {error}",
+    "role_remove_error": "❌ Erreur lors de la suppression du rôle : {error}",
+    "warnings_fetch_error": "❌ Erreur lors de la récupération des avertissements.",
     "role_not_found": "❌ Rôle introuvable.",
-    "invalid_input": "❌ Entrée invalide fournie.",
-    "database_error": "❌ Erreur de base de données.",
-    "unknown_error": "❌ Une erreur inconnue s'est produite.",
-    "command_cooldown": "❌ Cette commande est en cooldown. Réessayez plus tard.",
-    "bot_missing_permissions": "❌ Je n'ai pas les permissions requises sur ce serveur."
+    "admin_only": "❌ Cette commande est réservée aux administrateurs.",
+    "unknown_error": "❌ Une erreur inconnue s'est produite."
   },
   "disboard": {
     "bump_detected": {
@@ -77,7 +80,63 @@
     "error": {
       "bumptop_error": "❌ Erreur lors de la récupération de la toplist des bumps.",
       "bumpstats_error": "❌ Erreur lors de la récupération des statistiques.",
-      "role_assignment_error": "❌ Erreur lors de l'assignation du rôle."
+      "role_assignment_error": "❌ Erreur lors de l'assignation du rôle.",
+      "leaderboard_error": "❌ Erreur lors de la récupération du classement.",
+      "no_permission": "❌ Vous n'avez pas la permission d'utiliser cette commande.",
+      "processing_error": "❌ Erreur lors du traitement de la demande.",
+      "role_config_not_found": "❌ Configuration du rôle introuvable.",
+      "role_not_found": "❌ Rôle introuvable.",
+      "stats_error": "❌ Erreur lors de la récupération des statistiques.",
+      "wrong_guild": "❌ Cette commande ne peut être utilisée que sur le serveur configuré.",
+      "wrong_user": "❌ Cette commande ne peut être utilisée que par l'utilisateur autorisé."
+    },
+    "leaderboard": {
+      "title": "Top Bumpers",
+      "description": "Top 10 des bumpers {period}",
+      "no_bumps": "Aucun bump enregistré {period}.",
+      "this_week": "cette semaine",
+      "this_month": "ce mois",
+      "all_time": "depuis toujours",
+      "bumps": "bumps",
+      "last_bump": "Dernier bump",
+      "footer": "Total: {total} bumps {period} • 🐝 Sweet server promotion, honey! 🍯"
+    },
+    "stats": {
+      "title": "📊 Statistiques de Bump",
+      "description": "Statistiques détaillées des bumps du serveur",
+      "total_bumps": "Total des bumps",
+      "unique_bumpers": "Bumpers uniques",
+      "last_bump": "Dernier bump",
+      "first_bump": "Premier bump",
+      "time_elapsed": "Temps écoulé",
+      "avg_between": "Moyenne entre bumps",
+      "status": {
+        "title": "Statut",
+        "soon": "Bientôt disponible",
+        "ready": "Prêt",
+        "waiting": "En attente"
+      },
+      "footer": "🐝 Statistiques mises à jour en temps réel",
+      "no_stats": "Aucune statistique disponible pour ce serveur."
+    },
+    "notification": {
+      "click_to_notify": "Cliquez pour être notifié",
+      "description": "Vous serez notifié quand il sera possible de bumper le serveur.",
+      "role_benefit": "Avantage du rôle",
+      "title": "🔔 Notification de Bump"
+    },
+    "reminder": {
+      "title": "⏰ Rappel de Bump !",
+      "description": "Il est temps de bumper votre serveur sur Disboard !",
+      "last_bump": "Dernier bump",
+      "time_elapsed": "Temps écoulé",
+      "command": "Commande",
+      "footer": "Disboard Reminder System • Bump toutes les 2h",
+      "message": "Il est temps de bumper votre serveur sur Disboard !"
+    },
+    "success": {
+      "role_assigned_title": "✅ Rôle assigné",
+      "role_declined_title": "❌ Rôle refusé"
     }
   },
   "commands": {
@@ -147,7 +206,19 @@
       "use_setup": "Utilisez `/disboard setup`",
       "reset_success": "Configuration réinitialisée avec succès !",
       "config_deleted": "Configuration supprimée",
-      "disboard_system": "Disboard Reminder System"
+      "disboard_system": "Disboard Reminder System",
+      "action": "Action",
+      "channel_not_found": "❌ Salon introuvable.",
+      "config_error": "❌ Erreur lors de la configuration.",
+      "current_config": "Configuration actuelle",
+      "invalid_action": "❌ Action invalide. Utilisez `setup`, `status` ou `reset`.",
+      "last_bump": "Dernier bump",
+      "no_role_configured": "Aucun rôle configuré",
+      "reset_error": "❌ Erreur lors de la réinitialisation.",
+      "setup_error": "❌ Erreur lors de la configuration du système Disboard.",
+      "status_error": "❌ Erreur lors de la récupération du statut.",
+      "title": "⚙️ Configuration Disboard",
+      "total_bumps": "Total des bumps"
     },
     "avatar": {
       "description": "Affiche l'avatar d'un utilisateur",
@@ -158,8 +229,10 @@
       "title": "Dashboard Maybee",
       "description": "Accédez au tableau de bord web pour gérer votre serveur Discord avec une interface intuitive et moderne.",
       "link_title": "Lien d'accès",
+      "access_link": "Accéder au Dashboard",
       "features_title": "Fonctionnalités disponibles",
       "features": "• **Gestion des rôles automatiques**\n• **Système de niveaux et XP**\n• **Configuration des messages de bienvenue**\n• **Logs des tickets**\n• **Statistiques du serveur**\n• **Et bien plus encore !**",
+      "features_list": "• 🛡️ **Gestion des rôles automatiques**\n• 🏆 **Système de niveaux et XP**\n• 👥 **Configuration des messages de bienvenue**\n• 🎫 **Logs des tickets**\n• 📊 **Statistiques du serveur**\n• ✅ **Et bien plus encore !**",
       "footer": "Sweet server management, honey! 🍯"
     },
     "level": {
@@ -249,42 +322,112 @@
       "error": "❌ Erreur lors de la synchronisation: {error}"
     }
   },
-  "xp_system": {
-    "level_up": {
-      "title": "🎉 Niveau atteint !",
-      "description": "{user} est maintenant **niveau {level}** !",
-      "roles_gained": "🎁 Rôle(s) obtenu(s)"
+  "xp": {
+    "detailed": {
+      "title": "📊 Statistiques XP Détaillées"
     },
-    "config": {
-      "title": "Configuration du système XP",
-      "description": "Utilise les boutons ci-dessous pour configurer le salon d'annonces XP ou attribuer un rôle à un niveau.",
-      "set_channel_button": "Attribuer salon annonces XP",
-      "set_role_button": "Attribuer rôle à un niveau",
-      "channel_modal_title": "Attribuer salon annonces XP",
-      "channel_field": "ID du salon",
-      "channel_placeholder": "Entrez l'ID du salon où envoyer les annonces XP",
-      "role_modal_title": "Attribuer rôle à un niveau",
-      "level_field": "Niveau",
-      "level_placeholder": "Entrez le niveau (nombre entier)",
-      "role_id_field": "ID du rôle",
-      "role_id_placeholder": "Entrez l'ID du rôle à attribuer",
-      "channel_not_found": "Salon introuvable dans cette guild.",
-      "role_not_found": "Rôle introuvable dans cette guild.",
-      "invalid_number": "Le niveau et l'ID du rôle doivent être des nombres entiers.",
-      "channel_success": "Salon {channel} attribué pour les annonces XP !",
-      "role_success": "Rôle {role} attribué au niveau {level} !"
+    "error": {
+      "retrieve_data": "❌ Erreur lors de la récupération des données XP",
+      "retrieve_leaderboard": "❌ Erreur lors de la récupération du classement"
+    },
+    "fields": {
+      "level": "Niveau",
+      "progress": "Progression",
+      "recent_activity": "Activité récente",
+      "text_xp": "XP Texte",
+      "total_xp": "XP Total",
+      "user": "Utilisateur",
+      "voice_xp": "XP Vocal",
+      "xp_needed": "XP nécessaire"
+    },
+    "footer": {
+      "detailed": "Utilisez /xp pour voir vos statistiques détaillées",
+      "quick": "Utilisez /xp pour voir vos statistiques"
+    },
+    "leaderboard": {
+      "footer": "Classement XP",
+      "level": "Niveau",
+      "no_data": "Aucune donnée disponible",
+      "page": "Page",
+      "title": "🏆 Classement XP"
+    },
+    "status": {
+      "no_xp": "Aucun XP",
+      "title": "📊 Statut XP"
+    }
+  },
+  "xp_system": {
+    "alltime_leaderboard": {
+      "title": "🏆 Classement Global"
+    },
+    "buttons": {
+      "set_role_level": "Définir Rôle Niveau",
+      "set_xp_channel": "Définir Salon XP"
+    },
+    "commands": {
+      "xp": {
+        "error": "❌ Erreur lors de la récupération des données XP",
+        "footer": "Utilisez /xp pour voir vos statistiques détaillées",
+        "level": "Niveau",
+        "next_level": "Prochain niveau",
+        "progress": "Progression",
+        "text_xp": "XP Texte",
+        "title": "📊 Statistiques XP",
+        "total_xp": "XP Total",
+        "voice_xp": "XP Vocal",
+        "xp_needed": "XP nécessaire"
+      }
+    },
+    "leaderboard": {
+      "types": {
+        "text": "Texte",
+        "total": "Total",
+        "voice": "Vocal"
+      },
+      "unknown_user": "Utilisateur inconnu"
     },
     "level_roles": {
-      "title": "🎖️ Rôles attribués par niveau",
-      "no_roles": "Aucun rôle configuré pour les niveaux dans ce serveur."
+      "level_role_format": "Niveau {level}",
+      "role_not_found": "❌ Rôle introuvable",
+      "no_roles": "Aucun rôle configuré",
+      "title": "Rôles de Niveau"
     },
-    "multiplier": {
-      "invalid_range": "❌ Le multiplicateur doit être entre 0.1 et 10.0",
-      "success": "✅ Multiplicateur XP défini à {multiplier}x pour {event_type}{duration} !"
+    "modals": {
+      "set_role_level": {
+        "level_label": "Niveau",
+        "level_placeholder": "Entrez le niveau requis",
+        "role_id_label": "ID du Rôle",
+        "role_id_placeholder": "Entrez l'ID du rôle",
+        "title": "Définir Rôle Niveau"
+      },
+      "set_xp_channel": {
+        "channel_id_label": "ID du Salon",
+        "channel_id_placeholder": "Entrez l'ID du salon",
+        "title": "Définir Salon XP"
+      }
     },
-    "enabled_success": "✅ Système XP activé avec succès !",
-    "disabled_success": "✅ Système XP désactivé avec succès !",
-    "rate_not_supported": "⚠️ La configuration du taux XP n'est pas supportée dans la structure de base de données actuelle."
+    "monthly_leaderboard": {
+      "footer": "Classement mensuel",
+      "no_data": "Aucune donnée disponible",
+      "title": "📅 Classement Mensuel"
+    },
+    "weekly_leaderboard": {
+      "footer": "Classement hebdomadaire",
+      "no_data": "Aucune donnée disponible",
+      "title": "📅 Classement Hebdomadaire"
+    },
+    "config": {
+      "channel_not_found": "❌ Salon introuvable",
+      "channel_success": "✅ Salon XP configuré avec succès",
+      "invalid_number": "❌ Nombre invalide",
+      "role_not_found": "❌ Rôle introuvable",
+      "role_success": "✅ Rôle configuré avec succès"
+    },
+    "level_up": {
+      "description": "🎉 Félicitations ! Vous avez atteint le niveau {level} !",
+      "roles_gained": "Rôles obtenus",
+      "title": "🎉 Montée de Niveau !"
+    }
   },
   "welcome_system": {
     "new_member": {
@@ -304,7 +447,128 @@
       "goodbye_channel_param": "Salon d'au revoir",
       "goodbye_message_param": "Message avec {memberName}, {serverName}",
       "goodbye_success": "✅ Message d'au revoir configuré."
+    },
+    "channel_not_found": "❌ Salon introuvable",
+    "default_goodbye_message": "Au revoir **{memberName}** ! Nous sommes maintenant **{memberCount}** membres.",
+    "default_goodbye_title": "👋 Départ",
+    "default_welcome_message": "Bienvenue {memberMention} sur **{serverName}** ! Nous sommes maintenant **{memberCount}** membres.",
+    "default_welcome_title": "👋 Nouveau membre !",
+    "error": "❌ Erreur",
+    "error_processing_fields": "❌ Erreur lors du traitement des champs",
+    "failed_send_welcome": "❌ Échec de l'envoi du message de bienvenue",
+    "insufficient_permissions": "❌ Permissions insuffisantes",
+    "no_channel_configured": "❌ Aucun salon configuré",
+    "role_not_found": "❌ Rôle introuvable"
+  },
+  "server_logs": {
+    "author": "Auteur",
+    "changes": "Changements",
+    "channel": "Canal",
+    "channel_changes": {
+      "category": "Catégorie",
+      "name": "Nom",
+      "permissions": "Permissions",
+      "topic": "Sujet"
+    },
+    "channel_updated": "Canal modifié",
+    "channel_updated_description": "Un canal a été modifié",
+    "color": "Couleur",
+    "created_by": "Créé par",
+    "default": "Par défaut",
+    "deleted_by": "Supprimé par",
+    "modified_by": "Modifié par",
+    "none": "Aucun",
+    "position": "Position",
+    "role": "Rôle",
+    "role_changes": {
+      "color": "Couleur",
+      "hoist": "Affichage séparé",
+      "mentionable": "Mentionnable",
+      "name": "Nom",
+      "permissions": "Permissions",
+      "position": "Position"
+    },
+    "role_created": "Rôle créé",
+    "role_created_description": "Un nouveau rôle a été créé",
+    "role_deleted": "Rôle supprimé",
+    "role_deleted_description": "Un rôle a été supprimé",
+    "role_updated": "Rôle modifié",
+    "role_updated_description": "Un rôle a été modifié",
+    "type": "Type",
+    "updated_by": "Mis à jour par",
+    "voice_changes": {
+      "deafened": "Sourd",
+      "muted": "En sourdine",
+      "self_deafened": "Auto-sourd",
+      "self_muted": "Auto-sourdine",
+      "self_undeafened": "Auto-désourd",
+      "self_unmuted": "Auto-désourdine",
+      "started_streaming": "A commencé à streamer",
+      "started_video": "A activé la vidéo",
+      "stopped_streaming": "A arrêté de streamer",
+      "stopped_video": "A désactivé la vidéo",
+      "undeafened": "Désourd",
+      "unmuted": "Désourdine"
+    },
+    "voice_state_changed": "État vocal modifié",
+    "voice_state_description": "L'état vocal d'un membre a changé"
+  },
+  "role_requests": {
+    "accepted_by": "Accepté par",
+    "action_add": "Ajouter",
+    "action_added": "Ajouté",
+    "action_performed": "Action effectuée",
+    "action_remove": "Retirer",
+    "action_removed": "Retiré",
+    "channel_not_found": "Canal introuvable",
+    "denied_by": "Refusé par",
+    "embed_description": "Demande de rôle",
+    "embed_footer": "Demande de rôle",
+    "embed_title": "Demande de rôle",
+    "member_role_not_found": "❌ Rôle du membre introuvable",
+    "request_sent": "✅ Demande envoyée",
+    "role_action_result": "Résultat de l'action",
+    "role_too_high": "❌ Ce rôle est trop élevé pour être géré",
+    "status_field": "Statut"
+  },
+  "role_menus": {
+    "available_roles": "Rôles Disponibles",
+    "default_description": "Sélectionnez un rôle dans le menu déroulant ci-dessous :",
+    "error": {
+      "bot_not_found": "❌ Membre bot introuvable.",
+      "cannot_process": "❌ Impossible de traiter la sélection de rôle.",
+      "menu_config": "❌ Erreur de configuration du menu.",
+      "no_permission_add": "❌ Je n'ai pas la permission d'ajouter certains rôles.",
+      "no_permission_remove": "❌ Je n'ai pas la permission de retirer certains rôles.",
+      "processing_error": "❌ Une erreur s'est produite lors du traitement de votre sélection."
+    },
+    "success": {
+      "no_changes": "ℹ️ Aucun changement de rôle n'était nécessaire.",
+      "title": "Mise à jour des Rôles Réussie !"
     }
+  },
+  "feedback": {
+    "bug_message": "Nous allons enquêter sur ce problème et travailler sur une correction. Merci de nous aider à nous améliorer !",
+    "bug_reports": "Rapports de Bug",
+    "feature_message": "Nous considérerons cette fonctionnalité pour les futures mises à jour. Excellente suggestion !",
+    "feature_requests": "Demandes de Fonctionnalités",
+    "footer": "Feedback de {user}",
+    "members": "Membres",
+    "new_feedback": "Nouveau Feedback",
+    "question_message": "Nous essaierons de vous répondre bientôt. Consultez notre documentation sur github.com/imutig/Maybee",
+    "questions": "Questions",
+    "server": "Serveur",
+    "submitted": "Feedback Soumis !",
+    "thank_you": "Merci pour votre feedback ! Cela nous aide à améliorer Maybee.",
+    "types": {
+      "bug": "Rapport de Bug",
+      "feature": "Demande de Fonctionnalité",
+      "general": "Feedback Général",
+      "question": "Question/Aide",
+      "": ""
+    },
+    "user": "Utilisateur",
+    "user_info": "Informations Utilisateur"
   },
   "confession_system": {
     "command": {
@@ -543,9 +807,58 @@
       "embed_description": "Salut {user} ! Un membre du staff va te répondre rapidement.\nClique sur le bouton pour fermer le ticket.",
       "close_button": "Fermer le ticket"
     },
+    "new_ticket": {
+      "command_description": "Créer un nouveau ticket pour un utilisateur",
+      "user_description": "L'utilisateur pour qui créer le ticket",
+      "category_description": "La catégorie du ticket",
+      "reason_description": "La raison de la création du ticket",
+      "no_permission": "❌ Vous n'avez pas la permission de créer des tickets.",
+      "bot_user": "❌ Vous ne pouvez pas créer de ticket pour un bot.",
+      "self_user": "❌ Vous ne pouvez pas créer de ticket pour vous-même.",
+      "embed_title": "🎫 Ticket #{ticket_id}",
+      "embed_description": "**Ticket créé par :** {creator}\n**Pour :** {user}\n**Catégorie :** {category}\n**Raison :** {reason}\n\n💬 Ce ticket a été créé pour vous. Vous pouvez maintenant communiquer avec l'équipe de modération.",
+      "ticket_info": "📋 Information",
+      "ticket_info_content": "• **Créateur :** {creator}\n• **Utilisateur :** {user}\n• **Catégorie :** {category}\n• **Raison :** {reason}\n• **ID du ticket :** #{ticket_id}",
+      "footer": "Ticket créé par {creator}",
+      "confirmation": "✅ Ticket créé avec succès : {channel}\n**Utilisateur :** {user}\n**Catégorie :** {category}\n**Raison :** {reason}\n**ID du ticket :** #{ticket_id}",
+      "error": "❌ Une erreur s'est produite lors de la création du ticket."
+    },
+    "ticket_logs": {
+      "command_description": "Consulter les logs de tickets d'un utilisateur",
+      "user_description": "L'utilisateur dont consulter les logs",
+      "no_permission": "❌ Vous n'avez pas la permission de consulter les logs de tickets.",
+      "no_logs_found": "❌ Aucun log de ticket trouvé pour {user}.",
+      "title": "📋 Logs de tickets - {user}",
+      "description": "Voici les {count} derniers tickets de {user}",
+      "statistics": "📊 Statistiques",
+      "stats_content": "• **Total de tickets :** {count}\n• **Utilisateur :** {user} (ID: {user_id})",
+      "requested_by": "Demandé par {user}",
+      "retrieval_error": "❌ Erreur lors de la récupération des logs de tickets."
+    },
+    "button_config_not_found": "❌ Configuration du bouton de ticket introuvable.",
+    "invalid_category_config": "❌ Configuration de catégorie invalide.",
+    "creation_error": "❌ Erreur lors de la création du ticket.",
+    "invalid_category": "❌ Catégorie invalide.",
+    "already_exists": "❌ Vous avez déjà un ticket ouvert : {channel}",
+    "created_success": "✅ Ticket créé avec succès : {channel}",
+    "no_permission_create": "❌ Je n'ai pas la permission de créer des canaux.",
+    "close_button": "Fermer le ticket",
+    "not_a_ticket": "❌ Ce canal n'est pas un ticket.",
+    "ticket_closed": "🔒 Ticket fermé",
+    "ticket_closed_description": "Ce ticket a été fermé par {user}",
+    "closed_by": "Fermé par {user}",
     "close": {
       "closing": "Fermeture dans 5 secondes..."
     },
+    "delete_permanently": "Supprimer définitivement",
+    "no_permission_delete": "❌ Vous n'avez pas la permission de supprimer des tickets.",
+    "no_permission_manage": "❌ Vous n'avez pas la permission de gérer des tickets.",
+    "reopen_ticket": "Rouvrir le ticket",
+    "reopened_by": "Rouvert par",
+    "ticket_data_not_found": "❌ Données du ticket introuvables.",
+    "ticket_deleted_permanently": "✅ Ticket supprimé définitivement.",
+    "ticket_reopened": "✅ Ticket rouvert",
+    "ticket_reopened_description": "Ce ticket a été rouvert par {user}.",
     "not_implemented": "⚠️ La configuration du système de tickets n'est pas implémentée dans la structure de base de données actuelle.",
     "category_not_found": "❌ Catégorie introuvable !",
     "role_not_found": "❌ Rôle introuvable !",
@@ -580,6 +893,21 @@
     "description": "Configuration unifiée de tous les systèmes du bot",
     "no_permission": "❌ Vous devez être administrateur pour utiliser cette commande.",
     "title": "⚙️ Configuration du bot",
+    "main": {
+      "title": "⚙️ Configuration du Bot",
+      "description": "Configuration unifiée de tous les systèmes du bot"
+    },
+    "dashboard": {
+      "access_title": "🌐 Accès au Dashboard",
+      "access_description": "Accédez au dashboard web pour une configuration avancée",
+      "login_title": "🔐 Connexion au Dashboard",
+      "login_description": "Connectez-vous au dashboard web pour gérer votre serveur",
+      "url_title": "🔗 URL du Dashboard",
+      "click_here": "Cliquez ici pour accéder au dashboard"
+    },
+    "permissions": {
+      "no_admin_permission": "❌ Vous devez être administrateur pour utiliser cette commande."
+    },
     "description_text": "Sélectionnez le système que vous souhaitez configurer dans le menu déroulant ci-dessous.",
     "systems_available": "🎯 Systèmes disponibles",
     "systems_list": "👋 **Système de bienvenue** - Messages de bienvenue et d'au revoir\n💬 **Système de confessions** - Canal pour les confessions anonymes\n🎭 **Demandes de rôles** - Canal pour les demandes de rôles\n⚡ **Rôles par réaction** - Attribution automatique de rôles\n📊 **Système XP** - Système d'expérience et de niveaux\n🎫 **Système de tickets** - Support et tickets\n🌍 **Langue** - Langue du serveur",
@@ -648,7 +976,22 @@
       "error": "❌ Erreur lors de la configuration.",
       "current_channel": "Canal actuel",
       "channel_set": "Canal défini",
-      "disabled": "Désactivé"
+      "disabled": "Désactivé",
+      "accepted_by": "Accepté par",
+      "action_add": "Ajouter",
+      "action_added": "Ajouté",
+      "action_performed": "Action effectuée",
+      "action_remove": "Retirer",
+      "action_removed": "Retiré",
+      "denied_by": "Refusé par",
+      "embed_description": "Demande de rôle",
+      "embed_footer": "Demande de rôle",
+      "embed_title": "Demande de rôle",
+      "member_role_not_found": "❌ Rôle du membre introuvable",
+      "request_sent": "✅ Demande envoyée",
+      "role_action_result": "Résultat de l'action",
+      "role_too_high": "❌ Ce rôle est trop élevé pour être géré",
+      "status_field": "Statut"
     },
     "role_reactions": {
       "title": "Configuration des rôles par réaction",
@@ -743,6 +1086,52 @@
       "current_category": "Catégorie actuelle",
       "current_support_role": "Rôle de support actuel"
     },
+    "server_logs": {
+      "title": "📋 Configuration des Logs Serveur",
+      "description": "Configurez les logs du serveur pour surveiller les activités.",
+      "use_dashboard": "Utilisez le Dashboard Web",
+      "dashboard_description": "Le système de logs serveur est maintenant entièrement géré via le dashboard web pour une meilleure expérience.",
+      "dashboard_features": "Visitez le dashboard web pour configurer :",
+      "dashboard_features_list": "• Sélection des canaux de logs\n• Types d'événements à logger\n• Paramètres d'embed personnalisés\n• Activation/désactivation des logs",
+      "dashboard_benefits": "Pourquoi utiliser le dashboard ?",
+      "dashboard_benefits_list": "• Interface intuitive\n• Meilleure validation des formulaires\n• Stockage persistant des paramètres\n• Gestion facile de la configuration",
+      "embed_fields": {
+        "account_created": "Compte créé",
+        "added_roles": "Rôles ajoutés",
+        "after": "Après",
+        "attachment_count": "Nombre de pièces jointes",
+        "attachments": "Pièces jointes",
+        "before": "Avant",
+        "category": "Catégorie",
+        "channel": "Canal",
+        "click_here": "Cliquez ici",
+        "content": "Contenu",
+        "from_to": "De/À",
+        "joined": "Rejoint",
+        "jump_to_message": "Aller au message",
+        "member": "Membre",
+        "members_in_channel": "Membres dans le canal",
+        "message_id": "ID du message",
+        "no_content": "Aucun contenu",
+        "removed_roles": "Rôles supprimés",
+        "total_members": "Total des membres",
+        "type": "Type",
+        "unknown": "Inconnu"
+      },
+      "log_events": {
+        "channel_created": "Canal créé",
+        "channel_deleted": "Canal supprimé",
+        "member_joined": "Membre rejoint",
+        "member_left": "Membre parti",
+        "message_deleted": "Message supprimé",
+        "message_edited": "Message modifié",
+        "nickname_changed": "Pseudonyme modifié",
+        "roles_changed": "Rôles modifiés",
+        "voice_joined": "Rejoint vocal",
+        "voice_left": "Quitté vocal",
+        "voice_switched": "Changé de vocal"
+      }
+    },
     "language": {
       "title": "Configuration de la langue",
       "description": "Configurez la langue du serveur.",
@@ -752,77 +1141,538 @@
       "changed_to_english": "Langue changée en anglais",
       "changed_to_french": "Langue changée en français"
     },
-    "server_logs": {
-      "title": "Configuration des logs serveur",
-      "description": "Configurez les logs du serveur.",
-      "use_dashboard": "Utilisez le Dashboard Web",
-      "dashboard_description": "Les logs serveur sont maintenant entièrement gérés via le dashboard web avec des options avancées.",
-      "dashboard_features": "Fonctionnalités du Dashboard",
-      "dashboard_features_list": "• Configuration du canal de logs\n• Activation/désactivation des événements individuels\n• Logs de suppression/modification de messages\n• Logs d'arrivée/départ des membres\n• Logs d'activité vocale\n• Logs de changements de rôles et pseudos\n• Prévisualisation des paramètres en temps réel",
-      "dashboard_benefits": "Fonctionnalités améliorées",
-      "dashboard_benefits_list": "• Filtrage par utilisateur/canal\n• Formatage des messages de logs\n• Configuration en lot\n• Export des données de logs"
+    "disboard": {
+      "invalid_action": "❌ Action invalide. Utilisez `setup`, `status` ou `reset`.",
+      "setup_error": "❌ Erreur lors de la configuration du système Disboard.",
+      "config_error": "❌ Erreur lors de la configuration.",
+      "status_error": "❌ Erreur lors de la récupération du statut.",
+      "reset_error": "❌ Erreur lors de la réinitialisation.",
+      "title": "⚙️ Configuration Disboard",
+      "setup_success": "Configuration Disboard {action} avec succès !",
+      "setup_updated": "mise à jour",
+      "setup_created": "créée",
+      "reminder_channel": "Salon de rappel",
+      "bump_role": "Rôle de bump",
+      "status": "Statut",
+      "enabled": "✅ Activé",
+      "disabled": "❌ Désactivé",
+      "interval": "Intervalle",
+      "disboard_system": "Système de rappel Disboard",
+      "not_configured": "Le système Disboard n'est pas configuré pour ce serveur.",
+      "use_setup": "Utilisez `/disboard setup` pour configurer.",
+      "current_config": "Configuration actuelle du système de rappel",
+      "channel_not_found": "❌ Salon introuvable",
+      "no_role_configured": "❌ Aucun rôle configuré",
+      "total_bumps": "Total des bumps",
+      "last_bump": "Dernier bump",
+      "reset_success": "Configuration Disboard réinitialisée avec succès !",
+      "config_deleted": "Configuration supprimée",
+      "action": "Action"
     },
-    "moderation": {
-      "title": "Centre de Modération",
-      "description": "Bienvenue dans le centre de modération de **{guild_name}**\nSélectionnez une catégorie d'action ci-dessous.",
-      "available_actions": "Actions disponibles",
-      "available_actions_list": "• **Gestion des membres** - Timeout, kick, ban\n• **Système d'avertissements** - Avertir et consulter\n• **Nettoyage** - Supprimer des messages\n• **Gestion des rôles** - Ajouter/retirer des rôles\n• **Statistiques** - Voir les stats de modération\n• **Configuration** - Paramètres de modération",
-      "information": "Information",
-      "information_text": "Ce menu vous donne accès à toutes les fonctionnalités\nde modération du bot en un seul endroit.",
-      "moderator_footer": "Modérateur: {moderator_name}",
-      "member_management": {
-        "title": "Gestion des membres",
-        "description": "Choisissez l'action à effectuer sur un membre",
-        "available_actions": "Actions disponibles",
-        "available_actions_list": "• **Timeout** - Mettre en sourdine temporairement\n• **Untimeout** - Retirer la sourdine\n• **Kick** - Expulser du serveur\n• **Ban** - Bannir du serveur\n• **Unban** - Débannir du serveur",
-        "info": "Information",
-        "info_text": "Utilisez les commandes individuelles pour chaque action.\nExemple: `/timeout @membre 60 raison`"
+    "xp": {
+      "status": {
+        "title": "Statut XP",
+        "no_xp": "{user} n'a pas encore d'XP !"
       },
-      "warnings_system": {
-        "title": "Système d'avertissements",
-        "description": "Gérez les avertissements des membres",
-        "available_actions": "Actions disponibles",
-        "available_actions_list": "• **Avertir** - Donner un avertissement\n• **Voir les avertissements** - Consulter l'historique\n• **Effacer les avertissements** - Supprimer tous les avertissements",
-        "info": "Information",
-        "info_text": "Les avertissements sont stockés en base de données\net peuvent être consultés à tout moment."
+      "detailed": {
+        "title": "Statistiques XP Détaillées"
       },
-      "cleanup": {
-        "title": "Nettoyage des messages",
-        "description": "Supprimez des messages en masse",
-        "available_options": "Options de nettoyage",
-        "available_options_list": "• **Messages récents** - Supprimer les derniers messages\n• **Messages d'un utilisateur** - Supprimer les messages d'un membre\n• **Messages avec contenu** - Supprimer les messages contenant du texte\n• **Messages de bots** - Supprimer tous les messages de bots",
-        "limits": "Limites",
-        "limits_text": "• Maximum 100 messages par action\n• Les messages de plus de 14 jours ne peuvent pas être supprimés"
+      "fields": {
+        "user": "Utilisateur",
+        "level": "Niveau",
+        "total_xp": "XP Total",
+        "progress": "Progression vers le Niveau Suivant",
+        "text_xp": "XP Texte",
+        "voice_xp": "XP Vocal",
+        "xp_needed": "XP Nécessaire",
+        "recent_activity": "Activité Récente (5 Derniers Jours)"
       },
-      "role_management": {
-        "title": "Gestion des rôles",
-        "description": "Ajoutez ou retirez des rôles aux membres",
-        "available_actions": "Actions disponibles",
-        "available_actions_list": "• **Ajouter un rôle** - Donner un rôle à un membre\n• **Retirer un rôle** - Enlever un rôle d'un membre\n• **Voir les rôles** - Consulter les rôles d'un membre",
-        "info": "Information",
-        "info_text": "Vous ne pouvez gérer que les rôles\nqui sont en dessous de votre rôle le plus élevé."
+      "footer": {
+        "detailed": "💡 Utilisez '/xp detailed:False' pour un aperçu rapide",
+        "quick": "💡 Utilisez '/xp detailed:True' pour des statistiques détaillées"
       },
-      "moderation_stats": {
-        "title": "Statistiques de modération",
-        "description": "Statistiques du serveur **{guild_name}**",
-        "warnings": "Avertissements",
-        "warnings_stats": "• Total: {total_warnings}\n• Ce mois: {warnings_this_month}\n• Cette semaine: {warnings_this_week}",
-        "moderation_actions": "Actions de modération",
-        "moderation_actions_stats": "• Timeouts: {total_timeouts}\n• Kicks: {total_kicks}\n• Bans: {total_bans}",
-        "members": "Membres",
-        "members_stats": "• Total: {total_members}\n• En ligne: {online_members}\n• Bots: {bot_count}"
+      "leaderboard": {
+        "title": "Classement XP",
+        "page": "Page",
+        "no_data": "Aucune donnée XP trouvée pour ce serveur.",
+        "level": "Niveau",
+        "footer": "Page {page} sur {total}"
       },
-      "moderation_config": {
-        "title": "Configuration de modération",
-        "description": "Configurez les paramètres de modération du serveur",
-        "available_settings": "Paramètres disponibles",
-        "available_settings_list": "• **Salon de logs** - Canal pour les logs de modération\n• **Auto-modération** - Configuration automatique\n• **Rôles de modération** - Définir les rôles modérateurs\n• **Seuils d'avertissement** - Limites avant sanctions",
-        "info": "Information",
-        "info_text": "Ces paramètres sont configurés via le dashboard web.\nUtilisez `/dashboard` pour accéder à la configuration."
+      "error": {
+        "retrieve_data": "Échec de la récupération des données XP",
+        "retrieve_leaderboard": "Échec de la récupération des données du classement"
+      }
+    },
+    "feedback": {
+      "new_feedback": "Nouveau Feedback",
+      "types": {
+        "bug": "Rapport de Bug",
+        "feature": "Demande de Fonctionnalité",
+        "general": "Feedback Général",
+        "question": "Question/Aide"
       },
-      "no_permission": "Vous n'avez pas la permission de modérer les membres.",
-      "stats_error": "Erreur lors du chargement des statistiques.",
-      "use_individual_commands": "Utilisez les commandes individuelles pour chaque action."
+      "user_info": "Informations Utilisateur",
+      "user": "Utilisateur",
+      "server": "Serveur",
+      "members": "Membres",
+      "footer": "Feedback de {user}",
+      "submitted": "Feedback Soumis !",
+      "thank_you": "Merci pour votre feedback ! Cela nous aide à améliorer Maybee.",
+      "bug_reports": "Rapports de Bug",
+      "bug_message": "Nous allons enquêter sur ce problème et travailler sur une correction. Merci de nous aider à nous améliorer !",
+      "feature_requests": "Demandes de Fonctionnalités",
+      "feature_message": "Nous considérerons cette fonctionnalité pour les futures mises à jour. Excellente suggestion !",
+      "questions": "Questions",
+      "question_message": "Nous essaierons de vous répondre bientôt. Consultez notre documentation sur github.com/imutig/Maybee"
+    },
+    "role_menus": {
+      "error": {
+        "cannot_process": "❌ Impossible de traiter la sélection de rôle.",
+        "bot_not_found": "❌ Membre bot introuvable.",
+        "menu_config": "❌ Erreur de configuration du menu.",
+        "no_permission_remove": "❌ Je n'ai pas la permission de retirer certains rôles.",
+        "no_permission_add": "❌ Je n'ai pas la permission d'ajouter certains rôles.",
+        "processing_error": "❌ Une erreur s'est produite lors du traitement de votre sélection."
+      },
+      "success": {
+        "title": "Mise à jour des Rôles Réussie !",
+        "no_changes": "ℹ️ Aucun changement de rôle n'était nécessaire."
+      },
+      "default_description": "Sélectionnez un rôle dans le menu déroulant ci-dessous :",
+      "available_roles": "Rôles Disponibles"
+    },
+    "welcome_system": {
+      "default_welcome_title": "👋 Nouveau membre !",
+      "default_goodbye_title": "👋 Départ",
+      "default_welcome_message": "Bienvenue {memberMention} sur **{serverName}** ! Nous sommes maintenant **{memberCount}** membres.",
+      "default_goodbye_message": "Au revoir **{memberName}** ! Nous sommes maintenant **{memberCount}** membres.",
+      "insufficient_permissions": "permissions insuffisantes",
+      "role_not_found": "introuvable",
+      "error": "erreur",
+      "error_processing_fields": "Erreur lors du traitement des champs",
+      "failed_send_welcome": "Échec de l'envoi du message de bienvenue",
+      "channel_not_found": "Impossible de trouver le canal de bienvenue avec l'ID",
+      "no_channel_configured": "Aucun canal de bienvenue configuré pour le serveur"
     }
+  },
+  "moderation": {
+    "title": "Centre de Modération",
+    "description": "Bienvenue dans le centre de modération de **{guild_name}**\nSélectionnez une catégorie d'action ci-dessous.",
+    "available_actions": "Actions disponibles",
+    "available_actions_list": "• **Gestion des membres** - Timeout, kick, ban\n• **Système d'avertissements** - Avertir et consulter\n• **Nettoyage** - Supprimer des messages\n• **Gestion des rôles** - Ajouter/retirer des rôles\n• **Statistiques** - Voir les stats de modération\n• **Configuration** - Paramètres de modération",
+    "information": "Information",
+    "information_text": "Ce menu vous donne accès à toutes les fonctionnalités\nde modération du bot en un seul endroit.",
+    "moderator_footer": "Modérateur: {moderator_name}",
+    "member_management": {
+      "title": "Gestion des membres",
+      "description": "Choisissez l'action à effectuer sur un membre",
+      "available_actions": "Actions disponibles",
+      "available_actions_list": "• **Timeout** - Mettre en sourdine temporairement\n• **Untimeout** - Retirer la sourdine\n• **Kick** - Expulser du serveur\n• **Ban** - Bannir du serveur\n• **Unban** - Débannir du serveur",
+      "info": "Information",
+      "info_text": "Utilisez les commandes individuelles pour chaque action.\nExemple: `/timeout @membre 60 raison`",
+      "ban_title": "Bannir un membre",
+      "kick_title": "Expulser un membre",
+      "timeout_title": "Mettre en timeout",
+      "select_member_description": "Sélectionnez le membre à modérer"
+    },
+    "warnings_system": {
+      "title": "Système d'avertissements",
+      "description": "Gérez les avertissements des membres",
+      "available_actions": "Actions disponibles",
+      "available_actions_list": "• **Avertir** - Donner un avertissement\n• **Voir les avertissements** - Consulter l'historique\n• **Effacer les avertissements** - Supprimer tous les avertissements",
+      "info": "Information",
+      "info_text": "Les avertissements sont stockés en base de données\net peuvent être consultés à tout moment."
+    },
+    "cleanup": {
+      "title": "Nettoyage des messages",
+      "description": "Supprimez des messages en masse",
+      "available_options": "Options de nettoyage",
+      "available_options_list": "• **Messages récents** - Supprimer les derniers messages\n• **Messages d'un utilisateur** - Supprimer les messages d'un membre\n• **Messages avec contenu** - Supprimer les messages contenant du texte\n• **Messages de bots** - Supprimer tous les messages de bots",
+      "limits": "Limites",
+      "limits_text": "• Maximum 100 messages par action\n• Les messages de plus de 14 jours ne peuvent pas être supprimés",
+      "development_message": "⚠️ Cette fonctionnalité est en cours de développement.",
+      "options_list": "• **Messages récents** - Supprimer les derniers messages\n• **Messages d'un utilisateur** - Supprimer les messages d'un membre\n• **Messages avec contenu** - Supprimer les messages contenant du texte\n• **Messages de bots** - Supprimer tous les messages de bots"
+    },
+    "role_management": {
+      "title": "Gestion des rôles",
+      "description": "Ajoutez ou retirez des rôles aux membres",
+      "available_actions": "Actions disponibles",
+      "available_actions_list": "• **Ajouter un rôle** - Donner un rôle à un membre\n• **Retirer un rôle** - Enlever un rôle d'un membre\n• **Voir les rôles** - Consulter les rôles d'un membre",
+      "info": "Information",
+      "info_text": "Vous ne pouvez gérer que les rôles\nqui sont en dessous de votre rôle le plus élevé.",
+      "add_role_title": "Ajouter un rôle",
+      "remove_role_title": "Retirer un rôle"
+    },
+    "moderation_stats": {
+      "title": "Statistiques de modération",
+      "description": "Statistiques du serveur **{guild_name}**",
+      "warnings": "Avertissements",
+      "warnings_stats": "• Total: {total_warnings}\n• Ce mois: {warnings_this_month}\n• Cette semaine: {warnings_this_week}",
+      "moderation_actions": "Actions de modération",
+      "moderation_actions_stats": "• Timeouts: {total_timeouts}\n• Kicks: {total_kicks}\n• Bans: {total_bans}",
+      "members": "Membres",
+      "members_stats": "• Total: {total_members}\n• En ligne: {online_members}\n• Bots: {bot_count}"
+    },
+    "stats": {
+      "description": "Statistiques de modération du serveur",
+      "members_stats": "• Total: {total_members}\n• En ligne: {online_members}\n• Bots: {bot_count}",
+      "members_title": "Membres",
+      "moderation_actions_stats": "• Timeouts: {total_timeouts}\n• Kicks: {total_kicks}\n• Bans: {total_bans}",
+      "moderation_actions_title": "Actions de modération",
+      "stats_error": "Erreur lors du chargement des statistiques.",
+      "title": "Statistiques de modération",
+      "warnings_stats": "• Total: {total_warnings}\n• Ce mois: {warnings_this_month}\n• Cette semaine: {warnings_this_week}",
+      "warnings_title": "Avertissements"
+    },
+    "main_menu": {
+      "available_actions_list": "• **Gestion des membres** - Timeout, kick, ban\n• **Système d'avertissements** - Avertir et consulter\n• **Nettoyage** - Supprimer des messages\n• **Gestion des rôles** - Ajouter/retirer des rôles\n• **Statistiques** - Voir les stats de modération\n• **Configuration** - Paramètres de modération",
+      "description": "Bienvenue dans le centre de modération de **{guild_name}**\nSélectionnez une catégorie d'action ci-dessous.",
+      "footer": "Modérateur: {moderator_name}",
+      "info": "Information",
+      "title": "Centre de Modération"
+    },
+    "warnings_system": {
+      "title": "Système d'avertissements",
+      "description": "Gérez les avertissements des membres",
+      "available_actions": "Actions disponibles",
+      "available_actions_list": "• **Avertir** - Donner un avertissement\n• **Voir les avertissements** - Consulter l'historique\n• **Effacer les avertissements** - Supprimer tous les avertissements",
+      "info": "Information",
+      "info_text": "Les avertissements sont stockés en base de données\net peuvent être consultés à tout moment.",
+      "view_warnings_title": "Voir les avertissements",
+      "warn_title": "Avertir un membre"
+    },
+    "moderation_config": {
+      "title": "Configuration de modération",
+      "description": "Configurez les paramètres de modération du serveur",
+      "available_settings": "Paramètres disponibles",
+      "available_settings_list": "• **Salon de logs** - Canal pour les logs de modération\n• **Auto-modération** - Configuration automatique\n• **Rôles de modération** - Définir les rôles modérateurs\n• **Seuils d'avertissement** - Limites avant sanctions",
+      "info": "Information",
+      "info_text": "Ces paramètres sont configurés via le dashboard web.\nUtilisez `/dashboard` pour accéder à la configuration."
+    },
+    "no_permission": "Vous n'avez pas la permission de modérer les membres.",
+    "stats_error": "Erreur lors du chargement des statistiques.",
+    "use_individual_commands": "Utilisez les commandes individuelles pour chaque action.",
+    "actions": {
+      "ban": "Bannir",
+      "ban_success": "Membre banni",
+      "ban_success_description": "{user} a été banni du serveur.",
+      "kick": "Expulser",
+      "kick_success": "Membre expulsé",
+      "kick_success_description": "{user} a été expulsé du serveur.",
+      "timeout": "Timeout",
+      "timeout_success": "Membre mis en timeout",
+      "timeout_success_description": "{user} a été mis en timeout pour {duration} minutes.",
+      "unban": "Débannir",
+      "unmute": "Retirer le timeout",
+      "warn": "Avertir",
+      "warn_success": "Avertissement donné",
+      "warn_success_description": "{user} a reçu un avertissement.",
+      "duration": "Durée",
+      "moderator": "Modérateur",
+      "user": "Utilisateur",
+      "footer": "Action effectuée par {moderator}"
+    },
+    "ban": {
+      "embed_title": "🔨 Membre banni",
+      "embed_description": "{user} a été banni du serveur.",
+      "moderator_field": "Modérateur",
+      "reason_field": "Raison",
+      "cannot_ban_higher_role": "❌ Vous ne pouvez pas bannir des membres avec un rôle égal ou supérieur au vôtre."
+    },
+    "kick": {
+      "embed_title": "👢 Membre expulsé",
+      "embed_description": "{user} a été expulsé du serveur.",
+      "moderator_field": "Modérateur",
+      "reason_field": "Raison",
+      "cannot_kick_higher_role": "❌ Vous ne pouvez pas expulser des membres avec un rôle égal ou supérieur au vôtre."
+    },
+    "timeout": {
+      "embed_title": "🔇 Membre mis en timeout",
+      "embed_description": "{user} a été mis en timeout pour {duration} minutes. Raison : {reason}",
+      "moderator_field": "Modérateur",
+      "duration_field": "Durée",
+      "duration_value": "{duration} minutes",
+      "invalid_duration": "❌ La durée doit être entre 1 et 2880 minutes (48h).",
+      "cannot_timeout_higher_role": "❌ Vous ne pouvez pas timeout des membres avec un rôle égal ou supérieur au vôtre."
+    },
+    "warn": {
+      "embed_title": "⚠️ Avertissement donné",
+      "embed_description": "{user} a reçu un avertissement pour : {reason}",
+      "moderator_field": "Modérateur",
+      "dm_title": "⚠️ Avertissement reçu",
+      "dm_description": "Vous avez reçu un avertissement sur **{server}** pour : {reason}",
+      "cannot_warn_higher_role": "❌ Vous ne pouvez pas avertir des membres avec un rôle égal ou supérieur au vôtre."
+    },
+    "warnings": {
+      "embed_title": "⚠️ Avertissements de {user}",
+      "no_warnings": "❌ {user} n'a aucun avertissement.",
+      "warning_field": "Avertissement #{number}",
+      "warning_value": "**Modérateur :** {moderator}\n**Raison :** {reason}\n**Date :** {timestamp}"
+    },
+    "role_add": {
+      "embed_title": "✅ Rôle ajouté",
+      "embed_description": "Le rôle {role} a été ajouté à {user}.",
+      "moderator_field": "Modérateur",
+      "role_already_has": "⚠️ {user} a déjà le rôle {role}.",
+      "cannot_manage_role": "❌ Vous ne pouvez pas gérer un rôle égal ou supérieur au vôtre."
+    },
+    "role_remove": {
+      "embed_title": "❌ Rôle retiré",
+      "embed_description": "Le rôle {role} a été retiré de {user}.",
+      "moderator_field": "Modérateur",
+      "role_doesnt_have": "⚠️ {user} n'a pas le rôle {role}.",
+      "cannot_manage_role": "❌ Vous ne pouvez pas gérer un rôle égal ou supérieur au vôtre."
+    },
+    "member_select": {
+      "placeholder": "👥 Sélectionnez un membre...",
+      "manual_search": "🔍 Recherche manuelle...",
+      "manual_search_desc": "Tapez l'ID ou la mention du membre",
+      "unauthorized": "❌ Seul l'utilisateur qui a lancé la commande peut interagir.",
+      "member_not_found": "❌ Membre introuvable sur ce serveur.",
+      "invalid_format": "❌ Format invalide. Utilisez @membre ou l'ID numérique.",
+      "search_error": "❌ Erreur lors de la recherche du membre.",
+      "selection_error": "❌ Erreur lors de la sélection du membre."
+    },
+    "modals": {
+      "timeout_title": "Mettre en timeout",
+      "timeout_duration_label": "Durée (en minutes)",
+      "timeout_duration_placeholder": "Ex: 60 (maximum 2880 = 48h)",
+      "timeout_reason_placeholder": "Raison du timeout",
+      "ban_title": "Bannir un membre",
+      "ban_reason_placeholder": "Raison du bannissement",
+      "warn_title": "Avertir un membre",
+      "warn_reason_label": "Raison de l'avertissement",
+      "warn_reason_placeholder": "Raison de l'avertissement",
+      "role_add_title": "Ajouter un rôle",
+      "role_remove_title": "Retirer un rôle",
+      "role_input_label": "Nom ou ID du rôle",
+      "role_input_placeholder": "Ex: @rôle ou 123456789012345678",
+      "kick_title": "Expulser un membre",
+      "kick_reason_placeholder": "Raison de l'expulsion",
+      "manual_search_title": "Recherche manuelle",
+      "member_input_label": "ID ou mention du membre",
+      "member_input_placeholder": "Ex: @membre ou 123456789012345678",
+      "timeout": {
+        "title": "Mettre en timeout",
+        "duration_label": "Durée (en minutes)",
+        "duration_placeholder": "Ex: 60 (maximum 2880 = 48h)",
+        "reason_label": "Raison",
+        "reason_placeholder": "Raison du timeout"
+      },
+      "ban": {
+        "title": "Bannir un membre",
+        "duration_label": "Durée (en minutes)",
+        "duration_placeholder": "Ex: 60 (maximum 2880 = 48h)",
+        "reason_label": "Raison",
+        "reason_placeholder": "Raison du bannissement"
+      },
+      "kick": {
+        "title": "Expulser un membre",
+        "reason_label": "Raison",
+        "reason_placeholder": "Raison de l'expulsion"
+      },
+      "warn": {
+        "title": "Avertir un membre",
+        "reason_label": "Raison",
+        "reason_placeholder": "Raison de l'avertissement"
+      }
+    },
+    "permissions": {
+      "no_moderate_permission": "❌ Vous n'avez pas la permission de modérer les membres.",
+      "no_kick_permission": "❌ Vous n'avez pas la permission d'expulser des membres.",
+      "no_ban_permission": "❌ Vous n'avez pas la permission de bannir des membres.",
+      "no_manage_roles_permission": "❌ Vous n'avez pas la permission de gérer les rôles."
+    },
+    "errors": {
+      "invalid_duration_number": "❌ La durée doit être un nombre valide.",
+      "timeout_error": "❌ Erreur lors du timeout : {error}",
+      "kick_error": "❌ Erreur lors de l'expulsion : {error}",
+      "ban_error": "❌ Erreur lors du bannissement : {error}",
+      "warn_error": "❌ Erreur lors de l'avertissement : {error}",
+      "role_add_error": "❌ Erreur lors de l'ajout du rôle : {error}",
+      "role_remove_error": "❌ Erreur lors de la suppression du rôle : {error}",
+      "warnings_fetch_error": "❌ Erreur lors de la récupération des avertissements.",
+      "role_not_found": "❌ Rôle introuvable.",
+      "action_failed": "❌ L'action a échoué : {error}",
+      "invalid_duration": "❌ Durée invalide."
+    },
+    "history": {
+      "title": "Historique de modération",
+      "description": "Historique des actions de modération pour {user}",
+      "no_history": "Aucun historique trouvé",
+      "no_history_description": "Aucune action de modération trouvée pour cet utilisateur.",
+      "moderator": "Modérateur",
+      "reason": "Raison",
+      "date": "Date",
+      "user": "Utilisateur",
+      "footer": "Historique demandé par {moderator}",
+      "filter_user": "Filtrer par utilisateur",
+      "filter_action": "Filtrer par action",
+      "filters_applied": "Filtres appliqués",
+      "stats_30_days": "Statistiques des 30 derniers jours"
+    }
+  },
+  "ban": {
+    "embed_title": "🔨 Membre banni",
+    "embed_description": "{user} a été banni du serveur.",
+    "moderator_field": "Modérateur",
+    "reason_field": "Raison",
+    "cannot_ban_bot": "❌ Vous ne pouvez pas bannir des bots.",
+    "cannot_ban_higher_role": "❌ Vous ne pouvez pas bannir des membres avec un rôle égal ou supérieur au vôtre."
+  },
+  "kick": {
+    "embed_title": "👢 Membre expulsé",
+    "embed_description": "{user} a été expulsé du serveur.",
+    "moderator_field": "Modérateur",
+    "reason_field": "Raison",
+    "cannot_kick_bot": "❌ Vous ne pouvez pas expulser des bots.",
+    "cannot_kick_higher_role": "❌ Vous ne pouvez pas expulser des membres avec un rôle égal ou supérieur au vôtre."
+  },
+  "timeout": {
+    "embed_title": "🔇 Membre mis en timeout",
+    "embed_description": "{user} a été mis en timeout pour {duration} minutes. Raison : {reason}",
+    "moderator_field": "Modérateur",
+    "duration_field": "Durée",
+    "duration_value": "{duration} minutes",
+    "dm_title": "🔇 Vous avez été mis en timeout",
+    "dm_description": "Vous avez été mis en timeout sur **{server}** pour {duration} minutes. Raison : {reason}",
+    "invalid_duration": "❌ La durée doit être entre 1 et 2880 minutes (48h).",
+    "cannot_timeout_bot": "❌ Vous ne pouvez pas timeout des bots.",
+    "cannot_timeout_higher_role": "❌ Vous ne pouvez pas timeout des membres avec un rôle égal ou supérieur au vôtre."
+  },
+  "warn": {
+    "embed_title": "⚠️ Avertissement donné",
+    "embed_description": "{user} a reçu un avertissement pour : {reason}",
+    "moderator_field": "Modérateur",
+    "member_field": "Membre",
+    "dm_title": "⚠️ Avertissement reçu",
+    "dm_description": "Vous avez reçu un avertissement sur **{server}** pour : {reason}",
+    "cannot_warn_bot": "❌ Vous ne pouvez pas avertir des bots.",
+    "cannot_warn_higher_role": "❌ Vous ne pouvez pas avertir des membres avec un rôle égal ou supérieur au vôtre."
+  },
+  "warnings": {
+    "embed_title": "Avertissements de {user}",
+    "no_warnings": "{user} n'a aucun avertissement.",
+    "warning_field": "Avertissement #{number}",
+    "warning_value": "**Modérateur:** {moderator}\n**Raison:** {reason}\n**Date:** {timestamp}"
+  },
+  "role_add": {
+    "embed_title": "✅ Rôle ajouté",
+    "embed_description": "Le rôle {role} a été ajouté à {user}.",
+    "moderator_field": "Modérateur",
+    "role_already_has": "⚠️ {user} a déjà le rôle {role}.",
+    "cannot_manage_role": "❌ Vous ne pouvez pas gérer un rôle égal ou supérieur au vôtre."
+  },
+  "role_remove": {
+    "embed_title": "❌ Rôle retiré",
+    "embed_description": "Le rôle {role} a été retiré de {user}.",
+    "moderator_field": "Modérateur",
+    "role_doesnt_have": "⚠️ {user} n'a pas le rôle {role}.",
+    "cannot_manage_role": "❌ Vous ne pouvez pas gérer un rôle égal ou supérieur au vôtre."
+  },
+  "member_select": {
+    "placeholder": "👥 Sélectionnez un membre...",
+    "manual_search": "🔍 Recherche manuelle...",
+    "manual_search_desc": "Tapez l'ID ou la mention du membre",
+    "unauthorized": "❌ Seul l'utilisateur qui a lancé la commande peut interagir.",
+    "member_not_found": "❌ Membre introuvable sur ce serveur.",
+    "invalid_format": "❌ Format invalide. Utilisez @membre ou l'ID numérique.",
+    "search_error": "❌ Erreur lors de la recherche du membre.",
+    "selection_error": "❌ Erreur lors de la sélection du membre."
+  },
+  "modals": {
+    "timeout_title": "Mettre en timeout",
+    "timeout_duration_label": "Durée (en minutes)",
+    "timeout_duration_placeholder": "Ex: 60 (maximum 2880 = 48h)",
+    "timeout_reason_placeholder": "Raison du timeout",
+    "ban_title": "Bannir un membre",
+    "ban_reason_placeholder": "Raison du bannissement",
+    "warn_title": "Avertir un membre",
+    "warn_reason_label": "Raison de l'avertissement",
+    "warn_reason_placeholder": "Raison de l'avertissement",
+    "role_add_title": "Ajouter un rôle",
+    "role_remove_title": "Retirer un rôle",
+    "role_input_label": "Nom ou ID du rôle",
+    "role_input_placeholder": "Ex: @rôle ou 123456789012345678",
+    "kick_title": "Expulser un membre",
+    "kick_reason_placeholder": "Raison de l'expulsion",
+    "manual_search_title": "Recherche manuelle",
+    "member_input_label": "ID ou mention du membre",
+    "member_input_placeholder": "Ex: @membre ou 123456789012345678"
+  },
+  "permissions": {
+    "no_moderate_permission": "❌ Vous n'avez pas la permission de modérer les membres.",
+    "no_kick_permission": "❌ Vous n'avez pas la permission d'expulser des membres.",
+    "no_ban_permission": "❌ Vous n'avez pas la permission de bannir des membres.",
+    "no_manage_roles_permission": "❌ Vous n'avez pas la permission de gérer les rôles."
+  },
+  "history": {
+    "title": "Historique de modération",
+    "description": "Historique des actions de modération pour {user}",
+    "no_history": "Aucun historique trouvé",
+    "no_history_description": "Aucune action de modération trouvée pour cet utilisateur.",
+    "moderator": "Modérateur",
+    "reason": "Raison",
+    "date": "Date",
+    "user": "Utilisateur",
+    "footer": "Historique demandé par {moderator}",
+    "filter_user": "Filtrer par utilisateur",
+    "filter_action": "Filtrer par action",
+    "filters_applied": "Filtres appliqués",
+    "stats_30_days": "Statistiques des 30 derniers jours"
+  },
+  "main_menu": {
+    "title": "Centre de Modération",
+    "description": "Bienvenue dans le centre de modération de **{guild_name}**\nSélectionnez une catégorie d'action ci-dessous.",
+    "available_actions_list": "• **Gestion des membres** - Timeout, kick, ban\n• **Système d'avertissements** - Avertir et consulter\n• **Nettoyage** - Supprimer des messages\n• **Gestion des rôles** - Ajouter/retirer des rôles\n• **Statistiques** - Voir les stats de modération",
+    "info": "Ce menu vous donne accès à toutes les fonctionnalités\nde modération du bot en un seul endroit.",
+    "footer": "Modérateur: {moderator}"
+  },
+  "member_management": {
+    "title": "Gestion des membres",
+    "description": "Choisissez l'action à effectuer sur un membre",
+    "available_actions_list": "• **Timeout** - Mettre en sourdine temporairement\n• **Kick** - Expulser du serveur\n• **Ban** - Bannir du serveur",
+    "timeout_title": "Sélectionner un membre à timeout",
+    "kick_title": "Sélectionner un membre à expulser",
+    "ban_title": "Sélectionner un membre à bannir",
+    "select_member_description": "Choisissez un membre dans la liste ci-dessous :"
+  },
+  "warnings_system": {
+    "title": "Système d'avertissements",
+    "description": "Gérez les avertissements des membres",
+    "available_actions_list": "• **Avertir** - Donner un avertissement\n• **Voir les avertissements** - Consulter l'historique",
+    "warn_title": "Sélectionner un membre à avertir",
+    "view_warnings_title": "Consulter les avertissements d'un membre"
+  },
+  "cleanup": {
+    "title": "Nettoyage des messages",
+    "description": "Supprimez des messages en masse",
+    "options_list": "• **Messages récents** - Supprimer les derniers messages\n• **Messages d'un utilisateur** - Supprimer les messages d'un membre\n• **Messages de bots** - Supprimer tous les messages de bots"
+  },
+  "role_management": {
+    "title": "Gestion des rôles",
+    "description": "Ajoutez ou retirez des rôles aux membres",
+    "available_actions_list": "• **Ajouter un rôle** - Donner un rôle à un membre\n• **Retirer un rôle** - Enlever un rôle d'un membre",
+    "add_role_title": "Ajouter un rôle à un membre",
+    "remove_role_title": "Retirer un rôle d'un membre"
+  },
+  "stats": {
+    "title": "Statistiques de modération",
+    "description": "Statistiques du serveur **{guild_name}**",
+    "warnings_title": "📊 Avertissements",
+    "warnings_stats": "• Total: {total_warnings}\n• Ce mois: {warnings_this_month}\n• Cette semaine: {warnings_this_week}",
+    "moderation_actions_title": "🔨 Actions de modération",
+    "moderation_actions_stats": "• Timeouts: {total_timeouts}\n• Kicks: {total_kicks}\n• Bans: {total_bans}",
+    "members_title": "👥 Membres",
+    "members_stats": "• Total: {total_members}\n• En ligne: {online_members}\n• Bots: {bot_count}",
+    "stats_error": "Erreur lors du chargement des statistiques."
+  },
+  "untimeout": {
+    "embed_title": "🔊 Timeout retiré",
+    "embed_description": "Le timeout a été retiré de {user}. Raison : {reason}",
+    "moderator_field": "Modérateur"
+  },
+  "clearwarnings": {
+    "success": "✅ Tous les avertissements ont été effacés pour {user}."
   }
 }

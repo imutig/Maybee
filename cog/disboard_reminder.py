@@ -14,8 +14,9 @@ from i18n import _
 from .command_logger import log_command_usage
 from custom_emojis import CHART_BAR, STATS, TROPHY, GOLD_MEDAL, SILVER_MEDAL, BRONZE_MEDAL, CLOCK, USERS, FIRE, ARROW_UP, INFO, ERROR
 
-from services import handle_errors, rate_limit
-from monitoring import logger
+# Services and monitoring modules removed during cleanup
+import logging
+logger = logging.getLogger(__name__)
 
 class DisboardReminder(commands.Cog):
     """Disboard bump reminder system with automatic detection and reminders"""
@@ -47,9 +48,9 @@ class DisboardReminder(commands.Cog):
         
         # Log the command cleanly
         if user:
-            logger.info(f"📨 Disboard: /{command_name} par {user.display_name} ({user.id})")
+            logger.info(f"📨 Disboard: /{command_name} by {user.display_name} ({user.id})")
         else:
-            logger.info(f"📨 Disboard: /{command_name} par utilisateur inconnu")
+            logger.info(f"📨 Disboard: /{command_name} by unknown user")
         
         # Only process if it's a bump command
         if command_name != 'bump':
@@ -57,10 +58,10 @@ class DisboardReminder(commands.Cog):
         
         # If we have a user and command_name is 'bump', it's a successful bump!
         if user:
-            logger.info(f"🚀 Bump confirmé par {user.display_name} ({user.id})")
+            logger.info(f"🚀 Bump confirmed by {user.display_name} ({user.id})")
             await self._handle_bump_detected(message.guild, user, message.channel)
         else:
-            logger.warning(f"⚠️ Bump détecté mais utilisateur introuvable")
+            logger.warning(f"⚠️ Bump detected but user not found")
 
     async def _handle_bump_detected(self, guild: discord.Guild, bumper: discord.Member, channel: discord.TextChannel):
         """Handle detected bump and update database"""
@@ -89,7 +90,7 @@ class DisboardReminder(commands.Cog):
             # Send thank you message with role offer
             await self._send_thank_you_message(guild, bumper, channel)
             
-            logger.info(f"✅ Bump enregistré: {bumper.display_name} ({bump_count} total)")
+            logger.info(f"✅ Bump recorded: {bumper.display_name} ({bump_count} total)")
             
         except Exception as e:
             logger.error(f"Error handling bump detection: {e}")
@@ -120,15 +121,15 @@ class DisboardReminder(commands.Cog):
             
             # User doesn't have the role, send ephemeral message with role offer
             embed = discord.Embed(
-                title="🔔 Notification de bump",
-                description=f"**{bumper.display_name}**, vous souhaitez être notifié au prochain bump ?",
+                title=f"🔔 {_('disboard.notification.title', guild_id=guild.id)}",
+                description=_('disboard.notification.description', guild_id=guild.id, bumper=bumper.display_name),
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
             
             embed.add_field(
-                name="🎯 Cliquez ici pour être notifié",
-                value=f"En acceptant, vous recevrez le rôle {bump_role.mention} et serez notifié pour **TOUS** les prochains bumps.",
+                name=f"🎯 {_('disboard.notification.click_to_notify', guild_id=guild.id)}",
+                value=_('disboard.notification.role_benefit', guild_id=guild.id, role=bump_role.mention),
                 inline=False
             )
             
@@ -141,23 +142,23 @@ class DisboardReminder(commands.Cog):
                     self.guild_id = guild_id
                     self.role_id = role_id
                 
-                @discord.ui.button(label="✅ Oui, notifiez-moi", style=discord.ButtonStyle.green, custom_id="bump_role_yes")
+                @discord.ui.button(label="✅ Yes, notify me", style=discord.ButtonStyle.green, custom_id="bump_role_yes")
                 async def yes_button(self, interaction: discord.Interaction, button: discord.ui.Button):
                     await self._handle_button_click(interaction, "yes")
                 
-                @discord.ui.button(label="❌ Non, merci", style=discord.ButtonStyle.red, custom_id="bump_role_no")
+                @discord.ui.button(label="❌ No, thanks", style=discord.ButtonStyle.red, custom_id="bump_role_no")
                 async def no_button(self, interaction: discord.Interaction, button: discord.ui.Button):
                     await self._handle_button_click(interaction, "no")
                 
                 async def _handle_button_click(self, interaction: discord.Interaction, action: str):
                     try:
-                        logger.info(f"🔘 Bouton {action} cliqué par {interaction.user.display_name} (ID: {interaction.user.id})")
+                        logger.info(f"🔘 Button {action} clicked by {interaction.user.display_name} (ID: {interaction.user.id})")
                         
                         # Check if this interaction is from the intended user
                         if interaction.user.id != self.bumper_id:
-                            logger.warning(f"❌ Utilisateur incorrect: {interaction.user.display_name} (ID: {interaction.user.id}) au lieu de l'utilisateur attendu (ID: {self.bumper_id})")
+                            logger.warning(f"❌ Wrong user: {interaction.user.display_name} (ID: {interaction.user.id}) instead of expected user (ID: {self.bumper_id})")
                             await interaction.response.send_message(
-                                "❌ Seul l'utilisateur qui a bumpé peut utiliser ces boutons.",
+                                _("disboard.error.wrong_user", guild_id=interaction.guild.id),
                                 ephemeral=True
                             )
                             return
@@ -165,11 +166,11 @@ class DisboardReminder(commands.Cog):
                         # Get guild and role
                         guild = interaction.guild
                         if not guild or guild.id != self.guild_id:
-                            logger.error(f"❌ Guild incorrect: guild_id={guild.id if guild else None}, expected_guild_id={self.guild_id}")
-                            await interaction.response.send_message("❌ Erreur: Serveur incorrect", ephemeral=True)
+                            logger.error(f"❌ Wrong guild: guild_id={guild.id if guild else None}, expected_guild_id={self.guild_id}")
+                            await interaction.response.send_message(_("disboard.error.wrong_guild", guild_id=interaction.guild.id), ephemeral=True)
                             return
                         
-                        logger.info(f"🔍 Recherche configuration pour guild_id={self.guild_id}")
+                        logger.info(f"🔍 Searching configuration for guild_id={self.guild_id}")
                         config = await self.bot.db.query(
                             "SELECT bump_role_id FROM disboard_config WHERE guild_id = %s",
                             (self.guild_id,),
@@ -177,34 +178,34 @@ class DisboardReminder(commands.Cog):
                         )
                         
                         if not config or not config['bump_role_id']:
-                            logger.error(f"❌ Configuration de rôle de bump introuvable pour guild_id={self.guild_id}")
+                            logger.error(f"❌ Bump role configuration not found for guild_id={self.guild_id}")
                             await interaction.response.send_message(
-                                "❌ Configuration de rôle de bump introuvable.",
+                                _("disboard.error.role_config_not_found", guild_id=interaction.guild.id),
                                 ephemeral=True
                             )
                             return
                         
-                        logger.info(f"🔍 Rôle configuré: role_id={config['bump_role_id']}")
+                        logger.info(f"🔍 Configured role: role_id={config['bump_role_id']}")
                         bump_role = guild.get_role(config['bump_role_id'])
                         if not bump_role:
-                            logger.error(f"❌ Rôle de bump introuvable: role_id={config['bump_role_id']} dans guild={guild.name}")
+                            logger.error(f"❌ Bump role not found: role_id={config['bump_role_id']} in guild={guild.name}")
                             await interaction.response.send_message(
-                                "❌ Rôle de bump introuvable.",
+                                _("disboard.error.role_not_found", guild_id=interaction.guild.id),
                                 ephemeral=True
                             )
                             return
                         
-                        logger.info(f"✅ Rôle trouvé: {bump_role.name} (ID: {bump_role.id})")
+                        logger.info(f"✅ Role found: {bump_role.name} (ID: {bump_role.id})")
                         
                         if action == "yes":
                             # Assign the role
-                            logger.info(f"🎯 Tentative d'assignation du rôle {bump_role.name} à {interaction.user.display_name}")
+                            logger.info(f"🎯 Attempting to assign role {bump_role.name} to {interaction.user.display_name}")
                             try:
                                 await interaction.user.add_roles(bump_role)
-                                logger.info(f"✅ Rôle {bump_role.name} assigné avec succès à {interaction.user.display_name}")
+                                logger.info(f"✅ Role {bump_role.name} successfully assigned to {interaction.user.display_name}")
                                 
                                 embed = discord.Embed(
-                                    title="✅ Rôle assigné !",
+                                    title=f"✅ {_('disboard.success.role_assigned_title', guild_id=guild.id)}",
                                     description=_("disboard.thank_you.role_assigned", guild_id=guild.id),
                                     color=discord.Color.green(),
                                     timestamp=datetime.now()
@@ -214,13 +215,13 @@ class DisboardReminder(commands.Cog):
                                 logger.info(f"Bump role {bump_role.name} assigned to {interaction.user.display_name} in {guild.name}")
                                 
                             except discord.Forbidden:
-                                logger.error(f"❌ Permission refusée pour assigner le rôle {bump_role.name} à {interaction.user.display_name}")
+                                logger.error(f"❌ Permission denied to assign role {bump_role.name} to {interaction.user.display_name}")
                                 await interaction.response.send_message(
-                                    "❌ Je n'ai pas la permission d'assigner ce rôle.",
+                                    _("disboard.error.no_permission", guild_id=guild.id),
                                     ephemeral=True
                                 )
                             except Exception as e:
-                                logger.error(f"❌ Erreur lors de l'assignation du rôle {bump_role.name} à {interaction.user.display_name}: {e}")
+                                logger.error(f"❌ Error assigning role {bump_role.name} to {interaction.user.display_name}: {e}")
                                 await interaction.response.send_message(
                                     _("disboard.error.role_assignment_error", guild_id=guild.id),
                                     ephemeral=True
@@ -229,7 +230,7 @@ class DisboardReminder(commands.Cog):
                         elif action == "no":
                             # User declined the role
                             embed = discord.Embed(
-                                title="❌ Rôle refusé",
+                                title=f"❌ {_('disboard.success.role_declined_title', guild_id=guild.id)}",
                                 description=_("disboard.thank_you.role_declined", guild_id=guild.id),
                                 color=discord.Color.orange(),
                                 timestamp=datetime.now()
@@ -250,7 +251,7 @@ class DisboardReminder(commands.Cog):
                     except Exception as e:
                         logger.error(f"Error handling bump role button: {e}")
                         await interaction.response.send_message(
-                            "❌ Erreur lors du traitement de la demande.",
+                            _("disboard.error.processing_error", guild_id=interaction.guild.id),
                             ephemeral=True
                         )
             
@@ -340,12 +341,12 @@ class DisboardReminder(commands.Cog):
                 
                 # Log status
                 if needs_reminder and not reminder_already_sent:
-                    logger.info(f"⏰ Dernier bump pour \"{guild_name}\" il y a {minutes_since_bump} minutes. RAPPEL ENVOYÉ !")
+                    logger.info(f"⏰ Last bump for \"{guild_name}\" {minutes_since_bump} minutes ago. REMINDER SENT!")
                 else:
                     if reminder_already_sent:
-                        logger.info(f"⏰ Dernier bump pour \"{guild_name}\" il y a {minutes_since_bump} minutes. Rappel déjà envoyé, en attente du prochain bump.")
+                        logger.info(f"⏰ Last bump for \"{guild_name}\" {minutes_since_bump} minutes ago. Reminder already sent, waiting for next bump.")
                     else:
-                        logger.info(f"⏰ Dernier bump pour \"{guild_name}\" il y a {minutes_since_bump} minutes. Prochain rappel dans {minutes_until_next_reminder} minutes.")
+                        logger.info(f"⏰ Last bump for \"{guild_name}\" {minutes_since_bump} minutes ago. Next reminder in {minutes_until_next_reminder} minutes.")
                 
                 # Send reminder if needed and not already sent
                 if needs_reminder and not reminder_already_sent:
@@ -373,7 +374,7 @@ class DisboardReminder(commands.Cog):
             )
             
             # Send short reminder message
-            reminder_message = "⏰ Il est temps de bumper le serveur ! `/bump`"
+            reminder_message = _("disboard.reminder.message", guild_id=guild_id)
             
             # Send reminder with role ping if configured
             if config and config['bump_role_id']:
@@ -396,9 +397,9 @@ class DisboardReminder(commands.Cog):
         except Exception as e:
             logger.error(f"Error sending bump reminder: {e}")
 
-    @app_commands.command(name="bumptop", description="Afficher la toplist des bumps du serveur")
+    @app_commands.command(name="bumptop", description="Display server bump leaderboard")
     @app_commands.describe(
-        period="Période pour la toplist (week/month/all)"
+        period="Period for the leaderboard (week/month/all)"
     )
     async def bumptop(self, interaction: discord.Interaction, period: str = "all"):
         """Display bump leaderboard for the server"""
@@ -412,13 +413,13 @@ class DisboardReminder(commands.Cog):
             # Build query based on period
             if period == "week":
                 time_filter = "AND bump_time >= DATE_SUB(NOW(), INTERVAL 1 WEEK)"
-                period_name = "cette semaine"
+                period_name = _("disboard.leaderboard.this_week", interaction.user.id, guild_id)
             elif period == "month":
                 time_filter = "AND bump_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"
-                period_name = "ce mois"
+                period_name = _("disboard.leaderboard.this_month", interaction.user.id, guild_id)
             else:
                 time_filter = ""
-                period_name = "depuis toujours"
+                period_name = _("disboard.leaderboard.all_time", interaction.user.id, guild_id)
             
             # Get top bumpers
             top_bumpers = await self.bot.db.query(
@@ -435,8 +436,8 @@ class DisboardReminder(commands.Cog):
             
             if not top_bumpers:
                 embed = discord.Embed(
-                    title=f"{TROPHY} Top Bumpers",
-                    description=f"Aucun bump enregistré {period_name}.",
+                    title=f"{TROPHY} {_('disboard.leaderboard.title', interaction.user.id, guild_id)}",
+                    description=_("disboard.leaderboard.no_bumps", interaction.user.id, guild_id, period=period_name),
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
                 )
@@ -445,19 +446,19 @@ class DisboardReminder(commands.Cog):
             
             # Create leaderboard embed
             embed = discord.Embed(
-                title=f"{TROPHY} Top Bumpers",
-                description=f"Top 10 des bumpers {period_name}",
+                title=f"{TROPHY} {_('disboard.leaderboard.title', interaction.user.id, guild_id)}",
+                description=_("disboard.leaderboard.description", interaction.user.id, guild_id, period=period_name),
                 color=discord.Color.gold(),
                 timestamp=datetime.now()
             )
             
             # Add top bumpers
             for i, bumper in enumerate(top_bumpers, 1):
-                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"**{i}.**"
+                medal = GOLD_MEDAL if i == 1 else SILVER_MEDAL if i == 2 else BRONZE_MEDAL if i == 3 else f"**{i}.**"
                 
                 embed.add_field(
                     name=f"{medal} {bumper['bumper_name']}",
-                    value=f"**{bumper['bump_count']}** bumps\n{CLOCK} Dernier bump: <t:{int(bumper['last_bump'].timestamp())}:R>",
+                    value=f"**{bumper['bump_count']}** {_('disboard.leaderboard.bumps', interaction.user.id, guild_id)}\n{CLOCK} {_('disboard.leaderboard.last_bump', interaction.user.id, guild_id)}: <t:{int(bumper['last_bump'].timestamp())}:R>",
                     inline=False
                 )
             
@@ -468,18 +469,18 @@ class DisboardReminder(commands.Cog):
                 fetchone=True
             )
             
-            embed.set_footer(text=f"Total: {total_bumps['total']} bumps {period_name} • 🐝 Sweet server promotion, honey! 🍯")
+            embed.set_footer(text=_("disboard.leaderboard.footer", interaction.user.id, guild_id, total=total_bumps['total'], period=period_name))
             
             await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in bumptop command: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors de la récupération de la toplist des bumps.",
+                f"{ERROR} {_('disboard.error.leaderboard_error', interaction.user.id, guild_id)}",
                 ephemeral=True
             )
 
-    @app_commands.command(name="bumpstats", description="Afficher les statistiques de bump du serveur")
+    @app_commands.command(name="bumpstats", description="Display server bump statistics")
     @log_command_usage
     async def bumpstats(self, interaction: discord.Interaction):
         """Display server bump statistics"""
@@ -527,8 +528,8 @@ class DisboardReminder(commands.Cog):
             
             if not stats or not stats['total_bumps']:
                 embed = discord.Embed(
-                    title=f"{STATS} Statistiques de Bump",
-                    description="Aucune statistique de bump disponible pour ce serveur.",
+                    title=f"{STATS} {_('disboard.stats.title', interaction.user.id, guild_id)}",
+                    description=_("disboard.stats.no_stats", interaction.user.id, guild_id),
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
                 )
@@ -542,40 +543,40 @@ class DisboardReminder(commands.Cog):
             
             # Create stats embed
             embed = discord.Embed(
-                title=f"{STATS} Statistiques de Bump",
-                description=f"Statistiques de bump pour **{interaction.guild.name}**",
+                title=f"{STATS} {_('disboard.stats.title', interaction.user.id, guild_id)}",
+                description=_("disboard.stats.description", interaction.user.id, guild_id, server=interaction.guild.name),
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
             
-            embed.add_field(name=f"{FIRE} Total des bumps", value=f"**{stats['total_bumps']}**", inline=True)
-            embed.add_field(name=f"{USERS} Bumpers uniques", value=f"**{stats['unique_bumpers']}**", inline=True)
-            embed.add_field(name=f"{CLOCK} Dernier bump", value=f"<t:{int(stats['last_bump'].timestamp())}:R>", inline=True)
+            embed.add_field(name=f"{FIRE} {_('disboard.stats.total_bumps', interaction.user.id, guild_id)}", value=f"**{stats['total_bumps']}**", inline=True)
+            embed.add_field(name=f"{USERS} {_('disboard.stats.unique_bumpers', interaction.user.id, guild_id)}", value=f"**{stats['unique_bumpers']}**", inline=True)
+            embed.add_field(name=f"{CLOCK} {_('disboard.stats.last_bump', interaction.user.id, guild_id)}", value=f"<t:{int(stats['last_bump'].timestamp())}:R>", inline=True)
             
-            embed.add_field(name=f"{ARROW_UP} Premier bump", value=f"<t:{int(stats['first_bump'].timestamp())}:R>", inline=True)
-            embed.add_field(name=f"{CLOCK} Temps écoulé", value=f"**{hours_since_last}h**", inline=True)
+            embed.add_field(name=f"{ARROW_UP} {_('disboard.stats.first_bump', interaction.user.id, guild_id)}", value=f"<t:{int(stats['first_bump'].timestamp())}:R>", inline=True)
+            embed.add_field(name=f"{CLOCK} {_('disboard.stats.time_elapsed', interaction.user.id, guild_id)}", value=f"**{hours_since_last}h**", inline=True)
             
             if stats['avg_hours_between']:
-                embed.add_field(name=f"{CLOCK} Moyenne entre bumps", value=f"**{stats['avg_hours_between']:.1f}h**", inline=True)
+                embed.add_field(name=f"{CLOCK} {_('disboard.stats.avg_between', interaction.user.id, guild_id)}", value=f"**{stats['avg_hours_between']:.1f}h**", inline=True)
             
             # Add bump frequency indicator
             if minutes_since_last >= 120:  # 2 hours or more (120 minutes)
-                status = "✅ Prêt pour un bump !"
+                status = _("disboard.stats.status.ready", interaction.user.id, guild_id)
             elif minutes_since_last >= 60:  # 1 hour or more (60 minutes)
-                status = "⏰ Bientôt prêt pour un bump"
+                status = _("disboard.stats.status.soon", interaction.user.id, guild_id)
             else:
-                status = "⏳ Encore du temps avant le prochain bump"
+                status = _("disboard.stats.status.waiting", interaction.user.id, guild_id)
             
-            embed.add_field(name=f"{INFO} Statut", value=status, inline=False)
+            embed.add_field(name=f"{INFO} {_('disboard.stats.status.title', interaction.user.id, guild_id)}", value=status, inline=False)
             
-            embed.set_footer(text="🐝 Sweet server promotion, honey! 🍯")
+            embed.set_footer(text=_("disboard.stats.footer", interaction.user.id, guild_id))
             
             await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in bumpstats command: {e}")
             await interaction.response.send_message(
-                f"{ERROR} Erreur lors de la récupération des statistiques de bump.",
+                f"{ERROR} {_('disboard.error.stats_error', interaction.user.id, guild_id)}",
                 ephemeral=True
             )
 

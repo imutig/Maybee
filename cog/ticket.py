@@ -46,7 +46,7 @@ class Ticket(commands.Cog):
             """, (button_id,), fetchone=True)
             
             if not button_data:
-                await interaction.response.send_message("Button configuration not found.", ephemeral=True)
+                await interaction.response.send_message(_('ticket_system.button_config_not_found', interaction.user.id, interaction.guild.id), ephemeral=True)
                 return
             
             # Debug logging
@@ -74,11 +74,11 @@ class Ticket(commands.Cog):
                 category_id = int(category_id) if category_id is not None else None
                 if not category_id or category_id <= 0:
                     print(f"DEBUG: Category ID validation failed - value: {category_id}")
-                    await interaction.response.send_message("Invalid ticket category configuration. Please recreate your ticket panel in the dashboard.", ephemeral=True)
+                    await interaction.response.send_message(_('ticket_system.invalid_category_config', interaction.user.id, interaction.guild.id), ephemeral=True)
                     return
             except (ValueError, TypeError):
                 print(f"DEBUG: Category ID conversion failed - original value: {category_id}")
-                await interaction.response.send_message("Invalid ticket category configuration. Please recreate your ticket panel in the dashboard.", ephemeral=True)
+                await interaction.response.send_message(_('ticket_system.invalid_category_config', interaction.user.id, interaction.guild.id), ephemeral=True)
                 return
             
             # Parse ping roles - handle empty string, None, and valid JSON
@@ -98,7 +98,7 @@ class Ticket(commands.Cog):
             
         except Exception as e:
             print(f"Error handling ticket button interaction: {e}")
-            await interaction.response.send_message("An error occurred while creating your ticket.", ephemeral=True)
+            await interaction.response.send_message(_('ticket_system.creation_error', interaction.user.id, interaction.guild.id), ephemeral=True)
 
     async def create_dashboard_ticket(self, interaction, category_id, name_format, initial_message, ping_roles, button_label, button_id):
         """Create a ticket from dashboard button click"""
@@ -108,7 +108,7 @@ class Ticket(commands.Cog):
         # Get category
         category = guild.get_channel(int(category_id)) if category_id else None
         if not category or not isinstance(category, discord.CategoryChannel):
-            await interaction.response.send_message("Invalid ticket category configuration.", ephemeral=True)
+            await interaction.response.send_message(_('ticket_system.invalid_category', interaction.user.id, interaction.guild.id), ephemeral=True)
             return
         
         # Format ticket name
@@ -119,7 +119,7 @@ class Ticket(commands.Cog):
         # Check if user already has a ticket in this category
         existing = discord.utils.get(category.channels, name=ticket_name)
         if existing:
-            await interaction.response.send_message(f"You already have a ticket: {existing.mention}", ephemeral=True)
+            await interaction.response.send_message(_('ticket_system.already_exists', interaction.user.id, interaction.guild.id, channel=existing.mention), ephemeral=True)
             return
         
         # Set up permissions
@@ -178,13 +178,13 @@ class Ticket(commands.Cog):
                 f"Ticket créé via {button_label}"
             )
             
-            await interaction.response.send_message(f"✅ Ticket created: {channel.mention}", ephemeral=True)
+            await interaction.response.send_message(_('ticket_system.created_success', interaction.user.id, interaction.guild.id, channel=channel.mention), ephemeral=True)
             
         except discord.Forbidden:
-            await interaction.response.send_message("I don't have permission to create channels in that category.", ephemeral=True)
+            await interaction.response.send_message(_('ticket_system.no_permission_create', interaction.user.id, interaction.guild.id), ephemeral=True)
         except Exception as e:
             print(f"Error creating ticket: {e}")
-            await interaction.response.send_message("An error occurred while creating your ticket.", ephemeral=True)
+            await interaction.response.send_message(_('ticket_system.creation_error', interaction.user.id, interaction.guild.id), ephemeral=True)
 
     # cleanup_ticket_data command removed - no longer needed
     
@@ -197,8 +197,8 @@ class Ticket(commands.Cog):
         # Enregistrer le message dans le cache temporaire
         await self.ticket_logger.log_message(message)
     
-    @app_commands.command(name="ticket_logs", description="Consulter les logs d'un ticket")
-    @app_commands.describe(user="L'utilisateur dont vous voulez voir les logs de tickets")
+    @app_commands.command(name="ticket_logs", description=_('ticket_system.ticket_logs.command_description', 0, 0))
+    @app_commands.describe(user=_('ticket_system.ticket_logs.user_description', 0, 0))
     @app_commands.default_permissions(manage_channels=True)
     async def ticket_logs(self, interaction: discord.Interaction, user: discord.Member):
         """Afficher les logs de tickets d'un utilisateur avec dropdown"""
@@ -208,7 +208,7 @@ class Ticket(commands.Cog):
         # Vérifier les permissions
         if not interaction.user.guild_permissions.manage_channels:
             await interaction.response.send_message(
-                "❌ Vous n'avez pas la permission de consulter les logs de tickets.", ephemeral=True)
+                _('ticket_system.ticket_logs.no_permission', user_id, guild_id), ephemeral=True)
             return
         
         await interaction.response.defer(ephemeral=True)
@@ -219,27 +219,26 @@ class Ticket(commands.Cog):
             
             if not user_logs:
                 await interaction.followup.send(
-                    f"📋 Aucun log de ticket trouvé pour {user.mention}.", ephemeral=True)
+                    _('ticket_system.ticket_logs.no_logs_found', user_id, guild_id, user=user.mention), ephemeral=True)
                 return
             
             # Créer l'embed principal
             embed = discord.Embed(
-                title=f"📋 Logs de tickets - {user.display_name}",
-                description=f"**{len(user_logs)} tickets** trouvés pour {user.mention}\n\n"
-                           f"💡 **Utilisez le menu déroulant ci-dessous pour sélectionner un ticket**",
+                title=_('ticket_system.ticket_logs.title', user_id, guild_id, user=user.display_name),
+                description=_('ticket_system.ticket_logs.description', user_id, guild_id, 
+                             count=len(user_logs), user=user.mention),
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
             
             embed.add_field(
-                name="📊 Statistiques",
-                value=f"**Nombre de tickets :** {len(user_logs)}\n"
-                      f"**Utilisateur :** {user.mention}\n"
-                      f"**ID :** {user.id}",
+                name=_('ticket_system.ticket_logs.statistics', user_id, guild_id),
+                value=_('ticket_system.ticket_logs.stats_content', user_id, guild_id, 
+                       count=len(user_logs), user=user.mention, user_id=user.id),
                 inline=False
             )
             
-            embed.set_footer(text=f"Demandé par {interaction.user.display_name}")
+            embed.set_footer(text=_('ticket_system.ticket_logs.requested_by', user_id, guild_id, user=interaction.user.display_name))
             
             # Créer la vue avec dropdown
             view = TicketLogsView(user_logs, user, page=0)
@@ -249,13 +248,13 @@ class Ticket(commands.Cog):
         except Exception as e:
             logger.error(f"Error retrieving ticket logs: {e}")
             await interaction.followup.send(
-                "❌ Erreur lors de la récupération des logs de tickets.", ephemeral=True)
+                _('ticket_system.ticket_logs.retrieval_error', user_id, guild_id), ephemeral=True)
     
-    @app_commands.command(name="new_ticket", description="Créer un ticket pour un autre utilisateur")
+    @app_commands.command(name="new_ticket", description=_('ticket_system.new_ticket.command_description', 0, 0))
     @app_commands.describe(
-        user="L'utilisateur pour lequel créer le ticket",
-        category="La catégorie où créer le ticket",
-        reason="La raison de la création du ticket"
+        user=_('ticket_system.new_ticket.user_description', 0, 0),
+        category=_('ticket_system.new_ticket.category_description', 0, 0),
+        reason=_('ticket_system.new_ticket.reason_description', 0, 0)
     )
     @app_commands.default_permissions(manage_channels=True)
     async def new_ticket(self, interaction: discord.Interaction, user: discord.Member, category: discord.CategoryChannel, reason: str):
@@ -328,19 +327,21 @@ class Ticket(commands.Cog):
             
             # Créer l'embed de bienvenue
             embed = discord.Embed(
-                title=f"{TICKET} Ticket Support #{ticket_id}",
-                description=f"Salut {user.mention} ! Un membre du staff va te répondre rapidement.\n\n**Créé par :** {interaction.user.mention}\n**Catégorie :** {category.name}\n**Raison :** {reason}",
+                title=_('ticket_system.new_ticket.embed_title', user.id, guild_id, ticket_id=ticket_id),
+                description=_('ticket_system.new_ticket.embed_description', user.id, guild_id, 
+                             user=user.mention, creator=interaction.user.mention, category=category.name, reason=reason),
                 color=discord.Color.green(),
                 timestamp=datetime.now()
             )
             
             embed.add_field(
-                name="ℹ️ Informations du ticket",
-                value=f"**Créateur :** {interaction.user.display_name}\n**Utilisateur :** {user.display_name}\n**Catégorie :** {category.name}\n**ID du ticket :** #{ticket_id}",
+                name=_('ticket_system.new_ticket.ticket_info', user.id, guild_id),
+                value=_('ticket_system.new_ticket.ticket_info_content', user.id, guild_id,
+                       creator=interaction.user.display_name, user=user.display_name, category=category.name, ticket_id=ticket_id),
                 inline=False
             )
             
-            embed.set_footer(text=f"Ticket créé par {interaction.user.display_name}")
+            embed.set_footer(text=_('ticket_system.new_ticket.footer', user.id, guild_id, creator=interaction.user.display_name))
             
             # Créer la vue avec le bouton de fermeture
             view = TicketCloseView()
@@ -363,7 +364,8 @@ class Ticket(commands.Cog):
             
             # Envoyer un message de confirmation à l'utilisateur qui a créé le ticket
             await interaction.followup.send(
-                f"{SUCCESS} Ton ticket a été créé : {channel.mention}\n\n**Utilisateur :** {user.mention}\n**Catégorie :** {category.name}\n**Raison :** {reason}\n**ID :** #{ticket_id}", ephemeral=True)
+                _('ticket_system.new_ticket.confirmation', interaction.user.id, guild_id,
+                 channel=channel.mention, user=user.mention, category=category.name, reason=reason, ticket_id=ticket_id), ephemeral=True)
             
             # Envoyer un message dans le canal de logs si configuré
             if logs_channel_id:
@@ -459,7 +461,7 @@ class TicketCloseButton(discord.ui.Button):
 
     def __init__(self):
         super().__init__(style=discord.ButtonStyle.red,
-                         label="Fermer le ticket",
+                         label=_('ticket_system.close_button', 0, 0),
                          custom_id="close_ticket")
 
     async def callback(self, interaction: discord.Interaction):
@@ -476,7 +478,7 @@ class TicketCloseButton(discord.ui.Button):
         )
         
         if not ticket_data:
-            await interaction.response.send_message("❌ Ce canal n'est pas un ticket.", ephemeral=True)
+            await interaction.response.send_message(_('ticket_system.not_a_ticket', user_id, guild_id), ephemeral=True)
             return
         
         # Retirer les permissions du créateur du ticket
@@ -495,12 +497,12 @@ class TicketCloseButton(discord.ui.Button):
         
         # Créer l'embed de fermeture
         embed = discord.Embed(
-            title="🔒 Ticket fermé",
-            description=f"Le ticket a été fermé par **{interaction.user.display_name}**",
+            title=_('ticket_system.ticket_closed', user_id, guild_id),
+            description=_('ticket_system.ticket_closed_description', user_id, guild_id, user=interaction.user.display_name),
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
-        embed.set_footer(text=f"Fermé par {interaction.user}", icon_url=interaction.user.display_avatar.url)
+        embed.set_footer(text=_('ticket_system.closed_by', user_id, guild_id, user=interaction.user), icon_url=interaction.user.display_avatar.url)
         
         # Créer la vue de confirmation
         view = TicketConfirmCloseView(interaction.user.id)
@@ -535,7 +537,7 @@ class TicketConfirmDeleteButton(discord.ui.Button):
     
     def __init__(self):
         super().__init__(style=discord.ButtonStyle.danger,
-                         label="🗑️ Supprimer définitivement",
+                         label=_('ticket_system.delete_permanently', 0, 0),
                          custom_id="confirm_delete_ticket")
     
     async def callback(self, interaction: discord.Interaction):
@@ -545,7 +547,7 @@ class TicketConfirmDeleteButton(discord.ui.Button):
         # Vérifier les permissions
         if not interaction.user.guild_permissions.manage_channels:
             await interaction.response.send_message(
-                "❌ Vous n'avez pas la permission de supprimer des canaux.", ephemeral=True)
+                _('ticket_system.no_permission_delete', user_id, guild_id), ephemeral=True)
             return
         
         channel = interaction.channel
@@ -602,11 +604,11 @@ class TicketConfirmDeleteButton(discord.ui.Button):
         
         try:
             await interaction.response.send_message(
-                "🗑️ Ticket supprimé définitivement. Les logs ont été sauvegardés.", ephemeral=True)
+                _('ticket_system.ticket_deleted_permanently', user_id, guild_id), ephemeral=True)
         except discord.NotFound:
             # L'interaction a expiré, utiliser followup
             await interaction.followup.send(
-                "🗑️ Ticket supprimé définitivement. Les logs ont été sauvegardés.", ephemeral=True)
+                _('ticket_system.ticket_deleted_permanently', user_id, guild_id), ephemeral=True)
         
         # Supprimer le canal
         await asyncio.sleep(2)
@@ -617,7 +619,7 @@ class TicketReopenButton(discord.ui.Button):
     
     def __init__(self):
         super().__init__(style=discord.ButtonStyle.green,
-                         label="🔓 Rouvrir le ticket",
+                         label=_('ticket_system.reopen_ticket', 0, 0),
                          custom_id="reopen_ticket")
     
     async def callback(self, interaction: discord.Interaction):
@@ -627,7 +629,7 @@ class TicketReopenButton(discord.ui.Button):
         # Vérifier les permissions
         if not interaction.user.guild_permissions.manage_channels:
             await interaction.response.send_message(
-                "❌ Vous n'avez pas la permission de gérer les canaux.", ephemeral=True)
+                _('ticket_system.no_permission_manage', user_id, guild_id), ephemeral=True)
             return
         
         channel = interaction.channel
@@ -640,7 +642,7 @@ class TicketReopenButton(discord.ui.Button):
         )
         
         if not ticket_data:
-            await interaction.response.send_message("❌ Données du ticket introuvables.", ephemeral=True)
+            await interaction.response.send_message(_('ticket_system.ticket_data_not_found', user_id, guild_id), ephemeral=True)
             return
         
         # Restaurer les permissions du créateur
@@ -658,12 +660,12 @@ class TicketReopenButton(discord.ui.Button):
         
         # Créer l'embed de réouverture
         embed = discord.Embed(
-            title="🔓 Ticket rouvert",
-            description=f"Le ticket a été rouvert par **{interaction.user.display_name}**",
+            title=_('ticket_system.ticket_reopened', user_id, guild_id),
+            description=_('ticket_system.ticket_reopened_description', user_id, guild_id, user=interaction.user.display_name),
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
-        embed.set_footer(text=f"Rouvert par {interaction.user}", icon_url=interaction.user.display_avatar.url)
+        embed.set_footer(text=_('ticket_system.reopened_by', user_id, guild_id, user=interaction.user), icon_url=interaction.user.display_avatar.url)
         
         # Ajouter le bouton de fermeture
         view = TicketCloseView()

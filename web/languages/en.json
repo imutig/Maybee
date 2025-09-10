@@ -4,6 +4,11 @@
     "code": "en",
     "flag": "🇺🇸"
   },
+  "Chargement...": "Loading...",
+  "Loading...": "Loading...",
+  "Refreshing...": "Refreshing...",
+  "utilisateurs...": "users...",
+  "shown.bs.tab": "Tab shown",
   "navigation": {
     "dashboard": "Dashboard",
     "overview": "Overview",
@@ -25,6 +30,8 @@
     "save": "Save",
     "cancel": "Cancel",
     "loading": "Loading...",
+    "avatar_alt": "Avatar",
+    "refresh": "Refresh",
     "success": "Success",
     "error": "Error",
     "warning": "Warning",
@@ -39,7 +46,16 @@
     "settings": "Settings",
     "reset": "Reset",
     "reset_defaults": "Reset to Defaults",
-    "date": "Date"
+    "date": "Date",
+    "search": "Search",
+    "close": "Close",
+    "next": "Next",
+    "previous": "Previous",
+    "Chargement...": "Loading...",
+    "Loading...": "Loading...",
+    "Refreshing...": "Refreshing...",
+    "utilisateurs...": "users...",
+    "shown.bs.tab": "Tab shown"
   },
   "overview": {
     "total_members": "Total Members",
@@ -73,7 +89,22 @@
     "test_level_up": "Test Level Up Message",
     "save_xp_settings": "Save XP Settings",
     "xp_settings_saved": "XP settings saved successfully!",
-    "xp_settings_error": "Error saving XP settings"
+    "xp_settings_error": "Error saving XP settings",
+    "all_channels": "All channels",
+    "enable_xp": "Enable XP System",
+    "level_up_channel": "Level Up Channel",
+    "level_up_channel_description": "Channel where level up messages are sent",
+    "level_up_messages": "Level Up Messages",
+    "reset_xp": "Reset XP",
+    "same_channel": "Same channel",
+    "test_level_up": "Test Level Up",
+    "xp_channel": "XP Channel",
+    "xp_channel_description": "Channel where XP can be earned",
+    "level_roles_title": "Level Roles",
+    "level_roles_description": "Configure roles that are automatically assigned when users reach specific levels. Users will only receive the HIGHEST level role they qualify for. Use the sync button to update all existing users retroactively.",
+    "level_placeholder": "Level",
+    "no_level_roles": "No level roles configured yet. Click \"Add Level Role\" to get started!",
+    "add_level_role": "Add Level Role"
   },
   "moderation": {
     "title": "🛡️ Moderation Settings",
@@ -96,11 +127,50 @@
     "recent_actions": "Recent Actions",
     "auto_moderation": "Auto Moderation",
     "auto_moderation_description": "Automatically moderate certain actions",
+    "action_error": "Error executing action",
+    "action_success": "Action executed successfully",
+    "limit": "Limit",
+    "no_history_found": "No history found",
+    "no_members": "No members found",
+    "select_member_action": "Select a member for the action",
     "moderation_log_channel": "Moderation Log Channel",
     "moderation_log_channel_description": "Channel where moderation actions are logged",
     "choose_member": "Choose a member...",
     "select_member_action": "Please select a member and action.",
     "action_success": "Action executed successfully!",
+    "actions": {
+      "warn": "Warn",
+      "timeout": "Timeout",
+      "kick": "Kick",
+      "ban": "Ban",
+      "unban": "Unban",
+      "unmute": "Unmute"
+    },
+    "history": {
+      "title": "Moderation History",
+      "user": "User",
+      "action": "Action",
+      "moderator": "Moderator",
+      "reason": "Reason",
+      "date": "Date",
+      "duration": "Duration"
+    },
+    "filter_user": "Filter by User",
+    "filter_user_placeholder": "Username or ID",
+    "filter_action": "Filter by Action",
+    "filter_date": "Filter by Date",
+    "all_actions": "All Actions",
+    "all_time": "All Time",
+    "today": "Today",
+    "this_week": "This Week",
+    "this_month": "This Month",
+    "apply_filters": "Apply Filters",
+    "clear_filters": "Clear Filters",
+    "export_history": "Export History",
+    "total_actions": "Total Actions",
+    "unique_users": "Unique Users",
+    "active_moderators": "Active Moderators",
+    "loading_history": "Loading moderation history...",
     "action_error": "Failed to execute action. Please try again.",
     "no_members": "No members available - Enable GUILD_MEMBERS intent in Discord Developer Portal",
     "save_moderation_settings": "Save Moderation Settings",
@@ -183,7 +253,9 @@
     "feature_analytics_title": "Server Analytics",
     "feature_analytics_description": "Gain insights into your server's activity with detailed statistics, member engagement metrics, and growth tracking.",
     "footer_text": "Built with ❤️ for Discord communities",
-    "footer_version": "Version"
+    "footer_version": "Version",
+    "terms_of_service": "Terms of Service",
+    "privacy_policy": "Privacy Policy"
   },
   "messages": {
     "please_select_server": "Please select a server first.",
@@ -238,5 +310,215 @@
     "panel_delete_error": "Failed to delete panel. Please try again.",
     "invalid_panel_data": "Invalid panel data. Please check all required fields.",
     "button_required_fields": "All button fields are required (label, category, and role to ping)."
+  },
+  "ticket_logs": {
+    "title": "Ticket Logs",
+    "subtitle": "Consult archived ticket logs",
+    "user_selection": "User Selection",
+    "search_user": "Search User",
+    "search_placeholder": "Username or Discord ID",
+    "search_results": "Search Results",
+    "user_tickets": "User Tickets",
+    "no_tickets_found": "No tickets found",
+    "no_tickets_description": "This user hasn't created any tickets yet",
+    "ticket_details": "Ticket Details"
+  },
+  "ticket_system": {
+    "general_settings": "General Settings",
+    "support_team_placeholder": "Support Team",
+    "support_ticket_placeholder": "Support Ticket",
+    "initial_message_placeholder": "Thank you for creating a ticket! Our team will be with you shortly."
+  },
+  "server_logs": {
+    "general_settings": "General Settings"
+  },
+  "role_menus": {
+    "select_role_placeholder": "Select Your Role",
+    "description_placeholder": "Choose a role from the dropdown below"
+  },
+  "welcome_system": {
+    "welcome_message_placeholder": "Welcome {user} to {server}!",
+    "goodbye_message_placeholder": "Goodbye {user}, thanks for being part of {server}!"
+  },
+  "embed_system": {
+    "title_placeholder": "Embed title...",
+    "description_placeholder": "Embed description...",
+    "author_name_placeholder": "Author name...",
+    "footer_text_placeholder": "Footer text...",
+    "refresh_preview": "Refresh Preview",
+    "color_discord_blurple": "Discord Blurple",
+    "color_green": "Green",
+    "color_yellow": "Yellow",
+    "color_red": "Red",
+    "color_pink": "Pink",
+    "color_cyan": "Cyan"
+  },
+  "legal": {
+    "back_to_dashboard": "Back to Dashboard",
+    "last_updated": "Last Updated",
+    "privacy": {
+      "title": "Privacy Policy",
+      "subtitle": "How we collect, use and protect your information",
+      "section1": {
+        "title": "1. Information We Collect",
+        "content1": "We collect the following information when you use our service:",
+        "data1": "• Unique Discord identifier",
+        "data2": "• Username and avatar",
+        "data3": "• Discord server information",
+        "data4": "• Bot usage data",
+        "data5": "• Messages and interactions with the bot"
+      },
+      "section2": {
+        "title": "2. How We Use Your Information",
+        "content1": "We use your information to:",
+        "use1": "• Provide and improve our services",
+        "use2": "• Personalize your experience",
+        "use3": "• Communicate with you",
+        "use4": "• Analyze service usage",
+        "use5": "• Prevent fraud and ensure security",
+        "use6": "• Comply with legal obligations"
+      },
+      "section3": {
+        "title": "3. Information Sharing",
+        "content1": "We do not sell your personal information. We may share your information in the following cases:",
+        "share1": "• With your explicit consent",
+        "share2": "• To comply with legal obligations",
+        "share3": "• To protect our rights and security",
+        "share4": "• With trusted service providers"
+      },
+      "section4": {
+        "title": "4. Data Security",
+        "content1": "We take the security of your data seriously:",
+        "content2": "We use appropriate security measures to protect your information.",
+        "security1": "• Encryption of sensitive data",
+        "security2": "• Restricted access to information",
+        "security3": "• Continuous security monitoring",
+        "security4": "• Staff training on data protection"
+      },
+      "section5": {
+        "title": "5. Data Retention",
+        "content1": "We retain your information as long as necessary to:",
+        "content2": "• Provide our services",
+        "title": "• Comply with legal obligations",
+        "content1": "• Resolve disputes",
+        "content2": "• Enforce our agreements"
+      },
+      "section6": {
+        "title": "6. Your Rights",
+        "content1": "You have the right to:",
+        "right1": "• Access your personal data",
+        "right2": "• Correct inaccurate information",
+        "right3": "• Request deletion of your data",
+        "right4": "• Limit processing of your data",
+        "right5": "• Object to processing of your data"
+      },
+      "section7": {
+        "title": "7. Cookies and Similar Technologies",
+        "content1": "We use cookies to improve your experience:",
+        "content2": "• Essential cookies for site functionality",
+        "title": "• Analytics cookies to understand usage",
+        "content1": "• Preference cookies to remember your choices"
+      },
+      "section8": {
+        "title": "8. Changes to This Policy",
+        "content1": "We may modify this privacy policy:",
+        "content2": "• We will notify you of significant changes",
+        "title": "• The updated version will be published on this page",
+        "content1": "• We encourage you to review this policy regularly"
+      },
+      "section9": {
+        "title": "9. Contact",
+        "content1": "If you have questions about this policy:",
+        "content2": "• Contact us via Discord",
+        "title": "• Send us a private message",
+        "content1": "• We will respond as soon as possible"
+      },
+      "section10": {
+        "title": "10. GDPR Compliance",
+        "content1": "This policy complies with the General Data Protection Regulation (GDPR):",
+        "content2": "• We respect all GDPR principles",
+        "title": "• Your rights are protected under European legislation",
+        "content1": "• We have implemented appropriate protection measures"
+      },
+      "section11": {
+        "title": "11. Children's Data",
+        "content1": "We do not knowingly collect information from minors:",
+        "content2": "• If you are under 16, ask for parental permission",
+        "title": "• Parents can request deletion of their children's data",
+        "content1": "• We particularly protect minors' data"
+      }
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "subtitle": "Rules and conditions for using our service",
+      "section1": {
+        "title": "1. Acceptance of Terms",
+        "content1": "By using our service, you accept these terms:",
+        "content2": "• You have read and understood these terms",
+        "title": "• You agree to be bound by these terms",
+        "content1": "• You confirm you have legal authority to accept these terms"
+      },
+      "section2": {
+        "title": "2. Service Description",
+        "content1": "Our service provides:",
+        "content2": "• A Discord bot with various features",
+        "title": "• A web dashboard for configuration",
+        "content1": "• Moderation and server management tools"
+      },
+      "section3": {
+        "title": "3. Acceptable Use",
+        "content1": "You agree not to:",
+        "prohibited1": "• Use the service for illegal purposes",
+        "prohibited2": "• Violate others' rights",
+        "prohibited3": "• Spam or harass other users",
+        "prohibited4": "• Attempt to bypass security measures",
+        "prohibited5": "• Use bots or automated scripts",
+        "prohibited6": "• Share inappropriate content"
+      },
+      "section4": {
+        "title": "4. User Account",
+        "content1": "To use our service:",
+        "content2": "• You must have a valid Discord account",
+        "title": "• You are responsible for your account security",
+        "content1": "• You must inform us of any unauthorized use"
+      },
+      "section5": {
+        "title": "5. Intellectual Property",
+        "content1": "The service and its content are protected:",
+        "content2": "• By copyright and other intellectual property laws",
+        "title": "• You may not copy or distribute our content",
+        "content1": "• You retain rights to content you create"
+      },
+      "section6": {
+        "title": "6. Limitation of Liability",
+        "content1": "Our liability is limited:",
+        "content2": "• We do not guarantee uninterrupted service",
+        "title": "• We are not responsible for indirect damages",
+        "content1": "• Our total liability is limited to the amount you paid"
+      },
+      "section7": {
+        "title": "7. Suspension and Termination",
+        "content1": "We may suspend or terminate your access:",
+        "content2": "• In case of violation of these terms",
+        "title": "• For security reasons",
+        "content1": "• With reasonable notice"
+      },
+      "section8": {
+        "title": "8. Changes to Terms",
+        "content1": "We may modify these terms:",
+        "content2": "• We will notify you of significant changes",
+        "title": "• The updated version will be published on this page",
+        "content1": "• Your continued use constitutes acceptance"
+      },
+      "section9": {
+        "title": "9. Governing Law",
+        "content1": "These terms are governed by:",
+        "content2": "• French laws",
+        "title": "• Any dispute will be subject to French courts",
+        "content1": "• If a clause is invalid, the others remain in force"
+      }
+    },
+    "privacy_policy": "Privacy Policy",
+    "terms_of_service": "Terms of Service"
   }
 }

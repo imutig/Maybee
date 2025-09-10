@@ -4,6 +4,11 @@
     "code": "fr",
     "flag": "🇫🇷"
   },
+  "Chargement...": "Chargement...",
+  "Loading...": "Chargement...",
+  "Refreshing...": "Actualisation...",
+  "utilisateurs...": "utilisateurs...",
+  "shown.bs.tab": "Onglet affiché",
   "navigation": {
     "dashboard": "Tableau de bord",
     "overview": "Vue d'ensemble",
@@ -25,6 +30,8 @@
     "save": "Sauvegarder",
     "cancel": "Annuler",
     "loading": "Chargement...",
+    "avatar_alt": "Avatar",
+    "refresh": "Actualiser",
     "success": "Succès",
     "error": "Erreur",
     "warning": "Avertissement",
@@ -39,7 +46,16 @@
     "settings": "Paramètres",
     "reset": "Réinitialiser",
     "reset_defaults": "Valeurs par défaut",
-    "date": "Date"
+    "date": "Date",
+    "search": "Rechercher",
+    "close": "Fermer",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "Chargement...": "Chargement...",
+    "Loading...": "Chargement...",
+    "Refreshing...": "Actualisation...",
+    "utilisateurs...": "utilisateurs...",
+    "shown.bs.tab": "Onglet affiché"
   },
   "overview": {
     "total_members": "Membres totaux",
@@ -73,7 +89,22 @@
     "test_level_up": "Tester le message de montée de niveau",
     "save_xp_settings": "Sauvegarder les paramètres XP",
     "xp_settings_saved": "Paramètres XP sauvegardés avec succès !",
-    "xp_settings_error": "Erreur lors de la sauvegarde des paramètres XP"
+    "xp_settings_error": "Erreur lors de la sauvegarde des paramètres XP",
+    "all_channels": "Tous les salons",
+    "enable_xp": "Activer le système XP",
+    "level_up_channel": "Salon de montée de niveau",
+    "level_up_channel_description": "Salon où sont envoyés les messages de montée de niveau",
+    "level_up_messages": "Messages de montée de niveau",
+    "reset_xp": "Réinitialiser l'XP",
+    "same_channel": "Même salon",
+    "test_level_up": "Tester la montée de niveau",
+    "xp_channel": "Salon XP",
+    "xp_channel_description": "Salon où l'XP peut être gagné",
+    "level_roles_title": "Rôles de Niveau",
+    "level_roles_description": "Configurez les rôles qui sont automatiquement attribués lorsque les utilisateurs atteignent des niveaux spécifiques. Les utilisateurs ne recevront que le rôle de niveau le PLUS ÉLEVÉ auquel ils ont droit. Utilisez le bouton de synchronisation pour mettre à jour tous les utilisateurs existants de manière rétroactive.",
+    "level_placeholder": "Niveau",
+    "no_level_roles": "Aucun rôle de niveau configuré. Cliquez sur \"Ajouter un rôle de niveau\" pour commencer !",
+    "add_level_role": "Ajouter un Rôle de Niveau"
   },
   "moderation": {
     "title": "🛡️ Paramètres de modération",
@@ -96,11 +127,50 @@
     "recent_actions": "Actions récentes",
     "auto_moderation": "Modération automatique",
     "auto_moderation_description": "Modérer automatiquement certaines actions",
+    "action_error": "Erreur lors de l'exécution de l'action",
+    "action_success": "Action exécutée avec succès",
+    "limit": "Limite",
+    "no_history_found": "Aucun historique trouvé",
+    "no_members": "Aucun membre trouvé",
+    "select_member_action": "Sélectionner un membre pour l'action",
     "moderation_log_channel": "Salon de journalisation de la modération",
     "moderation_log_channel_description": "Salon où les actions de modération sont journalisées",
     "choose_member": "Choisir un membre...",
     "select_member_action": "Veuillez sélectionner un membre et une action.",
     "action_success": "Action exécutée avec succès !",
+    "actions": {
+      "warn": "Avertir",
+      "timeout": "Timeout",
+      "kick": "Expulser",
+      "ban": "Bannir",
+      "unban": "Débannir",
+      "unmute": "Démuter"
+    },
+    "history": {
+      "title": "Historique de Modération",
+      "user": "Utilisateur",
+      "action": "Action",
+      "moderator": "Modérateur",
+      "reason": "Raison",
+      "date": "Date",
+      "duration": "Durée"
+    },
+    "filter_user": "Filtrer par Utilisateur",
+    "filter_user_placeholder": "Nom d'utilisateur ou ID",
+    "filter_action": "Filtrer par Action",
+    "filter_date": "Filtrer par Date",
+    "all_actions": "Toutes les Actions",
+    "all_time": "Tout le Temps",
+    "today": "Aujourd'hui",
+    "this_week": "Cette Semaine",
+    "this_month": "Ce Mois",
+    "apply_filters": "Appliquer les Filtres",
+    "clear_filters": "Effacer les Filtres",
+    "export_history": "Exporter l'Historique",
+    "total_actions": "Actions Totales",
+    "unique_users": "Utilisateurs Uniques",
+    "active_moderators": "Modérateurs Actifs",
+    "loading_history": "Chargement de l'historique de modération...",
     "action_error": "Impossible d'exécuter l'action. Veuillez réessayer.",
     "no_members": "Aucun membre disponible - Activez l'intention GUILD_MEMBERS dans le portail développeur Discord",
     "save_moderation_settings": "Sauvegarder les paramètres de modération",
@@ -175,7 +245,9 @@
     "feature_analytics_title": "Analyses du Serveur",
     "feature_analytics_description": "Obtenez des insights sur l'activité de votre serveur avec des statistiques détaillées, des métriques d'engagement des membres et un suivi de croissance.",
     "footer_text": "Créé avec ❤️ pour les communautés Discord",
-    "footer_version": "Version"
+    "footer_version": "Version",
+    "terms_of_service": "Conditions d'utilisation",
+    "privacy_policy": "Politique de confidentialité"
   },
   "messages": {
     "please_select_server": "Veuillez d'abord sélectionner un serveur.",
@@ -230,5 +302,215 @@
     "panel_delete_error": "Impossible de supprimer le panneau. Veuillez réessayer.",
     "invalid_panel_data": "Données du panneau invalides. Veuillez vérifier tous les champs requis.",
     "button_required_fields": "Tous les champs du bouton sont requis (libellé, catégorie et rôle à mentionner)."
+  },
+  "ticket_logs": {
+    "title": "Logs de ticket",
+    "subtitle": "Consultez les logs des tickets archivés",
+    "user_selection": "Sélection d'utilisateur",
+    "search_user": "Rechercher un utilisateur",
+    "search_placeholder": "Nom d'utilisateur ou ID Discord",
+    "search_results": "Résultats de recherche",
+    "user_tickets": "Tickets de l'utilisateur",
+    "no_tickets_found": "Aucun ticket trouvé",
+    "no_tickets_description": "Cet utilisateur n'a pas encore créé de tickets",
+    "ticket_details": "Détails du ticket"
+  },
+  "ticket_system": {
+    "general_settings": "Paramètres Généraux",
+    "support_team_placeholder": "Équipe de Support",
+    "support_ticket_placeholder": "Ticket de Support",
+    "initial_message_placeholder": "Merci d'avoir créé un ticket ! Notre équipe sera avec vous sous peu."
+  },
+  "server_logs": {
+    "general_settings": "Paramètres Généraux"
+  },
+  "role_menus": {
+    "select_role_placeholder": "Sélectionnez votre rôle",
+    "description_placeholder": "Choisissez un rôle dans le menu déroulant ci-dessous"
+  },
+  "welcome_system": {
+    "welcome_message_placeholder": "Bienvenue {user} sur {server} !",
+    "goodbye_message_placeholder": "Au revoir {user}, merci d'avoir fait partie de {server} !"
+  },
+  "embed_system": {
+    "title_placeholder": "Titre de l'embed...",
+    "description_placeholder": "Description de l'embed...",
+    "author_name_placeholder": "Nom de l'auteur...",
+    "footer_text_placeholder": "Texte du pied de page...",
+    "refresh_preview": "Actualiser l'Aperçu",
+    "color_discord_blurple": "Discord Blurple",
+    "color_green": "Vert",
+    "color_yellow": "Jaune",
+    "color_red": "Rouge",
+    "color_pink": "Rose",
+    "color_cyan": "Cyan"
+  },
+  "legal": {
+    "back_to_dashboard": "Retour au tableau de bord",
+    "last_updated": "Dernière mise à jour",
+    "privacy": {
+      "title": "Politique de Confidentialité",
+      "subtitle": "Comment nous collectons, utilisons et protégeons vos informations",
+      "section1": {
+        "title": "1. Informations que nous collectons",
+        "content1": "Nous collectons les informations suivantes lorsque vous utilisez notre service :",
+        "data1": "• Identifiant Discord unique",
+        "data2": "• Nom d'utilisateur et avatar",
+        "data3": "• Informations du serveur Discord",
+        "data4": "• Données d'utilisation du bot",
+        "data5": "• Messages et interactions avec le bot"
+      },
+      "section2": {
+        "title": "2. Comment nous utilisons vos informations",
+        "content1": "Nous utilisons vos informations pour :",
+        "use1": "• Fournir et améliorer nos services",
+        "use2": "• Personnaliser votre expérience",
+        "use3": "• Communiquer avec vous",
+        "use4": "• Analyser l'utilisation du service",
+        "use5": "• Prévenir la fraude et assurer la sécurité",
+        "use6": "• Respecter nos obligations légales"
+      },
+      "section3": {
+        "title": "3. Partage d'informations",
+        "content1": "Nous ne vendons pas vos informations personnelles. Nous pouvons partager vos informations dans les cas suivants :",
+        "share1": "• Avec votre consentement explicite",
+        "share2": "• Pour respecter une obligation légale",
+        "share3": "• Pour protéger nos droits et notre sécurité",
+        "share4": "• Avec des prestataires de services de confiance"
+      },
+      "section4": {
+        "title": "4. Sécurité des données",
+        "content1": "Nous prenons la sécurité de vos données au sérieux :",
+        "content2": "Nous utilisons des mesures de sécurité appropriées pour protéger vos informations.",
+        "security1": "• Chiffrement des données sensibles",
+        "security2": "• Accès restreint aux informations",
+        "security3": "• Surveillance continue de la sécurité",
+        "security4": "• Formation du personnel sur la protection des données"
+      },
+      "section5": {
+        "title": "5. Conservation des données",
+        "content1": "Nous conservons vos informations aussi longtemps que nécessaire pour :",
+        "content2": "• Fournir nos services",
+        "title": "• Respecter nos obligations légales",
+        "content1": "• Résoudre les litiges",
+        "content2": "• Faire respecter nos accords"
+      },
+      "section6": {
+        "title": "6. Vos droits",
+        "content1": "Vous avez le droit de :",
+        "right1": "• Accéder à vos données personnelles",
+        "right2": "• Corriger des informations inexactes",
+        "right3": "• Demander la suppression de vos données",
+        "right4": "• Limiter le traitement de vos données",
+        "right5": "• Vous opposer au traitement de vos données"
+      },
+      "section7": {
+        "title": "7. Cookies et technologies similaires",
+        "content1": "Nous utilisons des cookies pour améliorer votre expérience :",
+        "content2": "• Cookies essentiels pour le fonctionnement du site",
+        "title": "• Cookies d'analyse pour comprendre l'utilisation",
+        "content1": "• Cookies de préférences pour mémoriser vos choix"
+      },
+      "section8": {
+        "title": "8. Modifications de cette politique",
+        "content1": "Nous pouvons modifier cette politique de confidentialité :",
+        "content2": "• Nous vous informerons des changements importants",
+        "title": "• La version mise à jour sera publiée sur cette page",
+        "content1": "• Nous vous encourageons à consulter régulièrement cette politique"
+      },
+      "section9": {
+        "title": "9. Contact",
+        "content1": "Si vous avez des questions sur cette politique :",
+        "content2": "• Contactez-nous via Discord",
+        "title": "• Envoyez-nous un message privé",
+        "content1": "• Nous répondrons dans les plus brefs délais"
+      },
+      "section10": {
+        "title": "10. Conformité RGPD",
+        "content1": "Cette politique est conforme au Règlement Général sur la Protection des Données (RGPD) :",
+        "content2": "• Nous respectons tous les principes du RGPD",
+        "title": "• Vos droits sont protégés selon la législation européenne",
+        "content1": "• Nous avons mis en place des mesures de protection appropriées"
+      },
+      "section11": {
+        "title": "11. Données des mineurs",
+        "content1": "Nous ne collectons pas sciemment d'informations sur les mineurs :",
+        "content2": "• Si vous avez moins de 16 ans, demandez l'autorisation parentale",
+        "title": "• Les parents peuvent demander la suppression des données de leurs enfants",
+        "content1": "• Nous protégeons particulièrement les données des mineurs"
+      }
+    },
+    "terms": {
+      "title": "Conditions d'Utilisation",
+      "subtitle": "Règles et conditions pour l'utilisation de notre service",
+      "section1": {
+        "title": "1. Acceptation des conditions",
+        "content1": "En utilisant notre service, vous acceptez ces conditions :",
+        "content2": "• Vous avez lu et compris ces conditions",
+        "title": "• Vous acceptez d'être lié par ces conditions",
+        "content1": "• Vous confirmez avoir l'autorité légale pour accepter ces conditions"
+      },
+      "section2": {
+        "title": "2. Description du service",
+        "content1": "Notre service fournit :",
+        "content2": "• Un bot Discord avec diverses fonctionnalités",
+        "title": "• Un tableau de bord web pour la configuration",
+        "content1": "• Des outils de modération et de gestion de serveur"
+      },
+      "section3": {
+        "title": "3. Utilisation acceptable",
+        "content1": "Vous vous engagez à ne pas :",
+        "prohibited1": "• Utiliser le service à des fins illégales",
+        "prohibited2": "• Violer les droits d'autrui",
+        "prohibited3": "• Spammer ou harceler d'autres utilisateurs",
+        "prohibited4": "• Tenter de contourner les mesures de sécurité",
+        "prohibited5": "• Utiliser des bots ou scripts automatisés",
+        "prohibited6": "• Partager du contenu inapproprié"
+      },
+      "section4": {
+        "title": "4. Compte utilisateur",
+        "content1": "Pour utiliser notre service :",
+        "content2": "• Vous devez avoir un compte Discord valide",
+        "title": "• Vous êtes responsable de la sécurité de votre compte",
+        "content1": "• Vous devez nous informer de toute utilisation non autorisée"
+      },
+      "section5": {
+        "title": "5. Propriété intellectuelle",
+        "content1": "Le service et son contenu sont protégés :",
+        "content2": "• Par les droits d'auteur et autres lois sur la propriété intellectuelle",
+        "title": "• Vous ne pouvez pas copier ou distribuer notre contenu",
+        "content1": "• Vous conservez les droits sur le contenu que vous créez"
+      },
+      "section6": {
+        "title": "6. Limitation de responsabilité",
+        "content1": "Notre responsabilité est limitée :",
+        "content2": "• Nous ne garantissons pas que le service sera ininterrompu",
+        "title": "• Nous ne sommes pas responsables des dommages indirects",
+        "content1": "• Notre responsabilité totale est limitée au montant que vous avez payé"
+      },
+      "section7": {
+        "title": "7. Suspension et résiliation",
+        "content1": "Nous pouvons suspendre ou résilier votre accès :",
+        "content2": "• En cas de violation de ces conditions",
+        "title": "• Pour des raisons de sécurité",
+        "content1": "• Avec un préavis raisonnable"
+      },
+      "section8": {
+        "title": "8. Modifications des conditions",
+        "content1": "Nous pouvons modifier ces conditions :",
+        "content2": "• Nous vous informerons des changements importants",
+        "title": "• La version mise à jour sera publiée sur cette page",
+        "content1": "• Votre utilisation continue constitue une acceptation"
+      },
+      "section9": {
+        "title": "9. Droit applicable",
+        "content1": "Ces conditions sont régies par :",
+        "content2": "• Les lois françaises",
+        "title": "• Tout litige sera soumis aux tribunaux français",
+        "content1": "• Si une clause est invalide, les autres restent en vigueur"
+      }
+    },
+    "privacy_policy": "Politique de Confidentialité",
+    "terms_of_service": "Conditions d'Utilisation"
   }
 }

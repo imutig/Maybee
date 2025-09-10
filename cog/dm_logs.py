@@ -4,7 +4,11 @@ from discord.ext import commands
 from datetime import datetime
 from typing import Dict, List, Optional
 import asyncio
+import logging
 from i18n import _
+
+# Utiliser le logger principal configuré dans main.py
+logger = logging.getLogger(__name__)
 
 
 class DMLogsConfigView(discord.ui.View):
@@ -58,7 +62,7 @@ class DMLogsConfigView(discord.ui.View):
         
         # Supprimer les doublons et trier
         unique_commands = sorted(list(set(commands)))
-        print(f"🔍 [DM LOGS] {len(unique_commands)} commandes détectées (confession exclue): {unique_commands}")
+        logger.debug(f"{len(unique_commands)} commandes détectées (confession exclue)")
         return unique_commands
     
     async def _create_buttons(self):
@@ -77,7 +81,7 @@ class DMLogsConfigView(discord.ui.View):
         # Boutons pour chaque commande (lignes 1-4, max 5 lignes)
         # Limite à 22 commandes pour laisser de la place aux 3 boutons principaux (25 max total)
         commands_to_show = self.commands[:22]  # 22 commandes max pour éviter la limite de 25 composants
-        print(f"🔍 [DM LOGS] Commandes à afficher ({len(commands_to_show)}): {commands_to_show}")
+        logger.debug(f"Commandes à afficher ({len(commands_to_show)})")
         
         for i, command in enumerate(commands_to_show):
             row = (i // 5) + 1  # 5 boutons par ligne
@@ -102,7 +106,7 @@ class DMLogsConfigView(discord.ui.View):
                         "INSERT INTO dm_logs_commands (user_id, command_name, guild_id, enabled) VALUES (%s, %s, %s, FALSE)",
                         (self.user_id, command_name, self.guild_id)
                     )
-                    print(f"🔍 [DM LOGS] Commande '{command_name}' ajoutée à la DB pour l'utilisateur {self.user_id} et le serveur {self.guild_id}")
+                    logger.debug(f"Commande '{command_name}' ajoutée à la DB")
         except Exception as e:
             print(f"❌ [DM LOGS] Erreur lors de l'ajout des commandes à la DB: {e}")
 
@@ -306,7 +310,7 @@ class DMLogsSystem(commands.Cog):
                 (user_id, guild_id),
                 fetchall=True
             )
-            print(f"🔍 [DM LOGS] Toutes les commandes pour {user_id} sur le serveur {guild_id}: {all_results}")
+            logger.debug(f"Toutes les commandes pour {user_id} sur le serveur {guild_id}")
             
             # Ensuite, récupérer seulement celles qui sont activées
             results = await self.bot.db.query(
@@ -314,15 +318,13 @@ class DMLogsSystem(commands.Cog):
                 (user_id, guild_id),
                 fetchall=True
             )
-            print(f"🔍 [DM LOGS] Résultats de la requête activée: {results}")
-            
             # Vérifier si results n'est pas None
             if results is None:
-                print(f"🔍 [DM LOGS] Aucune commande activée pour {user_id} sur le serveur {guild_id}")
+                logger.debug(f"Aucune commande activée pour {user_id} sur le serveur {guild_id}")
                 return []
             
             commands = [result['command_name'] for result in results]
-            print(f"🔍 [DM LOGS] Commandes activées pour {user_id} sur le serveur {guild_id}: {commands}")
+            logger.debug(f"Commandes activées pour {user_id} sur le serveur {guild_id}")
             return commands
         except Exception as e:
             print(f"❌ [DM LOGS] Erreur lors de la récupération des commandes activées: {e}")
@@ -331,31 +333,34 @@ class DMLogsSystem(commands.Cog):
     async def log_command_usage(self, command_name: str, executor: discord.Member, guild: discord.Guild = None, extra_details: dict = None):
         """Log l'utilisation d'une commande pour tous les utilisateurs qui l'ont activée"""
         try:
-            print(f"🔍 [DM LOGS] Commande '{command_name}' utilisée par {executor.display_name} ({executor.id})")
+            # Utiliser la fonction de log uniforme
+            from main import log_command_execution
+            log_command_execution(executor.display_name, command_name)
             
             # Récupérer tous les utilisateurs qui ont activé cette commande pour ce serveur spécifique
-            results = await self.bot.db.query(
-                """SELECT DISTINCT dlp.user_id 
-                   FROM dm_logs_preferences dlp
-                   JOIN dm_logs_commands dlc ON dlp.user_id = dlc.user_id AND dlp.guild_id = dlc.guild_id
-                   WHERE dlp.enabled = TRUE 
-                   AND dlp.guild_id = %s
-                   AND dlc.command_name = %s 
-                   AND dlc.enabled = TRUE""",
-                (guild.id if guild else None, command_name),
-                fetchall=True
-            )
+            try:
+                results = await self.bot.db.query(
+                    """SELECT DISTINCT dlp.user_id 
+                       FROM dm_logs_preferences dlp
+                       JOIN dm_logs_commands dlc ON dlp.user_id = dlc.user_id
+                       WHERE dlp.enabled = TRUE 
+                       AND dlc.command_name = %s 
+                       AND dlc.enabled = TRUE""",
+                    (command_name,),
+                    fetchall=True
+                )
+            except Exception as e:
+                print(f"❌ [DM LOGS] Erreur lors de la récupération des utilisateurs: {e}")
+                return
             
             # Vérifier si results n'est pas None
             if results is None:
                 print(f"🔍 [DM LOGS] Aucun utilisateur ne surveille la commande '{command_name}'")
                 return
             
-            print(f"🔍 [DM LOGS] {len(results)} utilisateurs surveillent cette commande")
-            
             # Debug: lister tous les utilisateurs qui surveillent cette commande
             user_ids = [result['user_id'] for result in results]
-            print(f"🔍 [DM LOGS] Utilisateurs surveillant '{command_name}': {user_ids}")
+            logger.debug(f"{len(results)} utilisateurs surveillent '{command_name}'")
             
             if not results:
                 return
@@ -419,14 +424,13 @@ class DMLogsSystem(commands.Cog):
             # Envoyer à tous les utilisateurs concernés
             for result in results:
                 user_id = result['user_id']
-                print(f"🔍 [DM LOGS] Tentative d'envoi DM à l'utilisateur {user_id}")
+                logger.debug(f"Tentative d'envoi DM à l'utilisateur {user_id}")
                 
                 try:
                     user = self.bot.get_user(user_id)
                     if user:
-                        print(f"🔍 [DM LOGS] Utilisateur {user_id} trouvé: {user.display_name}")
+                        logger.debug(f"Utilisateur {user_id} trouvé: {user.display_name}")
                         await user.send(embed=embed)
-                        print(f"✅ [DM LOGS] DM envoyé avec succès à {user.display_name} ({user_id})")
                         
                         # Enregistrer dans l'historique
                         await self.bot.db.query(
@@ -439,7 +443,6 @@ class DMLogsSystem(commands.Cog):
                         try:
                             user = await self.bot.fetch_user(user_id)
                             await user.send(embed=embed)
-                            print(f"✅ [DM LOGS] DM envoyé avec succès à {user.display_name} ({user_id}) via fetch")
                         except Exception as fetch_e:
                             print(f"❌ [DM LOGS] Impossible de fetch l'utilisateur {user_id}: {fetch_e}")
                         

@@ -239,20 +239,20 @@ class DashboardRedirectView(discord.ui.View):
     @discord.ui.button(label="Get Dashboard Link", style=discord.ButtonStyle.secondary, emoji="🔗")
     async def get_dashboard_link(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
-            title="🌐 Web Dashboard Access",
-            description=f"Configure your {self.system_name.replace('_', ' ').title()} settings on the web dashboard:",
+            title=f"🌐 {_('config_system.dashboard.access_title', interaction.user.id, interaction.guild.id)}",
+            description=_('config_system.dashboard.access_description', interaction.user.id, interaction.guild.id, system=self.system_name.replace('_', ' ').title()),
             color=discord.Color.blurple()
         )
         
         embed.add_field(
-            name="📱 Dashboard URL",
-            value="[Click here to access the dashboard](https://web-production-448ba.up.railway.app/)",
+            name=f"📱 {_('config_system.dashboard.url_title', interaction.user.id, interaction.guild.id)}",
+            value=f"[{_('config_system.dashboard.click_here', interaction.user.id, interaction.guild.id)}](https://web-production-448ba.up.railway.app/)",
             inline=False
         )
         
         embed.add_field(
-            name="🔐 Login",
-            value="Use your Discord account to log in and manage your server settings.",
+            name=f"🔐 {_('config_system.dashboard.login_title', interaction.user.id, interaction.guild.id)}",
+            value=_('config_system.dashboard.login_description', interaction.user.id, interaction.guild.id),
             inline=False
         )
         
@@ -342,7 +342,7 @@ class ConfigCog(commands.Cog):
         # Check if user has administrator permissions
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
-                f"{ERROR} Vous n'avez pas la permission d'utiliser cette commande.",
+                f"{ERROR} {_('config_system.permissions.no_admin_permission', interaction.user.id, interaction.guild.id)}",
                 ephemeral=True
             )
             return
@@ -352,8 +352,8 @@ class ConfigCog(commands.Cog):
         view.setup_select_for_user(interaction.user.id)
         
         embed = discord.Embed(
-            title=f"{YELLOW_COG} Configuration du Bot",
-            description="Configurez les paramètres du bot pour votre serveur. Utilisez le menu déroulant ci-dessous pour naviguer entre les différentes sections.",
+            title=f"{YELLOW_COG} {_('config_system.main.title', interaction.user.id, interaction.guild.id)}",
+            description=_('config_system.main.description', interaction.user.id, interaction.guild.id),
             color=discord.Color.blue()
         )
         

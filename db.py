@@ -18,7 +18,7 @@ class Database:
 
     async def connect(self):
         """Create connection pool with retry logic"""
-        print("🔌 Connecting to database...")
+        logger.debug("Connecting to database...")
         
         for attempt in range(self.max_retries):
             try:
@@ -30,12 +30,13 @@ class Database:
                     db=self.db,
                     autocommit=True,
                     maxsize=10,
-                    minsize=1
+                    minsize=1,
+                    init_command="SET sql_mode='STRICT_TRANS_TABLES'"
                 )
-                print("✅ Database connection established")
+                logger.debug("Database connection established")
                 return
             except Exception as e:
-                print(f"❌ Connection failed (attempt {attempt + 1}): {e}")
+                logger.warning(f"Connection failed (attempt {attempt + 1}): {e}")
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
                 else:
@@ -43,10 +44,10 @@ class Database:
 
     async def close(self):
         if self.pool:
-            print("🔌 Closing database connection...")
+            logger.info("Closing database connection...")
             self.pool.close()
             await self.pool.wait_closed()
-            print("✅ Database connection closed")
+            logger.info("Database connection closed")
             
     async def query(self, query, params=None, fetchone=False, fetchall=False):
         """Execute query with improved error handling and connection management"""
@@ -57,15 +58,11 @@ class Database:
         query_type = self._get_query_type(query)
         clean_query = self._clean_query_for_log(query)
         
-        # Log with clean formatting
-        if query_type in ["INSERT", "UPDATE", "DELETE"]:
-            print(f"🔄 {query_type}: {clean_query}")
-            if params:
-                print(f"   📝 Values: {self._format_params(params)}")
-        elif query_type == "SELECT" and self.debug:
-            print(f"🔍 {query_type}: {clean_query}")
+        # Log with clean formatting (only for debugging)
+        if query_type == "SELECT" and self.debug:
+            logger.debug(f"SELECT: {clean_query}")
         elif query_type == "CREATE":
-            print(f"🔧 {query_type}: {clean_query}")
+            logger.debug(f"Creating table: {clean_query}")
         
         for attempt in range(self.max_retries):
             try:
@@ -84,7 +81,7 @@ class Database:
                             result = await cur.fetchall()
                             if query_type in ["INSERT", "UPDATE", "DELETE"] or self.debug:
                                 if result:
-                                    print(f"   ✅ Found {len(result)} record(s)")
+                                    logger.debug(f"Found {len(result)} record(s)")
                                     if self.debug and len(result) <= 3:
                                         for i, record in enumerate(result, 1):
                                             print(f"      Record {i}: {self._format_result(record)}")
@@ -188,13 +185,9 @@ class Database:
         query_type = self._get_query_type(query)
         clean_query = self._clean_query_for_log(query)
         
-        # Log with clean formatting
-        if query_type in ["INSERT", "UPDATE", "DELETE"]:
-            print(f"🔄 {query_type}: {clean_query}")
-            if params:
-                print(f"   📝 Values: {self._format_params(params)}")
-        elif query_type == "SELECT" and self.debug:
-            print(f"🔍 {query_type}: {clean_query}")
+        # Log with clean formatting (only for debugging)
+        if query_type == "SELECT" and self.debug:
+            logger.debug(f"SELECT: {clean_query}")
         
         for attempt in range(self.max_retries):
             try:
@@ -204,14 +197,14 @@ class Database:
                         if query.strip().lower().startswith("select"):
                             result = await cur.fetchall()
                             if self.debug and result:
-                                print(f"   ✅ Found {len(result)} record(s)")
+                                logger.debug(f"Found {len(result)} record(s)")
                             return result
                         else:
                             affected = cur.rowcount
                             if affected > 0:
-                                print(f"   ✅ {affected} row(s) affected")
+                                logger.debug(f"{affected} row(s) affected")
                             else:
-                                print(f"   ℹ️  No rows affected")
+                                logger.debug("No rows affected")
                             return affected
             except aiomysql.Error as e:
                 print(f"❌ Database error (attempt {attempt + 1}): {e}")
@@ -234,10 +227,9 @@ class Database:
         query_type = self._get_query_type(query)
         clean_query = self._clean_query_for_log(query)
         
-        # Log with clean formatting
-        print(f"🔄 {query_type}: {clean_query}")
-        if params:
-            print(f"   📝 Values: {self._format_params(params)}")
+        # Log with clean formatting (only for debugging)
+        if query_type == "SELECT" and self.debug:
+            logger.debug(f"SELECT: {clean_query}")
         
         for attempt in range(self.max_retries):
             try:
@@ -247,9 +239,9 @@ class Database:
                         insert_id = cur.lastrowid
                         affected = cur.rowcount
                         if affected > 0:
-                            print(f"   ✅ {affected} row(s) affected, ID: {insert_id}")
+                            logger.debug(f"{affected} row(s) affected, ID: {insert_id}")
                         else:
-                            print(f"   ℹ️  No rows affected")
+                            logger.debug("No rows affected")
                         return insert_id
             except aiomysql.Error as e:
                 print(f"❌ Database error (attempt {attempt + 1}): {e}")
@@ -599,9 +591,9 @@ class Database:
         
         for table_sql in tables:
             try:
+                # Suppress warnings for table creation
                 await self.query(table_sql)
-                # Table creation logging is handled by query method
             except Exception as e:
-                print(f"❌ Error creating table: {e}")
+                logger.error(f"Error creating table: {e}")
         
-        print("🗃️  Database tables initialized successfully")
+        logger.info("Tables de la base de données initialisées avec succès")

@@ -30,7 +30,7 @@ class I18n:
                 try:
                     with open(os.path.join(languages_dir, filename), 'r', encoding='utf-8') as f:
                         self.languages[language_code] = json.load(f)
-                    print(f"✅ Langue chargée: {language_code}")
+                    # Language loaded successfully (logged to file)
                 except Exception as e:
                     print(f"❌ Erreur lors du chargement de {filename}: {e}")
     
@@ -103,7 +103,7 @@ class I18n:
                         self.user_languages[row["user_id"]] = row["language_code"]
                     else:
                         self.user_languages[row[0]] = row[1]
-                print(f"✅ Loaded {len(user_results)} user language preferences")
+                # User language preferences loaded (logged to file)
             
             # Load guild language preferences
             guild_results = await db.query("SELECT guild_id, language_code FROM guild_languages", fetchall=True)
@@ -114,7 +114,7 @@ class I18n:
                         self.guild_languages[row["guild_id"]] = row["language_code"]
                     else:
                         self.guild_languages[row[0]] = row[1]
-                print(f"✅ Loaded {len(guild_results)} guild language preferences")
+                # Guild language preferences loaded (logged to file)
                 
         except Exception as e:
             print(f"❌ Error loading language preferences from database: {e}")
