@@ -68,7 +68,17 @@
     "level": "Niveau",
     "total_xp_column": "XP total",
     "no_data": "Aucune donnée disponible",
-    "no_history": "Aucun historique de modération"
+    "no_history": "Aucun historique de modération",
+    "member_growth": "Croissance des membres",
+    "activity_overview": "Vue d'ensemble de l'activité",
+    "xp_distribution": "Distribution XP",
+    "moderation_stats": "Statistiques de modération",
+        "last_7_days": "7 derniers jours",
+        "last_30_days": "30 derniers jours",
+        "last_90_days": "90 derniers jours",
+        "last_24_hours": "24 dernières heures",
+        "select_server_chart": "Sélectionnez un serveur pour voir les graphiques",
+        "no_data_available": "Aucune donnée disponible pour le moment"
   },
   "xp_system": {
     "title": "🐝 Configuration du système XP",

@@ -444,14 +444,23 @@ async def get_bot_guilds() -> List[str]:
 # Database initialization
 async def init_database():
     global database
+    
+    # Debug database configuration
+    print(f"🔍 Database config debug:")
+    print(f"  - DB_HOST: {os.getenv('DB_HOST')}")
+    print(f"  - DB_USER: {os.getenv('DB_USER')}")
+    print(f"  - DB_PASS: {'***' if os.getenv('DB_PASS') else 'None'}")
+    print(f"  - DB_NAME: {os.getenv('DB_NAME')}")
+    
     database = Database(
         host=os.getenv('DB_HOST'),
         port=3306,
         user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
+        password=os.getenv('DB_PASS'),  # Changed from DB_PASSWORD to DB_PASS
         db=os.getenv('DB_NAME')
     )
     await database.connect()
+    print("✅ Database connected successfully")
     
     # Add helper methods to database object
     async def fetch_one(query, params=None):
@@ -5187,7 +5196,511 @@ async def export_moderation_history(
             "error": str(e)
         }
 
-# Production server startup
+# Chart data endpoints
+@app.get("/api/guilds/{guild_id}/stats/member-growth")
+async def get_member_growth_stats(guild_id: str, period: str = "7d", current_user: str = Depends(get_current_user)):
+    """Get member growth statistics for charts"""
+    try:
+        if not guild_id or guild_id == "undefined":
+            raise HTTPException(status_code=400, detail="Invalid guild ID")
+        
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get real member growth data from database
+        from datetime import datetime, timedelta
+        
+        # Calculate date range based on period
+        today = datetime.now().date()
+        if period == "7d":
+            days_back = 7
+        elif period == "30d":
+            days_back = 30
+        else:  # 90d
+            days_back = 90
+        
+        # Query member growth data using member_count_history table
+        try:
+            print(f"🔍 Querying member growth for guild {guild_id}, period: {period}, days_back: {days_back}")
+            
+            # First, let's check if the table exists and has data
+            check_query = "SELECT COUNT(*) as count FROM member_count_history WHERE guild_id = %s"
+            check_results = await database.fetch_one(check_query, (guild_id,))
+            print(f"📊 Total records in member_count_history for guild {guild_id}: {check_results['count'] if check_results else 0}")
+            
+            # Let's check what tables exist and have data
+            tables_query = "SHOW TABLES"
+            print(f"🔍 Executing query: {tables_query}")
+            try:
+                # Test with a simple query first
+                test_query = "SELECT 1 as test"
+                test_result = await database.fetch_one(test_query)
+                print(f"🔍 Test query result: {test_result}")
+                
+                tables_results = await database.fetch_all(tables_query)
+                print(f"🔍 Raw tables query result: {tables_results}")
+                print(f"🔍 Available tables: {[list(r.values())[0] for r in tables_results] if tables_results else 'No tables'}")
+            except Exception as e:
+                print(f"❌ Error executing SHOW TABLES: {e}")
+                import traceback
+                traceback.print_exc()
+                tables_results = []
+            
+            # Check if member_count_history table exists and has any data
+            count_query = "SELECT COUNT(*) as count FROM member_count_history"
+            count_results = await database.fetch_one(count_query)
+            print(f"📊 Total records in member_count_history table: {count_results['count'] if count_results else 0}")
+            
+            # Check if messages table exists and has any data
+            messages_count_query = "SELECT COUNT(*) as count FROM messages"
+            messages_count_results = await database.fetch_one(messages_count_query)
+            print(f"📊 Total records in messages table: {messages_count_results['count'] if messages_count_results else 0}")
+            
+            # Let's also check what guild_ids exist in the table
+            debug_query = "SELECT DISTINCT guild_id FROM member_count_history LIMIT 10"
+            debug_results = await database.fetch_all(debug_query)
+            print(f"🔍 Sample guild_ids in member_count_history: {[r['guild_id'] for r in debug_results] if debug_results else 'No data'}")
+            
+            # Check the data type of guild_id
+            type_query = "SELECT guild_id, recorded_at, human_count FROM member_count_history LIMIT 3"
+            type_results = await database.fetch_all(type_query)
+            print(f"🔍 Sample data from member_count_history: {type_results}")
+            
+            query = """
+            SELECT DATE(recorded_at) as date, 
+                   MAX(human_count) as total_members
+            FROM member_count_history
+            WHERE guild_id = %s AND recorded_at >= DATE_SUB(NOW(), INTERVAL %s DAY)
+            GROUP BY DATE(recorded_at)
+            ORDER BY date
+            """
+            
+            results = await database.fetch_all(query, (guild_id, days_back))
+            if results is None:
+                results = []
+            print(f"📊 Member growth query successful, {len(results)} results")
+            print(f"📊 Raw results: {results}")
+        except Exception as db_error:
+            print(f"❌ Database error in member growth: {db_error}")
+            import traceback
+            traceback.print_exc()
+            # Return empty data if table doesn't exist or query fails
+            results = []
+        
+        # Process results - create labels and data based on actual data
+        if not results:
+            # No data available
+            labels = []
+            values = []
+        else:
+            # Sort results by date
+            results.sort(key=lambda x: x['date'])
+            
+            # Create labels and values from actual data
+            labels = [result['date'].strftime("%d/%m") for result in results]
+            values = [result['total_members'] for result in results]
+        
+        # Check if we have any data
+        has_data = any(value > 0 for value in values)
+        
+        return {
+            "labels": labels,
+            "data": values,
+            "has_data": has_data,
+            "message": "Aucune donnée disponible pour cette période" if not has_data else None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guilds/{guild_id}/stats/activity")
+async def get_activity_stats(guild_id: str, period: str = "24h", current_user: str = Depends(get_current_user)):
+    """Get activity statistics for charts"""
+    try:
+        if not guild_id or guild_id == "undefined":
+            raise HTTPException(status_code=400, detail="Invalid guild ID")
+        
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get real activity data from database
+        from datetime import datetime, timedelta
+        
+        # Calculate date range based on period
+        if period == "24h":
+            hours_back = 24
+            labels = [f"{i}:00" for i in range(24)]
+        elif period == "7d":
+            days_back = 7
+            labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        else:  # 30d
+            days_back = 30
+            labels = [f"Day {i}" for i in range(1, 31)]
+        
+        # Query message activity data
+        try:
+            print(f"🔍 Querying activity for guild {guild_id}, period: {period}")
+            
+            # First, let's check if the messages table has data
+            check_query = "SELECT COUNT(*) as count FROM messages WHERE guild_id = %s"
+            check_results = await database.fetch_one(check_query, (guild_id,))
+            print(f"📊 Total messages for guild {guild_id}: {check_results['count'] if check_results else 0}")
+            
+            # Let's also check what guild_ids exist in the messages table
+            debug_query = "SELECT DISTINCT guild_id FROM messages LIMIT 10"
+            debug_results = await database.fetch_all(debug_query)
+            print(f"🔍 Sample guild_ids in messages: {[r['guild_id'] for r in debug_results] if debug_results else 'No data'}")
+            
+            # Check the data type of guild_id
+            type_query = "SELECT guild_id, created_at FROM messages LIMIT 3"
+            type_results = await database.fetch_all(type_query)
+            print(f"🔍 Sample data from messages: {type_results}")
+            
+            if period == "24h":
+                query = """
+                SELECT HOUR(created_at) as hour, COUNT(*) as count
+                FROM messages
+                WHERE guild_id = %s AND created_at >= DATE_SUB(NOW(), INTERVAL 48 HOUR)
+                GROUP BY HOUR(created_at)
+                ORDER BY hour
+                """
+                message_results = await database.fetch_all(query, (guild_id,))
+            else:
+                query = """
+                SELECT DATE(created_at) as date, COUNT(*) as count
+                FROM messages
+                WHERE guild_id = %s AND created_at >= DATE_SUB(NOW(), INTERVAL %s DAY)
+                GROUP BY DATE(created_at)
+                ORDER BY date
+                """
+                message_results = await database.fetch_all(query, (guild_id, days_back))
+            if message_results is None:
+                message_results = []
+            print(f"📊 Message activity query successful, {len(message_results)} results")
+        except Exception as db_error:
+            print(f"❌ Database error in message activity: {db_error}")
+            message_results = []
+        
+        # Query command activity data
+        try:
+            if period == "24h":
+                cmd_query = """
+                SELECT HOUR(created_at) as hour, COUNT(*) as count
+                FROM command_logs
+                WHERE guild_id = %s AND created_at >= DATE_SUB(NOW(), INTERVAL 48 HOUR)
+                GROUP BY HOUR(created_at)
+                ORDER BY hour
+                """
+                command_results = await database.query(cmd_query, (guild_id,))
+            else:
+                cmd_query = """
+                SELECT DATE(created_at) as date, COUNT(*) as count
+                FROM command_logs
+                WHERE guild_id = %s AND created_at >= DATE_SUB(NOW(), INTERVAL %s DAY)
+                GROUP BY DATE(created_at)
+                ORDER BY date
+                """
+                command_results = await database.query(cmd_query, (guild_id, days_back))
+            if command_results is None:
+                command_results = []
+            print(f"📊 Command activity query successful, {len(command_results)} results")
+        except Exception as db_error:
+            print(f"❌ Database error in command activity: {db_error}")
+            command_results = []
+        
+        # Process results
+        messages = [0] * len(labels)
+        commands = [0] * len(labels)
+        
+        for i, result in enumerate(message_results):
+            hour_or_date = result['hour'] if period == "24h" else result['date']
+            count = result['count']
+            if period == "24h":
+                if 0 <= hour_or_date < 24:
+                    messages[hour_or_date] = count
+            else:
+                if period == "7d":
+                    day_index = i  # Index relatif pour 7 jours
+                else:
+                    day_index = (hour_or_date - datetime.now().date()).days + days_back - 1
+                if 0 <= day_index < len(labels):
+                    messages[day_index] = count
+        
+        for i, result in enumerate(command_results):
+            hour_or_date = result['hour'] if period == "24h" else result['date']
+            count = result['count']
+            if period == "24h":
+                if 0 <= hour_or_date < 24:
+                    commands[hour_or_date] = count
+            else:
+                if period == "7d":
+                    day_index = i  # Index relatif pour 7 jours
+                else:
+                    day_index = (hour_or_date - datetime.now().date()).days + days_back - 1
+                if 0 <= day_index < len(labels):
+                    commands[day_index] = count
+        
+        # Check if we have any data
+        has_data = any(value > 0 for value in messages)
+        
+        return {
+            "labels": labels,
+            "data": messages,
+            "has_data": has_data,
+            "message": "Aucune donnée disponible pour cette période" if not has_data else None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guilds/{guild_id}/stats/xp-distribution")
+async def get_xp_distribution_stats(guild_id: str, current_user: str = Depends(get_current_user)):
+    """Get XP distribution statistics for charts"""
+    try:
+        if not guild_id or guild_id == "undefined":
+            raise HTTPException(status_code=400, detail="Invalid guild ID")
+        
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get real XP distribution data from database
+        # Query XP distribution data
+        try:
+            query = """
+            SELECT 
+                CASE 
+                    WHEN level BETWEEN 1 AND 10 THEN 'Level 1-10'
+                    WHEN level BETWEEN 11 AND 20 THEN 'Level 11-20'
+                    WHEN level BETWEEN 21 AND 30 THEN 'Level 21-30'
+                    WHEN level BETWEEN 31 AND 40 THEN 'Level 31-40'
+                    WHEN level BETWEEN 41 AND 50 THEN 'Level 41-50'
+                    WHEN level >= 51 THEN 'Level 51+'
+                END as level_range,
+                COUNT(*) as count
+            FROM xp_data
+            WHERE guild_id = %s
+            GROUP BY level_range
+            ORDER BY 
+                CASE level_range
+                    WHEN 'Level 1-10' THEN 1
+                    WHEN 'Level 11-20' THEN 2
+                    WHEN 'Level 21-30' THEN 3
+                    WHEN 'Level 31-40' THEN 4
+                    WHEN 'Level 41-50' THEN 5
+                    WHEN 'Level 51+' THEN 6
+                END
+            """
+            
+            results = await database.fetch_all(query, (guild_id,))
+            if results is None:
+                results = []
+            print(f"📊 XP distribution query successful, {len(results)} results")
+        except Exception as db_error:
+            print(f"❌ Database error in XP distribution: {db_error}")
+            results = []
+        
+        # Process results
+        labels = ["Level 1-10", "Level 11-20", "Level 21-30", "Level 31-40", "Level 41-50", "Level 51+"]
+        values = [0] * len(labels)
+        
+        for result in results:
+            level_range = result['level_range']
+            count = result['count']
+            if level_range in labels:
+                index = labels.index(level_range)
+                values[index] = count
+        
+        # Check if we have any data
+        has_data = any(value > 0 for value in values)
+        
+        return {
+            "labels": labels,
+            "data": values,
+            "has_data": has_data,
+            "message": "Aucune donnée disponible pour cette période" if not has_data else None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guilds/{guild_id}/stats/xp-evolution")
+async def get_xp_evolution_stats(guild_id: str, period: str = "7d", xp_type: str = "both", current_user: str = Depends(get_current_user)):
+    """Get XP evolution statistics for charts"""
+    try:
+        if not guild_id or guild_id == "undefined":
+            raise HTTPException(status_code=400, detail="Invalid guild ID")
+        
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get real XP evolution data from database
+        from datetime import datetime, timedelta
+        
+        # Calculate date range based on period
+        today = datetime.now().date()
+        if period == "7d":
+            days_back = 7
+        elif period == "30d":
+            days_back = 30
+        else:  # 90d
+            days_back = 90
+        
+        # Build query based on xp_type filter
+        xp_type_filter = ""
+        if xp_type == "text":
+            xp_type_filter = "AND xp_type = 'text'"
+        elif xp_type == "voice":
+            xp_type_filter = "AND xp_type = 'voice'"
+        # If "both", no filter is applied
+        
+        # Query XP evolution data using xp_history table
+        try:
+            print(f"🔍 Querying XP evolution for guild {guild_id}, period: {period}, days_back: {days_back}, xp_type: {xp_type}")
+            
+            query = f"""
+            SELECT DATE(timestamp) as date, 
+                   SUM(xp_gained) as daily_xp_gained
+            FROM xp_history
+            WHERE guild_id = %s AND timestamp >= DATE_SUB(NOW(), INTERVAL %s DAY) {xp_type_filter}
+            GROUP BY DATE(timestamp)
+            ORDER BY date
+            """
+            
+            results = await database.fetch_all(query, (guild_id, days_back))
+            if results is None:
+                results = []
+            print(f"📊 XP evolution query successful, {len(results)} results")
+            print(f"📊 Raw XP evolution results: {results}")
+        except Exception as db_error:
+            print(f"❌ Database error in XP evolution: {db_error}")
+            import traceback
+            traceback.print_exc()
+            results = []
+        
+        # Process results - create labels and cumulative data
+        if not results:
+            # No data available
+            labels = []
+            values = []
+        else:
+            # Sort results by date
+            results.sort(key=lambda x: x['date'])
+            
+            # Create labels and cumulative values
+            labels = [result['date'].strftime("%d/%m") for result in results]
+            daily_values = [result['daily_xp_gained'] for result in results]
+            
+            # Calculate cumulative values
+            cumulative_values = []
+            total = 0
+            for daily_value in daily_values:
+                total += daily_value
+                cumulative_values.append(total)
+            
+            values = cumulative_values
+        
+        # Check if we have any data
+        has_data = any(value > 0 for value in values)
+        
+        return {
+            "labels": labels,
+            "data": values,
+            "has_data": has_data,
+            "message": "Aucune donnée disponible pour cette période" if not has_data else None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guilds/{guild_id}/stats/moderation")
+async def get_moderation_stats_chart(guild_id: str, period: str = "7d", current_user: str = Depends(get_current_user)):
+    """Get moderation statistics for charts"""
+    try:
+        if not guild_id or guild_id == "undefined":
+            raise HTTPException(status_code=400, detail="Invalid guild ID")
+        
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get real moderation data from database
+        from datetime import datetime, timedelta
+        
+        # Calculate date range based on period
+        if period == "7d":
+            days_back = 7
+            labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        elif period == "30d":
+            days_back = 30
+            labels = [f"Day {i}" for i in range(1, 31)]
+        else:  # 90d
+            days_back = 90
+            labels = [f"Week {i}" for i in range(1, 13)]
+        
+        # Query moderation data
+        try:
+            query = """
+            SELECT 
+                DATE(created_at) as date,
+                action_type,
+                COUNT(*) as count
+            FROM moderation_history
+            WHERE guild_id = %s AND created_at >= DATE_SUB(NOW(), INTERVAL %s DAY)
+            GROUP BY DATE(created_at), action_type
+            ORDER BY date
+            """
+            
+            results = await database.query(query, (guild_id, days_back))
+            if results is None:
+                results = []
+            print(f"📊 Moderation query successful, {len(results)} results")
+        except Exception as db_error:
+            print(f"❌ Database error in moderation: {db_error}")
+            results = []
+        
+        # Process results
+        warnings = [0] * len(labels)
+        bans = [0] * len(labels)
+        kicks = [0] * len(labels)
+        
+        for i, result in enumerate(results):
+            date = result['date']
+            action_type = result['action_type']
+            count = result['count']
+            if period == "7d":
+                day_index = i  # Index relatif pour 7 jours
+            elif period == "30d":
+                day_index = (date - datetime.now().date()).days + days_back - 1
+            else:  # 90d
+                week_index = (date - datetime.now().date()).days // 7
+                if 0 <= week_index < len(labels):
+                    if action_type == 'warn':
+                        warnings[week_index] += count
+                    elif action_type == 'ban':
+                        bans[week_index] += count
+                    elif action_type == 'kick':
+                        kicks[week_index] += count
+                continue
+            
+            if 0 <= day_index < len(labels):
+                if action_type == 'warn':
+                    warnings[day_index] += count
+                elif action_type == 'ban':
+                    bans[day_index] += count
+                elif action_type == 'kick':
+                    kicks[day_index] += count
+        
+        # Combine all moderation actions into a single data series
+        combined_data = [warnings[i] + bans[i] + kicks[i] for i in range(len(labels))]
+        
+        # Check if we have any data
+        has_data = any(value > 0 for value in combined_data)
+        
+        return {
+            "labels": labels,
+            "data": combined_data,
+            "has_data": has_data,
+            "message": "Aucune donnée disponible pour cette période" if not has_data else None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+  # Production server startup
 if __name__ == "__main__":
     # Get port from environment variable (Railway sets this)
     port = int(os.getenv("PORT", 8000))

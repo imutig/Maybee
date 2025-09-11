@@ -407,19 +407,19 @@ body.dashboard-body {
     text-align: center;
 }
 
-.loading-spinner .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--border-subtle);
-    border-top: 3px solid var(--primary-yellow);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+.loading-spinner {
     margin: 0 auto var(--spacing-md);
+    text-align: center;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 215, 0, 0.2);
+    border-top: 4px solid var(--primary-yellow);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
 }
 
 .loading-text {
@@ -5226,4 +5226,238 @@ body > .modal-overlay {
     .history-controls {
         justify-content: center;
     }
+}
+
+/* Charts Section Styles */
+.charts-grid {
+    display: grid;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    
+    /* Responsive grid that creates symmetry */
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    
+    /* For 5 charts, we want better distribution */
+    grid-auto-rows: minmax(300px, auto);
+}
+
+/* Specific layouts for different screen sizes */
+@media (min-width: 1200px) {
+    .charts-grid {
+        /* Large screens: 3 columns max, centered */
+        grid-template-columns: repeat(3, 1fr);
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+    .charts-grid {
+        /* Medium screens: 2 columns */
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 600px) and (max-width: 899px) {
+    .charts-grid {
+        /* Small screens: 1 column */
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Center the last chart when it's alone on a row */
+.charts-grid .chart-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Special handling for 5 charts layout */
+@media (min-width: 1200px) {
+    .charts-grid:has(.chart-card:nth-child(5)) {
+        /* When we have 5 charts, use a 2-2-1 layout */
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .charts-grid:has(.chart-card:nth-child(5)) .chart-card:nth-child(5) {
+        /* Center the 5th chart */
+        grid-column: 1 / -1;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+}
+
+.chart-card {
+    background: var(--surface-dark);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: var(--transition-smooth);
+}
+
+.chart-card:hover {
+    border-color: var(--border-accent);
+    box-shadow: var(--glow-yellow);
+}
+
+.chart-card .card-header {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-subtle);
+    background: linear-gradient(135deg, var(--surface-dark) 0%, var(--surface-lighter) 100%);
+}
+
+.chart-card .card-title {
+    color: var(--text-primary);
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.chart-card .card-content {
+    padding: var(--spacing-lg);
+    position: relative;
+}
+
+.chart-period-select {
+    background: var(--surface-lighter);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+    transition: var(--transition-fast);
+}
+
+.chart-period-select:focus {
+    outline: none;
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+}
+
+.chart-period-select option {
+    background: var(--surface-lighter);
+    color: var(--text-primary);
+}
+
+/* Chart Canvas Styling */
+canvas {
+    max-width: 100%;
+    height: 200px !important;
+    border-radius: 8px;
+}
+
+/* Chart Loading State */
+.chart-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.chart-loading i {
+    margin-right: var(--spacing-sm);
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Chart Error State */
+.chart-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--error);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.chart-error i {
+    font-size: var(--font-size-xl);
+}
+
+/* Chart Placeholder State */
+.chart-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.chart-placeholder i {
+    font-size: var(--font-size-2xl);
+    color: var(--primary-yellow);
+    opacity: 0.6;
+}
+
+.chart-placeholder p {
+    margin: 0;
+    font-weight: 500;
+}
+
+/* Responsive Charts */
+@media (max-width: 599px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+    
+    .chart-card .card-header {
+        padding: var(--spacing-md);
+    }
+    
+    .chart-card .card-content {
+        padding: var(--spacing-md);
+    }
+    
+    /* Remove centering on very small screens */
+    .charts-grid .chart-card:last-child:nth-child(odd) {
+        grid-column: 1;
+        max-width: none;
+        margin: 0;
+    }
+    
+    .chart-period-select {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+}
+
+/* No data message styles */
+.no-data-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: var(--spacing-lg);
+}
+
+.no-data-message i {
+    font-size: 3rem;
+    margin-bottom: var(--spacing-md);
+    opacity: 0.5;
+}
+
+.no-data-message p {
+    font-size: var(--font-size-sm);
+    margin: 0;
+    opacity: 0.8;
 }

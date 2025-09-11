@@ -586,6 +586,81 @@ class Database:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_guild_id (guild_id)
             )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS members (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                guild_id BIGINT NOT NULL,
+                username VARCHAR(255) NOT NULL,
+                joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                left_at TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_guild_id (guild_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_joined_at (joined_at),
+                UNIQUE KEY unique_user_guild (user_id, guild_id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS messages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                message_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL,
+                guild_id BIGINT NOT NULL,
+                channel_id BIGINT NOT NULL,
+                content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_guild_id (guild_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_channel_id (channel_id),
+                INDEX idx_created_at (created_at),
+                UNIQUE KEY unique_message (message_id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS command_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                guild_id BIGINT NOT NULL,
+                command_name VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_guild_id (guild_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_command_name (command_name),
+                INDEX idx_created_at (created_at)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS moderation_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL,
+                moderator_id BIGINT NOT NULL,
+                action_type ENUM('warn', 'ban', 'kick', 'timeout', 'unban') NOT NULL,
+                reason TEXT,
+                duration INT DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_guild_id (guild_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_moderator_id (moderator_id),
+                INDEX idx_action_type (action_type),
+                INDEX idx_created_at (created_at)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS member_count_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id BIGINT NOT NULL,
+                member_count INT NOT NULL,
+                bot_count INT DEFAULT 0,
+                human_count INT DEFAULT 0,
+                recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_guild_id (guild_id),
+                INDEX idx_recorded_at (recorded_at),
+                UNIQUE KEY unique_guild_time (guild_id, recorded_at)
+            )
             """
         ]
         

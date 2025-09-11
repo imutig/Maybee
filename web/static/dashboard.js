@@ -1,4 +1,6 @@
 // Maybee Dashboard JavaScript
+console.log('📜 Dashboard.js script loaded!');
+
 class Dashboard {
     constructor() {
         this.currentGuild = null;
@@ -16,20 +18,26 @@ class Dashboard {
         this.guildStats = null;
         this.guildConfig = null;
         this.cachedRoleMenus = null;
+        // Chart manager
+        this.chartManager = null;
         this.init();
     }
 
     async init() {
         try {
+            console.log('🚀 Starting dashboard initialization...');
             // Get access token from cookie
             const token = this.getCookie('access_token');
             if (!token) {
+                console.log('❌ No access token found, redirecting to login');
                 window.location.href = '/';
                 return;
             }
+            console.log('✅ Access token found');
 
             // Use language data from backend if available, otherwise load from API
             if (window.langData && window.currentLang && window.supportedLanguages) {
+                console.log('✅ Using language data from backend');
                 this.currentLanguage = window.currentLang;
                 this.strings = window.langData;
                 this.availableLanguages = window.supportedLanguages.map(code => ({
@@ -44,6 +52,7 @@ class Dashboard {
                 // Update UI with translations immediately
                 this.updateUILanguage();
             } else {
+                console.log('⚠️ Using fallback language loading method');
                 // Fallback to old method
                 await this.loadAvailableLanguages();
                 await this.loadUserLanguage();
@@ -53,10 +62,22 @@ class Dashboard {
             }
             
             // Load user data
+            console.log('👤 Loading user data...');
             await this.loadUser();
+            console.log('🏰 Loading guilds...');
             await this.loadGuilds();
             
+            // Initialize chart manager
+            if (typeof ChartManager !== 'undefined') {
+                this.chartManager = new ChartManager(this);
+                this.chartManager.initChartEventListeners();
+                console.log('✅ ChartManager initialized successfully');
+            } else {
+                console.warn('⚠️ ChartManager not available, skipping chart initialization');
+            }
+            
             // Hide loading overlay
+            console.log('🎉 Dashboard initialization complete!');
             document.getElementById('loadingOverlay').style.display = 'none';
             document.getElementById('dashboardContent').style.display = 'block';
             
@@ -405,6 +426,9 @@ class Dashboard {
             this.guildStats = null;
             this.guildConfig = null;
             this.pendingRequests.clear(); // Clear pending requests
+            if (this.chartManager) {
+                this.chartManager.clearCharts(); // Clear existing charts
+            }
         }
 
         this.currentGuild = guildId;
@@ -458,6 +482,11 @@ class Dashboard {
             };
             
             console.log('✅ Essential guild data loaded via bulk endpoint - other sections will load when accessed');
+            
+            // Load charts after guild data is loaded
+            if (this.chartManager) {
+                this.chartManager.loadCharts();
+            }
             
         } catch (error) {
             console.error('Failed to load guild data:', error);
@@ -4677,302 +4706,13 @@ function setupSimpleNavigation() {
             }
         }
     });
-    
+
     console.log('✅ Simple navigation setup complete');
 }
 
-// Global functions
-function selectGuild() {
-    dashboard.selectGuild();
-}
-
-function logout() {
-    dashboard.logout();
-}
-
-// Initialize dashboard when page loads
-let dashboard;
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing dashboard...');
-    console.log('Browser:', navigator.userAgent);
-    
-    dashboard = new Dashboard();
-    
-    // Make dashboard globally available for debugging
-    window.dashboard = dashboard;
-    
-    // Setup navigation with multiple approaches for reliability
-    // Add a small delay for browsers that need more time to render DOM
-    setTimeout(() => {
-        try {
-            setupModernNavigation();
-            setupSimpleNavigation();
-            console.log('✅ Navigation setup complete');
-        } catch (error) {
-            console.error('❌ Navigation setup failed:', error);
-            // Try simple navigation only as last resort
-            try {
-                setupSimpleNavigation();
-            } catch (fallbackError) {
-                console.error('❌ Fallback navigation also failed:', fallbackError);
-            }
-        }
-    }, 100);
-    
-    // Setup tab change listener for role menus
-    setTimeout(() => {
-        // Listen for tab changes to render role menus when tab becomes active
-        const roleMenusLink = document.querySelector('a[href="#role-menus"]');
-        if (roleMenusLink) {
-            roleMenusLink.addEventListener('click', () => {
-                console.log('🔄 Role menus tab clicked, checking for cached data');
-                setTimeout(() => {
-                    if (dashboard.cachedRoleMenus) {
-                        console.log('📋 Found cached role menus, rendering now');
-                        dashboard.renderRoleMenusNow(dashboard.cachedRoleMenus);
-                    }
-                }, 100); // Small delay to ensure tab is active
-            });
-            console.log('✅ Role menus tab listener added');
-        }
-        
-        // Also listen for Bootstrap tab events if available
-        const roleMenusTab = document.getElementById('role-menus');
-        if (roleMenusTab) {
-            roleMenusTab.addEventListener('shown.bs.tab', () => {
-                console.log('🔄 Role menus tab shown via Bootstrap event');
-                if (dashboard.cachedRoleMenus) {
-                    console.log('📋 Found cached role menus, rendering via Bootstrap event');
-                    dashboard.renderRoleMenusNow(dashboard.cachedRoleMenus);
-                }
-            });
-            console.log('✅ Bootstrap tab listener added');
-        }
-        
-        // Listen for XP settings tab to load roles for level roles
-        const xpTab = document.getElementById('xp-settings');
-        if (xpTab) {
-            xpTab.addEventListener('shown.bs.tab', async () => {
-                console.log('🔄 XP settings tab shown - loading roles for level roles');
-                if (!dashboard.roles) {
-                    await dashboard.loadGuildRoles();
-                }
-                // Update level roles display after roles are loaded
-                await dashboard.updateLevelRolesDisplay();
-            });
-            console.log('✅ XP tab listener added');
-        }
-    }, 200);
-    
-    // Make setupNav globally available for debugging
-    window.setupNav = setupModernNavigation;
-    
-    // Setup form handlers
-    const xpForm = document.getElementById('xpSettingsForm');
-    if (xpForm) {
-        xpForm.addEventListener('submit', (e) => dashboard.saveXPSettings(e));
-    }
-    
-    const welcomeForm = document.getElementById('welcomeSettingsForm');
-    if (welcomeForm) {
-        welcomeForm.addEventListener('submit', (e) => dashboard.saveWelcomeSettings(e));
-    }
-    
-    const logsForm = document.getElementById('logsSettingsForm');
-    if (logsForm) {
-        logsForm.addEventListener('submit', (e) => dashboard.saveServerLogsSettings(e));
-    }
-    
-    // Setup test buttons
-    const testLevelUpBtn = document.getElementById('testLevelUpBtn');
-    if (testLevelUpBtn) {
-        testLevelUpBtn.addEventListener('click', () => dashboard.testLevelUpMessage());
-    }
-    
-    const testWelcomeBtn = document.getElementById('testWelcomeBtn');
-    if (testWelcomeBtn) {
-        testWelcomeBtn.addEventListener('click', () => dashboard.testWelcomeMessage());
-    }
-    
-    const testLogBtn = document.getElementById('testLogBtn');
-    if (testLogBtn) {
-        testLogBtn.addEventListener('click', () => dashboard.testServerLog());
-    }
-    
-    // Setup reset XP button
-    const resetXPBtn = document.getElementById('resetXPBtn');
-    if (resetXPBtn) {
-        resetXPBtn.addEventListener('click', () => dashboard.resetServerXP());
-    }
-    
-    // Setup add level role button
-    const addLevelRoleBtn = document.getElementById('addLevelRoleBtn');
-    if (addLevelRoleBtn) {
-        addLevelRoleBtn.addEventListener('click', () => dashboard.addLevelRoleItem());
-    }
-    
-    // Setup create role menu button
-    const createRoleMenuBtn = document.getElementById('createRoleMenuBtn');
-    if (createRoleMenuBtn) {
-        createRoleMenuBtn.addEventListener('click', () => dashboard.createRoleMenu());
-    }
-
-    // Add refresh button event listener
-    const refreshRoleMenusBtn = document.getElementById('refreshRoleMenusBtn');
-    if (refreshRoleMenusBtn) {
-        refreshRoleMenusBtn.addEventListener('click', async () => {
-            console.log('🔄 Manual refresh of role menus triggered');
-            
-            if (!dashboard.currentGuild) {
-                console.warn('No guild selected for refresh');
-                dashboard.showError('Please select a server first');
-                return;
-            }
-            
-            // Add loading state
-            const originalIcon = refreshRoleMenusBtn.querySelector('i');
-            const originalText = originalIcon ? '' : refreshRoleMenusBtn.textContent;
-            
-            if (originalIcon) {
-                originalIcon.className = 'fas fa-spinner fa-spin';
-            } else {
-                refreshRoleMenusBtn.textContent = 'Refreshing...';
-            }
-            refreshRoleMenusBtn.disabled = true;
-            
-            try {
-                console.log(`Refreshing role menus for guild: ${dashboard.currentGuild}`);
-                await dashboard.loadRoleMenus();
-                console.log('✅ Role menus refreshed successfully');
-            } catch (error) {
-                console.error('❌ Failed to refresh role menus:', error);
-                dashboard.showError('Failed to refresh role menus');
-            } finally {
-                // Restore original state
-                if (originalIcon) {
-                    originalIcon.className = 'fas fa-sync-alt';
-                } else {
-                    refreshRoleMenusBtn.textContent = originalText;
-                }
-                refreshRoleMenusBtn.disabled = false;
-            }
-        });
-    }
-    
-    // Setup moderation action handler
-    const executeModerationBtn = document.getElementById('executeModerationBtn');
-    if (executeModerationBtn) {
-        executeModerationBtn.addEventListener('click', () => dashboard.executeModerationAction());
-    }
-    
-    // Setup moderation action selector to show/hide timeout duration
-    const moderationAction = document.getElementById('moderationAction');
-    if (moderationAction) {
-        moderationAction.addEventListener('change', (e) => {
-            const timeoutDuration = document.getElementById('timeoutDuration');
-            if (timeoutDuration) {
-                if (e.target.value === 'timeout') {
-                    timeoutDuration.style.display = 'block';
-                } else {
-                    timeoutDuration.style.display = 'none';
-                }
-            }
-        });
-    }
-    
-    // Setup welcome fields toggle
-    const welcomeFieldsToggle = document.getElementById('welcomeFields');
-    const welcomeFieldsContainer = document.getElementById('welcomeFieldsContainer');
-    if (welcomeFieldsToggle && welcomeFieldsContainer) {
-        welcomeFieldsToggle.addEventListener('change', (e) => {
-            welcomeFieldsContainer.style.display = e.target.checked ? 'block' : 'none';
-        });
-    }
-    
-    // Setup goodbye fields toggle
-    const goodbyeFieldsToggle = document.getElementById('goodbyeFields');
-    const goodbyeFieldsContainer = document.getElementById('goodbyeFieldsContainer');
-    if (goodbyeFieldsToggle && goodbyeFieldsContainer) {
-        goodbyeFieldsToggle.addEventListener('change', (e) => {
-            goodbyeFieldsContainer.style.display = e.target.checked ? 'block' : 'none';
-        });
-    }
-
-    // Setup add field buttons
-    const addWelcomeFieldBtn = document.getElementById('addWelcomeField');
-    if (addWelcomeFieldBtn) {
-        addWelcomeFieldBtn.addEventListener('click', () => {
-            const welcomeFieldsList = document.getElementById('welcomeFieldsList');
-            const fieldItem = dashboard.createFieldItem('', '', false, welcomeFieldsList);
-            welcomeFieldsList.appendChild(fieldItem);
-            dashboard.updateFieldMoveButtons(welcomeFieldsList);
-        });
-    }
-
-    const addGoodbyeFieldBtn = document.getElementById('addGoodbyeField');
-    if (addGoodbyeFieldBtn) {
-        addGoodbyeFieldBtn.addEventListener('click', () => {
-            const goodbyeFieldsList = document.getElementById('goodbyeFieldsList');
-            const fieldItem = dashboard.createFieldItem('', '', false, goodbyeFieldsList);
-            goodbyeFieldsList.appendChild(fieldItem);
-            dashboard.updateFieldMoveButtons(goodbyeFieldsList);
-        });
-    }
-
-    // Setup embed creator tab listener
-    const embedTab = document.getElementById('embed');
-    if (embedTab) {
-        embedTab.addEventListener('shown.bs.tab', async () => {
-            console.log('🎨 Embed creator tab shown - initializing...');
-            console.log('🔍 Current embed data loaded status:', dashboard.dataLoaded?.embed);
-            
-            // Always load data for embed creator to ensure it works
-            await dashboard.loadEmbedCreatorData();
-            await dashboard.initEmbedCreator();
-            dashboard.dataLoaded.embed = true;
-            
-            console.log('✅ Embed creator initialization complete');
-        });
-    }
-
-    // Also listen for simple navigation clicks
-    const embedNavLink = document.querySelector('a[href="#embed"]');
-    if (embedNavLink) {
-        embedNavLink.addEventListener('click', async () => {
-            console.log('🎨 Embed creator nav clicked - initializing...');
-            setTimeout(async () => {
-                console.log('🔍 Current embed data loaded status:', dashboard.dataLoaded?.embed);
-                
-                // Always load data for embed creator to ensure it works
-                await dashboard.loadEmbedCreatorData();
-                await dashboard.initEmbedCreator();
-                dashboard.dataLoaded.embed = true;
-                
-                console.log('✅ Embed creator click initialization complete');
-            }, 100);
-        });
-    }
-
-    // Setup ticket logs tab listener
-    const ticketLogsTab = document.getElementById('ticket-logs');
-    if (ticketLogsTab) {
-        ticketLogsTab.addEventListener('shown.bs.tab', async () => {
-            console.log('📋 Ticket logs tab shown - initializing...');
-            await dashboard.initTicketLogs();
-        });
-    }
-
-    // Also listen for ticket logs navigation clicks
-    const ticketLogsNavLink = document.querySelector('a[href="#ticket-logs"]');
-    if (ticketLogsNavLink) {
-        ticketLogsNavLink.addEventListener('click', async () => {
-            console.log('📋 Ticket logs nav clicked - initializing...');
-            setTimeout(async () => {
-                await dashboard.initTicketLogs();
-            }, 100);
-        });
-    }
+// Initialize dashboard when DOM is ready
+console.log('🔧 Setting up dashboard initialization...');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 DOM Content Loaded, initializing dashboard...');
+    window.dashboard = new Dashboard();
 });
-
-// Make dashboard globally available for debugging
-window.dashboard = dashboard;
