@@ -234,7 +234,7 @@ class Ticket(commands.Cog):
             embed.add_field(
                 name=_('ticket_system.ticket_logs.statistics', user_id, guild_id),
                 value=_('ticket_system.ticket_logs.stats_content', user_id, guild_id, 
-                       count=len(user_logs), user=user.mention, user_id=user.id),
+                       count=len(user_logs), user=user.mention),
                 inline=False
             )
             

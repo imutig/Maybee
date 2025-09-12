@@ -76,6 +76,13 @@ class Dashboard {
                 console.warn('⚠️ ChartManager not available, skipping chart initialization');
             }
             
+            // Setup navigation with a small delay to ensure DOM is ready
+            console.log('🧭 Setting up navigation...');
+            setTimeout(() => {
+                setupModernNavigation();
+                this.setupRoleMenuButtons();
+            }, 100);
+            
             // Hide loading overlay
             console.log('🎉 Dashboard initialization complete!');
             document.getElementById('loadingOverlay').style.display = 'none';
@@ -1243,6 +1250,34 @@ class Dashboard {
         }
     }
 
+    setupRoleMenuButtons() {
+        console.log('🔧 Setting up role menu buttons...');
+        
+        // Refresh button
+        const refreshBtn = document.getElementById('refreshRoleMenusBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                console.log('🔄 Refresh role menus button clicked');
+                this.loadRoleMenus();
+            });
+            console.log('✅ Refresh button event listener added');
+        } else {
+            console.warn('⚠️ Refresh button not found');
+        }
+        
+        // Create button
+        const createBtn = document.getElementById('createRoleMenuBtn');
+        if (createBtn) {
+            createBtn.addEventListener('click', () => {
+                console.log('➕ Create role menu button clicked');
+                this.showRoleMenuModal();
+            });
+            console.log('✅ Create button event listener added');
+        } else {
+            console.warn('⚠️ Create button not found');
+        }
+    }
+
     // Role Menu Management Methods
     async loadRoleMenus() {
         console.log(`🔄 Loading role menus for guild: ${this.currentGuild}`);
@@ -1428,15 +1463,15 @@ class Dashboard {
                         </div>
                     </div>
                     <div class="role-menu-actions">
-                        <button class="action-btn-small" onclick="dashboard.sendRoleMenu(${menu.id})" style="background: #28a745; border-color: #28a745;">
+                        <button class="action-btn-small" onclick="window.dashboard.sendRoleMenu(${menu.id})" style="background: #28a745; border-color: #28a745;">
                             <i class="fas fa-paper-plane"></i>
                             Send
                         </button>
-                        <button class="action-btn-small" onclick="dashboard.editRoleMenu(${menu.id})">
+                        <button class="action-btn-small" onclick="window.dashboard.editRoleMenu(${menu.id})">
                             <i class="fas fa-edit"></i>
                             Edit
                         </button>
-                        <button class="action-btn-small" onclick="dashboard.deleteRoleMenu(${menu.id})" style="background: #dc3545; border-color: #dc3545;">
+                        <button class="action-btn-small" onclick="window.dashboard.deleteRoleMenu(${menu.id})" style="background: #dc3545; border-color: #dc3545;">
                             <i class="fas fa-trash"></i>
                             Delete
                         </button>
@@ -4632,7 +4667,11 @@ function setupSimpleNavigation() {
         { href: '#xp-settings', target: 'xp-settings' }, 
         { href: '#moderation', target: 'moderation' },
         { href: '#welcome', target: 'welcome' },
-        { href: '#logs', target: 'logs' }
+        { href: '#role-menus', target: 'role-menus' },
+        { href: '#logs', target: 'logs' },
+        { href: '#tickets', target: 'tickets' },
+        { href: '#ticket-logs', target: 'ticket-logs' },
+        { href: '#embed', target: 'embed' }
     ];
     
     links.forEach((link, index) => {
