@@ -163,12 +163,22 @@ class Welcome(commands.Cog):
                 
                 # Format the message with placeholders
                 formatted_message = self.format_message(message, member)
+                # Couleur personnalisée
+                embed_color = config.get("embed_color")
+                try:
+                    color = int(embed_color.lstrip('#'), 16) if embed_color else 0xFFD700
+                except Exception:
+                    color = 0xFFD700
                 embed = Embed(
                     title=formatted_title,
                     description=formatted_message,
-                    color=discord.Color.green()
+                    color=color
                 )
                 embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
+                # Footer personnalisé
+                embed_footer = config.get("embed_footer")
+                if embed_footer:
+                    embed.set_footer(text=self.format_message(embed_footer, member))
                 
                 # Add custom image if configured
                 welcome_image_url = config.get("welcome_image_url")
@@ -223,12 +233,22 @@ class Welcome(commands.Cog):
                 # Format the message with placeholders
                 formatted_message = self.format_message(message, member)
                 
+                # Couleur personnalisée
+                embed_color = config.get("embed_color")
+                try:
+                    color = int(embed_color.lstrip('#'), 16) if embed_color else 0xFFD700
+                except Exception:
+                    color = 0xFFD700
                 embed = Embed(
                     title=formatted_title,
                     description=formatted_message,
-                    color=discord.Color.red()
+                    color=color
                 )
                 embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
+                # Footer personnalisé
+                embed_footer = config.get("embed_footer")
+                if embed_footer:
+                    embed.set_footer(text=self.format_message(embed_footer, member))
                 
                 # Add custom image if configured
                 goodbye_image_url = config.get("goodbye_image_url")

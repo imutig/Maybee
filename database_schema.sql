@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS welcome_config (
     goodbye_channel BIGINT DEFAULT NULL,
     goodbye_title VARCHAR(256) DEFAULT '👋 Departure',
     goodbye_message TEXT DEFAULT NULL,
+    embed_color VARCHAR(8) DEFAULT '#FFD700',
+    embed_footer VARCHAR(256) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY unique_guild (guild_id)
