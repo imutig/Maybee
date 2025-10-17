@@ -100,6 +100,7 @@ async def lifespan(app: FastAPI):
     await create_level_roles_table()  # Add level roles table
     await create_embed_config_table()  # Add embed config table
     await create_level_up_config_table()  # Add level up config table
+    await create_feur_mode_table()  # Add feur mode table
     await migrate_level_up_config_show_avatar()  # Add show_user_avatar column
     await migrate_xp_data_message_count()  # Add message_count column
     await migrate_ticket_panels_verification()  # Add verification workflow columns
@@ -946,6 +947,26 @@ async def migrate_ticket_panels_verification():
                 
     except Exception as e:
         print(f"⚠️ Migration error for ticket_panels verification columns: {e}")
+
+async def create_feur_mode_table():
+    """Create feur_mode table for storing Feur mode state"""
+    feur_mode_table = """
+    CREATE TABLE IF NOT EXISTS feur_mode (
+        guild_id BIGINT PRIMARY KEY,
+        enabled BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_guild_enabled (guild_id, enabled)
+    )
+    """
+    
+    try:
+        await database.execute(feur_mode_table)
+        print("✅ Feur mode table created/verified")
+        return True
+    except Exception as e:
+        print(f"❌ Error creating feur_mode table: {e}")
+        return False
 
 async def migrate_welcome_config_table():
     """Add missing columns to existing welcome_config table"""
@@ -3115,6 +3136,63 @@ async def migrate_welcome_titles():
     except Exception as e:
         print(f"❌ Migration failed: {e}")
         return {"success": False, "error": str(e)}
+
+# Feur Mode Endpoints
+@app.get("/api/guild/{guild_id}/feur-mode")
+async def get_feur_mode(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get feur mode status for a guild"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get feur mode status from database
+        feur_mode = await database.fetch_one(
+            "SELECT enabled FROM feur_mode WHERE guild_id = %s",
+            (guild_id,)
+        )
+        
+        return {
+            "enabled": bool(feur_mode["enabled"]) if feur_mode else False
+        }
+        
+    except Exception as e:
+        print(f"Error getting feur mode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/guild/{guild_id}/feur-mode")
+async def update_feur_mode(
+    guild_id: str,
+    enabled: bool,
+    current_user: str = Depends(get_current_user)
+):
+    """Update feur mode status for a guild"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Update feur mode status in database
+        await database.execute(
+            """INSERT INTO feur_mode (guild_id, enabled, updated_at)
+               VALUES (%s, %s, NOW())
+               ON DUPLICATE KEY UPDATE
+               enabled = VALUES(enabled),
+               updated_at = NOW()""",
+            (guild_id, enabled)
+        )
+        
+        return {
+            "success": True,
+            "message": f"Mode Feur {'activé' if enabled else 'désactivé'} avec succès"
+        }
+        
+    except Exception as e:
+        print(f"Error updating feur mode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/guild/{guild_id}/welcome")
 async def get_welcome_config(

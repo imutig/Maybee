@@ -496,6 +496,17 @@ class Dashboard {
                 this.chartManager.loadCharts();
             }
             
+            // Show/hide Feur Mode card based on guild ID
+            const feurModeCard = document.getElementById('feurModeCard');
+            if (feurModeCard) {
+                if (guildId === '1279486672261746809') {
+                    feurModeCard.style.display = 'block';
+                    await this.loadFeurMode();
+                } else {
+                    feurModeCard.style.display = 'none';
+                }
+            }
+            
         } catch (error) {
             console.error('Failed to load guild data:', error);
             this.showError(this.getString('messages.server_data_error') || 'Failed to load server data.');
@@ -2548,6 +2559,47 @@ class Dashboard {
                 checkbox.checked = enabled;
             }
         });
+    }
+
+    // Feur Mode Methods
+    async loadFeurMode() {
+        if (!this.currentGuild) return;
+        
+        try {
+            const data = await this.apiCall(`/guild/${this.currentGuild}/feur-mode`);
+            const checkbox = document.getElementById('feurModeEnabled');
+            if (checkbox) {
+                checkbox.checked = data.enabled || false;
+            }
+        } catch (error) {
+            console.error('Error loading Feur mode:', error);
+        }
+    }
+
+    async toggleFeurMode(enabled) {
+        if (!this.currentGuild) return;
+        
+        try {
+            const response = await this.apiCall(
+                `/guild/${this.currentGuild}/feur-mode?enabled=${enabled}`,
+                'POST'
+            );
+            
+            if (response.success) {
+                this.showSuccess(response.message);
+            } else {
+                this.showError('Erreur lors de la mise à jour du mode Feur');
+            }
+        } catch (error) {
+            console.error('Error toggling Feur mode:', error);
+            this.showError('Erreur lors de la mise à jour du mode Feur');
+            
+            // Revert checkbox state on error
+            const checkbox = document.getElementById('feurModeEnabled');
+            if (checkbox) {
+                checkbox.checked = !enabled;
+            }
+        }
     }
 
     showSuccess(message) {

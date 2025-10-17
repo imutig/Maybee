@@ -93,14 +93,14 @@ class Ticket(commands.Cog):
             # Create ticket
             await self.create_dashboard_ticket(
                 interaction, category_id, ticket_name_format, 
-                initial_message, ping_roles, button_label, btn_id
+                initial_message, ping_roles, button_label, btn_id, panel_id
             )
             
         except Exception as e:
             print(f"Error handling ticket button interaction: {e}")
             await interaction.response.send_message(_('ticket_system.creation_error', interaction.user.id, interaction.guild.id), ephemeral=True)
 
-    async def create_dashboard_ticket(self, interaction, category_id, name_format, initial_message, ping_roles, button_label, button_id):
+    async def create_dashboard_ticket(self, interaction, category_id, name_format, initial_message, ping_roles, button_label, button_id, panel_id=None):
         """Create a ticket from dashboard button click"""
         guild = interaction.guild
         user = interaction.user
@@ -168,9 +168,9 @@ class Ticket(commands.Cog):
             
             # Store ticket in database
             await self.bot.db.execute("""
-                INSERT INTO active_tickets (guild_id, channel_id, user_id, button_id, created_at)
-                VALUES (%s, %s, %s, %s, NOW())
-            """, (str(guild.id), str(channel.id), str(user.id), button_id))
+                INSERT INTO active_tickets (guild_id, channel_id, user_id, button_id, panel_id, created_at)
+                VALUES (%s, %s, %s, %s, %s, NOW())
+            """, (str(guild.id), str(channel.id), str(user.id), button_id, panel_id))
             
             # Enregistrer l'événement de création
             await self.ticket_logger.log_ticket_event(
@@ -350,11 +350,11 @@ class Ticket(commands.Cog):
             await channel.send(content=user.mention, embed=embed, view=view)
             
             # Enregistrer le ticket dans la base de données (utiliser la même structure que les tickets existants)
-            # Utiliser NULL pour button_id car ce ticket ne provient pas d'un bouton dashboard
+            # Utiliser NULL pour button_id et panel_id car ce ticket ne provient pas d'un bouton dashboard
             await self.bot.db.execute("""
-                INSERT INTO active_tickets (guild_id, channel_id, user_id, button_id, created_at)
-                VALUES (%s, %s, %s, %s, NOW())
-            """, (str(guild_id), str(channel.id), str(user.id), None))
+                INSERT INTO active_tickets (guild_id, channel_id, user_id, button_id, panel_id, created_at)
+                VALUES (%s, %s, %s, %s, %s, NOW())
+            """, (str(guild_id), str(channel.id), str(user.id), None, None))
             
             # Enregistrer l'événement de création
             await self.ticket_logger.log_ticket_event(
@@ -477,6 +477,9 @@ class TicketCloseButton(discord.ui.Button):
             fetchone=True
         )
         
+        # Debug: Afficher les données du ticket
+        print(f"DEBUG TicketCloseButton: ticket_data = {ticket_data}")
+        
         if not ticket_data:
             await interaction.response.send_message(_('ticket_system.not_a_ticket', user_id, guild_id), ephemeral=True)
             return
@@ -489,6 +492,11 @@ class TicketCloseButton(discord.ui.Button):
                 (ticket_data['panel_id'], str(guild_id)),
                 fetchone=True
             )
+            # Debug: Afficher les données du panel récupérées
+            if panel_data:
+                print(f"DEBUG: Panel data récupéré pour le ticket: {panel_data}")
+                print(f"DEBUG: verification_enabled = {panel_data.get('verification_enabled')}")
+                print(f"DEBUG: verifier_role_id = {panel_data.get('verifier_role_id')}")
         
         # Retirer les permissions du créateur du ticket
         ticket_creator_id = int(ticket_data['user_id'])
@@ -539,11 +547,30 @@ class TicketConfirmCloseView(discord.ui.View):
         super().__init__(timeout=300)  # 5 minutes de timeout
         self.closer_id = closer_id
         self.panel_data = panel_data
+        
+        # Debug: Afficher les informations du panel
+        print(f"DEBUG TicketConfirmCloseView: panel_data = {panel_data}")
+        if panel_data:
+            verification_enabled = panel_data.get('verification_enabled')
+            print(f"DEBUG TicketConfirmCloseView: verification_enabled = {verification_enabled}")
+            print(f"DEBUG TicketConfirmCloseView: Type de verification_enabled = {type(verification_enabled)}")
+            print(f"DEBUG TicketConfirmCloseView: Bool test = {bool(verification_enabled)}")
+        
         self.add_item(TicketConfirmDeleteButton())
         
         # Ajouter le bouton de vérification si le panel a l'option de vérification activée
-        if panel_data and panel_data.get('verification_enabled'):
-            self.add_item(TicketCloseAndVerifyButton(panel_data))
+        # Vérifier explicitement si verification_enabled est True ou 1
+        if panel_data:
+            verification_enabled = panel_data.get('verification_enabled')
+            # Gérer les cas où verification_enabled peut être 0, 1, True, False, ou None
+            is_verification_enabled = verification_enabled in (1, True, '1')
+            print(f"DEBUG TicketConfirmCloseView: is_verification_enabled = {is_verification_enabled}")
+            
+            if is_verification_enabled:
+                print("DEBUG TicketConfirmCloseView: Ajout du bouton de vérification")
+                self.add_item(TicketCloseAndVerifyButton(panel_data))
+            else:
+                print("DEBUG TicketConfirmCloseView: Pas de bouton de vérification ajouté")
         
         self.add_item(TicketReopenButton())
 
@@ -705,12 +732,19 @@ class TicketCloseAndVerifyButton(discord.ui.Button):
             verification_channel_id = self.panel_data.get('verification_channel')
             verification_message = self.panel_data.get('verification_message', '{user} a été vérifié avec succès !')
             
+            print(f"DEBUG: verification_channel_id = {verification_channel_id}")
+            print(f"DEBUG: verification_message = {verification_message}")
+            
             if verification_channel_id:
                 verification_channel = interaction.guild.get_channel(int(verification_channel_id))
+                print(f"DEBUG: verification_channel = {verification_channel}")
+                
                 if verification_channel:
                     message = verification_message.replace('{user}', ticket_member.mention)
                     message = message.replace('{server}', interaction.guild.name)
                     message = message.replace('{channel}', channel.mention)
+                    
+                    print(f"DEBUG: Message formaté = {message}")
                     
                     embed = discord.Embed(
                         title="✅ Membre vérifié",
@@ -720,7 +754,15 @@ class TicketCloseAndVerifyButton(discord.ui.Button):
                     )
                     embed.set_footer(text=f"Vérifié par {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
                     
-                    await verification_channel.send(embed=embed)
+                    try:
+                        await verification_channel.send(embed=embed)
+                        print("DEBUG: Message de vérification envoyé avec succès")
+                    except Exception as send_error:
+                        print(f"DEBUG: Erreur lors de l'envoi du message: {send_error}")
+                else:
+                    print("DEBUG: Canal de vérification introuvable")
+            else:
+                print("DEBUG: Pas de canal de vérification configuré")
             
             # Enregistrer l'événement
             await interaction.client.get_cog('Ticket').ticket_logger.log_ticket_event(

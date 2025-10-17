@@ -200,6 +200,28 @@
                         </div>
                     </div>
 
+                    <!-- Feur Mode (Only visible for specific guild) -->
+                    <div class="content-card" id="feurModeCard" style="display: none;">
+                        <div class="card-header">
+                            <h3 class="card-title">🎉 Mode Feur</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="settings-section">
+                                <div class="form-group">
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="feurModeEnabled" class="toggle-input" onchange="dashboard.toggleFeurMode(this.checked)">
+                                        <label for="feurModeEnabled" class="toggle-label">
+                                            <span class="toggle-text">Activer le mode Feur</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-hint">
+                                        Quand activé, le bot répondra "Feur" à chaque message se terminant par "quoi" 😄
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Charts Section -->
                     <div class="charts-grid">
                         <!-- Member Growth Chart -->
