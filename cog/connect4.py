@@ -62,16 +62,15 @@ class Connect4View(discord.ui.View):
         self.cog = cog
         self.interaction = interaction
         for i in range(CONNECT4_COLUMNS):
-            self.add_item(Connect4Button(i, self))
-        self.add_item(Connect4ForfeitButton(self))
+            self.add_item(Connect4Button(i))
+        self.add_item(Connect4ForfeitButton())
 
 class Connect4ForfeitButton(discord.ui.Button):
-    def __init__(self, view):
+    def __init__(self):
         super().__init__(label="Abandonner", style=discord.ButtonStyle.danger, row=1)
-        self.view = view
 
     async def callback(self, interaction: discord.Interaction):
-        game = self.view.game
+        game = self.view.view.game
         if game.finished:
             await interaction.response.send_message("La partie est déjà terminée.", ephemeral=True)
             return
@@ -82,7 +81,7 @@ class Connect4ForfeitButton(discord.ui.Button):
         gagnant = game.players[1] if quitter == game.players[0] else game.players[0]
         game.finished = True
         game.winner = gagnant
-        await self.view.update_message(interaction)
+        await self.view.view.update_message(interaction)
 
     async def update_message(self, interaction=None):
         embed = self.make_embed()
@@ -110,7 +109,7 @@ class Connect4ForfeitButton(discord.ui.Button):
         return embed
 
 class Connect4Button(discord.ui.Button):
-    def __init__(self, column, view):
+    def __init__(self, column):
         super().__init__(label=str(column+1), style=discord.ButtonStyle.primary)
         self.column = column
 

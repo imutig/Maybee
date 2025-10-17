@@ -53,15 +53,14 @@ class TicTacToeView(discord.ui.View):
                 btn = TicTacToeButton(r, c, self, label=EMOJIS[game.board[r][c]])
                 self.add_item(btn)
                 self.buttons.append(btn)
-        self.add_item(TicTacToeForfeitButton(self))
+    self.add_item(TicTacToeForfeitButton())
 
 class TicTacToeForfeitButton(discord.ui.Button):
-    def __init__(self, view):
+    def __init__(self):
         super().__init__(label="Abandonner", style=discord.ButtonStyle.danger, row=3)
-        self.view = view
 
     async def callback(self, interaction: discord.Interaction):
-        game = self.view.game
+        game = self.view.view.game
         if game.finished:
             await interaction.response.send_message("La partie est déjà terminée.", ephemeral=True)
             return
@@ -73,7 +72,7 @@ class TicTacToeForfeitButton(discord.ui.Button):
         gagnant = game.players[1] if quitter == game.players[0] else game.players[0]
         game.finished = True
         game.winner = gagnant
-        await self.view.update_message(interaction)
+        await self.view.view.update_message(interaction)
 
     async def update_message(self, interaction=None):
         # Met à jour les labels des boutons selon l'état du plateau
