@@ -306,6 +306,11 @@ class TicketPanel(BaseModel):
     embed_image: Optional[str] = None
     embed_footer: Optional[str] = None
     buttons: Optional[List[TicketButton]] = None
+    verification_enabled: Optional[bool] = False
+    roles_to_remove: Optional[List[str]] = None
+    roles_to_add: Optional[List[str]] = None
+    verification_channel: Optional[str] = None
+    verification_message: Optional[str] = None
 
 class TicketConfig(BaseModel):
     enabled: bool = False
@@ -701,6 +706,11 @@ async def create_ticket_tables():
         embed_thumbnail VARCHAR(512),
         embed_image VARCHAR(512),
         embed_footer TEXT,
+        verification_enabled BOOLEAN DEFAULT 0,
+        roles_to_remove JSON,
+        roles_to_add JSON,
+        verification_channel VARCHAR(20),
+        verification_message TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_guild_id (guild_id),
@@ -3643,11 +3653,19 @@ async def create_ticket_panel(
         panel_id = await database.execute_and_get_id(
             """INSERT INTO ticket_panels 
                (guild_id, panel_name, embed_title, embed_description, embed_color, 
-                embed_thumbnail, embed_image, embed_footer, created_at, updated_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-            (guild_id, panel.panel_name, panel.embed_title, panel.embed_description,
-             panel.embed_color, panel.embed_thumbnail, panel.embed_image, 
-             panel.embed_footer, datetime.utcnow(), datetime.utcnow())
+                embed_thumbnail, embed_image, embed_footer, verification_enabled, roles_to_remove, roles_to_add, verification_channel, verification_message, created_at, updated_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                guild_id, panel.panel_name, panel.embed_title, panel.embed_description,
+                panel.embed_color, panel.embed_thumbnail, panel.embed_image, 
+                panel.embed_footer,
+                int(panel.verification_enabled) if panel.verification_enabled is not None else 0,
+                json.dumps(panel.roles_to_remove) if panel.roles_to_remove else None,
+                json.dumps(panel.roles_to_add) if panel.roles_to_add else None,
+                panel.verification_channel,
+                panel.verification_message,
+                datetime.utcnow(), datetime.utcnow()
+            )
         )
         
         # Create buttons if provided
@@ -3699,11 +3717,19 @@ async def update_ticket_panel(
             """UPDATE ticket_panels SET 
                panel_name = %s, embed_title = %s, embed_description = %s,
                embed_color = %s, embed_thumbnail = %s, embed_image = %s,
-               embed_footer = %s, updated_at = %s
+               embed_footer = %s, verification_enabled = %s, roles_to_remove = %s, roles_to_add = %s, verification_channel = %s, verification_message = %s, updated_at = %s
                WHERE id = %s AND guild_id = %s""",
-            (panel.panel_name, panel.embed_title, panel.embed_description,
-             panel.embed_color, panel.embed_thumbnail, panel.embed_image,
-             panel.embed_footer, datetime.utcnow(), panel_id, guild_id)
+            (
+                panel.panel_name, panel.embed_title, panel.embed_description,
+                panel.embed_color, panel.embed_thumbnail, panel.embed_image,
+                panel.embed_footer,
+                int(panel.verification_enabled) if panel.verification_enabled is not None else 0,
+                json.dumps(panel.roles_to_remove) if panel.roles_to_remove else None,
+                json.dumps(panel.roles_to_add) if panel.roles_to_add else None,
+                panel.verification_channel,
+                panel.verification_message,
+                datetime.utcnow(), panel_id, guild_id
+            )
         )
         
         # Delete existing buttons

@@ -1214,10 +1214,10 @@
                             <!-- Ticket Panels -->
                             <div class="settings-section" id="ticketPanelsSection" style="display: none;">
                                 <div class="section-header">
-                                    <h4 class="section-title">Ticket Panels</h4>
+                                    <h4 class="section-title">Panneaux de tickets</h4>
                                     <button type="button" class="btn-primary" onclick="dashboard.createTicketPanel()">
                                         <i class="fas fa-plus me-2"></i>
-                                        Create Panel
+                                        Créer un panneau
                                     </button>
                                 </div>
                                 
@@ -1230,11 +1230,11 @@
                                     <div class="empty-icon">
                                         <i class="fas fa-ticket-alt"></i>
                                     </div>
-                                    <h4>No Ticket Panels</h4>
-                                    <p>Create your first ticket panel to get started</p>
+                                    <h4>Aucun panneau de ticket</h4>
+                                    <p>Créez votre premier panneau de ticket pour commencer</p>
                                     <button type="button" class="btn-primary" onclick="dashboard.createTicketPanel()">
                                         <i class="fas fa-plus me-2"></i>
-                                        Create First Panel
+                                        Créer le premier panneau
                                     </button>
                                 </div>
                             </div>
@@ -1243,79 +1243,79 @@
                 </div>
                 
                 <!-- Ticket Logs System -->
-                <div class="tab-pane fade" id="ticket-logs">
-                    <div class="content-card">
-                        <div class="card-header">
-                            <h3 class="card-title">
-                                <i class="fas fa-history me-2"></i>
-                                <span data-translate="ticket_logs.title">Logs de ticket</span>
-                            </h3>
-                            <p class="card-subtitle" data-translate="ticket_logs.subtitle">Consult archived ticket logs</p>
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Créer un panneau de ticket</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
-                        <div class="card-content">
-                            <!-- User Selection -->
-                            <div class="settings-section">
-                                <h4 class="section-title">
-                                    <i class="fas fa-user-search me-2"></i>
-                                    <span data-translate="ticket_logs.user_selection">User Selection</span>
-                                </h4>
+                        <div class="modal-body">
+                            <form id="createTicketPanelForm">
                                 <div class="form-group">
-                                    <label class="form-label" data-translate="ticket_logs.search_user">Search User</label>
-                                    <div class="input-group">
-                                        <input type="text" id="userSearchInput" class="form-input" data-translate="ticket_logs.search_placeholder" placeholder="Username or Discord ID">
-                                        <button type="button" class="btn-primary" onclick="dashboard.searchUser()">
-                                            <i class="fas fa-search me-2"></i>
-                                            <span data-translate="common.search">Search</span>
-                                        </button>
+                                    <label class="form-label">Nom du panneau</label>
+                                    <input type="text" id="panelName" class="form-control" placeholder="Nom du panneau" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Description du panneau</label>
+                                    <textarea id="panelDescription" class="form-control" placeholder="Description du panneau" rows="2"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Salon cible</label>
+                                    <select id="panelChannel" class="form-select" required>
+                                        <option value="">Sélectionner un salon...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Boutons du panneau</label>
+                                    <div id="panelButtonsList">
+                                        <!-- Les boutons seront ajoutés ici -->
+                                    </div>
+                                    <button type="button" class="btn-secondary" id="addPanelButton">
+                                        <i class="fas fa-plus me-2"></i>Ajouter un bouton
+                                    </button>
+                                </div>
+                                <div class="form-group">
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="panelVerification" class="toggle-input" onchange="document.getElementById('verificationOptions').style.display = this.checked ? 'block' : 'none';">
+                                        <label for="panelVerification" class="toggle-label">
+                                            <span class="toggle-text">Ce panneau sert à la vérification de membre</span>
+                                        </label>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <!-- User Results -->
-                            <div class="settings-section" id="userResultsSection" style="display: none;">
-                                <h4 class="section-title">
-                                    <i class="fas fa-search me-2"></i>
-                                    <span data-translate="ticket_logs.search_results">Search Results</span>
-                                </h4>
-                                <div id="userResultsList" class="users-list">
-                                    <!-- Users will be populated here -->
-                                </div>
-                            </div>
-                            
-                            <!-- Selected User Tickets -->
-                            <div class="settings-section" id="userTicketsSection" style="display: none;">
-                                <h4 class="section-title">
-                                    <i class="fas fa-ticket-alt me-2"></i>
-                                    <span data-translate="ticket_logs.user_tickets">User Tickets</span>
-                                </h4>
-                                <div class="user-info" id="selectedUserInfo">
-                                    <!-- Selected user info will be shown here -->
-                                </div>
-                                <div id="userTicketsList" class="tickets-list">
-                                    <!-- Tickets will be populated here -->
-                                </div>
-                                <div class="empty-state" id="noTicketsState" style="display: none;">
-                                    <div class="empty-icon">
-                                        <i class="fas fa-ticket-alt"></i>
+                                <div id="verificationOptions" style="display: none;">
+                                    <div class="form-group">
+                                        <label class="form-label">Rôles à retirer lors de la vérification</label>
+                                        <select id="rolesToRemove" class="form-select" multiple>
+                                            <!-- Options dynamiques -->
+                                        </select>
                                     </div>
-                                    <h4 data-translate="ticket_logs.no_tickets_found">No tickets found</h4>
-                                    <p data-translate="ticket_logs.no_tickets_description">This user hasn't created any tickets yet</p>
+                                    <div class="form-group">
+                                        <label class="form-label">Rôles à ajouter lors de la vérification</label>
+                                        <select id="rolesToAdd" class="form-select" multiple>
+                                            <!-- Options dynamiques -->
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Salon pour le message de vérification</label>
+                                        <select id="verificationChannel" class="form-select">
+                                            <option value="">Sélectionner un salon...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Message à envoyer lors de la vérification</label>
+                                        <textarea id="verificationMessage" class="form-control" placeholder="{user} a été vérifié !" rows="2"></textarea>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <!-- Ticket Details Modal -->
-                            <div class="modal fade" id="ticketDetailsModal" tabindex="-1">
-                                <div class="modal-dialog modal-xl">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="ticketDetailsModalTitle" data-translate="ticket_logs.ticket_details">Ticket Details</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div id="ticketDetailsContent">
-                                                <!-- Ticket details will be loaded here -->
-                                            </div>
-                                        </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn-primary">
+                                        <i class="fas fa-save me-2"></i>Créer le panneau
+                                    </button>
+                                    <button type="button" class="btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn-outline" data-bs-dismiss="modal" data-translate="common.close">Close</button>
                                         </div>

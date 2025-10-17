@@ -3085,13 +3085,33 @@ class Dashboard {
         document.getElementById('ticketEmbedColor').value = panelData.embed_color;
         document.getElementById('ticketEmbedThumbnail').value = panelData.embed_thumbnail || '';
         document.getElementById('ticketEmbedFooter').value = panelData.embed_footer || '';
-        
+
+        // Verification options
+        document.getElementById('panelVerification').checked = panelData.verification_enabled || false;
+        // Roles to remove
+        const rolesToRemove = document.getElementById('rolesToRemove');
+        if (rolesToRemove && Array.isArray(panelData.roles_to_remove)) {
+            Array.from(rolesToRemove.options).forEach(opt => {
+                opt.selected = panelData.roles_to_remove.includes(opt.value);
+            });
+        }
+        // Roles to add
+        const rolesToAdd = document.getElementById('rolesToAdd');
+        if (rolesToAdd && Array.isArray(panelData.roles_to_add)) {
+            Array.from(rolesToAdd.options).forEach(opt => {
+                opt.selected = panelData.roles_to_add.includes(opt.value);
+            });
+        }
+        // Channel and message
+        document.getElementById('verificationChannel').value = panelData.verification_channel || '';
+        document.getElementById('verificationMessage').value = panelData.verification_message || '';
+
         document.getElementById('ticketPanelModalTitle').textContent = 'Edit Ticket Panel';
-        
+
         // Clear and populate buttons
         const buttonsList = document.getElementById('ticketButtonsList');
         buttonsList.innerHTML = '';
-        
+
         if (panelData.buttons && panelData.buttons.length > 0) {
             panelData.buttons.forEach(buttonData => {
                 this.addTicketButton(buttonData);
@@ -3099,7 +3119,7 @@ class Dashboard {
         } else {
             this.addTicketButton();
         }
-        
+
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('ticketPanelModal'));
         modal.show();
@@ -3172,7 +3192,12 @@ class Dashboard {
                 embed_color: document.getElementById('ticketEmbedColor').value,
                 embed_thumbnail: document.getElementById('ticketEmbedThumbnail').value || null,
                 embed_footer: document.getElementById('ticketEmbedFooter').value || null,
-                buttons: []
+                buttons: [],
+                verification_enabled: document.getElementById('panelVerification').checked,
+                roles_to_remove: Array.from(document.getElementById('rolesToRemove').selectedOptions).map(opt => opt.value),
+                roles_to_add: Array.from(document.getElementById('rolesToAdd').selectedOptions).map(opt => opt.value),
+                verification_channel: document.getElementById('verificationChannel').value,
+                verification_message: document.getElementById('verificationMessage').value
             };
             
             // Collect button data
