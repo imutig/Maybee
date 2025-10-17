@@ -53,14 +53,26 @@ class TicTacToeView(discord.ui.View):
                 btn = TicTacToeButton(r, c, self, label=EMOJIS[game.board[r][c]])
                 self.add_item(btn)
                 self.buttons.append(btn)
-    self.add_item(TicTacToeForfeitButton())
+        self.add_item(TicTacToeForfeitButton())
 
 class TicTacToeForfeitButton(discord.ui.Button):
     def __init__(self):
         super().__init__(label="Abandonner", style=discord.ButtonStyle.danger, row=3)
 
     async def callback(self, interaction: discord.Interaction):
-        game = self.view.view.game
+        game = self.view.game
+        if game.finished:
+            await interaction.response.send_message("La partie est déjà terminée.", ephemeral=True)
+            return
+        # Seul un joueur peut abandonner
+        if interaction.user not in game.players:
+            await interaction.response.send_message("Vous ne jouez pas dans cette partie.", ephemeral=True)
+            return
+        quitter = interaction.user
+        gagnant = game.players[1] if quitter == game.players[0] else game.players[0]
+        game.finished = True
+        game.winner = gagnant
+        await self.view.update_message(interaction)
         if game.finished:
             await interaction.response.send_message("La partie est déjà terminée.", ephemeral=True)
             return

@@ -4,15 +4,36 @@ from discord.ext import commands
 import random
 import aiohttp
 
+import csv
+import os
+
+def charger_mots_fr():
+    chemin = os.path.join(os.path.dirname(__file__), 'motsfr.csv')
+    mots = set()
+    with open(chemin, encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        # Trouver la colonne "ortho" même si BOM ou casse
+        ortho_col = None
+        for col in reader.fieldnames:
+            if col.strip().lower() == 'ortho':
+                ortho_col = col
+                break
+        if not ortho_col:
+            raise Exception("Colonne 'ortho' non trouvée dans motsfr.csv")
+        for row in reader:
+            mot = row[ortho_col].strip().lower()
+            if len(mot) == 5 and mot.isalpha():
+                mots.add(mot)
+    return list(mots)
+
+MOTS_FR = charger_mots_fr()
+
 WORD_LENGTH = 5
 MAX_ATTEMPTS = 6
 
 async def get_random_word():
-    # Utilise l'API https://random-word-api.herokuapp.com/word?length=5
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f"https://random-word-api.herokuapp.com/word?length={WORD_LENGTH}") as resp:
-            data = await resp.json()
-            return data[0].lower()
+    # Choisit un mot français de 5 lettres depuis le fichier
+    return random.choice(MOTS_FR)
 
 class WordleGame:
     def __init__(self, word):
@@ -51,19 +72,15 @@ class WordleGame:
         return result
 
     def render(self):
-        # Emoji rendering
         color_map = {'green': '🟩', 'yellow': '🟨', 'grey': '⬜'}
         lines = []
-        for attempt in self.attempts:
-            line = ''
-            for letter, color in attempt:
-                if color:
-                    line += color_map[color] + letter.upper()
-                else:
-                    line += '⬜' + letter.upper()
-            lines.append(line)
-        for _ in range(MAX_ATTEMPTS - len(self.attempts)):
-            lines.append('⬜' * WORD_LENGTH * 2)
+        for idx, attempt in enumerate(self.attempts, 1):
+            mot = ''.join(l.upper() for l, _ in attempt)
+            schema = ''.join(color_map[c] for _, c in attempt)
+            # Utilise un bloc de code pour aligner
+            lines.append(f"{idx}. `{mot}`\n   {schema}")
+        for i in range(len(self.attempts)+1, MAX_ATTEMPTS+1):
+            lines.append(f"{i}. `-----`\n   {'⬜'*WORD_LENGTH}")
         return '\n'.join(lines)
 
 class WordleView(discord.ui.View):
@@ -71,8 +88,9 @@ class WordleView(discord.ui.View):
         super().__init__(timeout=300)
         self.game = game
         self.interaction = interaction
-        self.add_item(WordleGuessModalButton(self))
-        self.add_item(WordleForfeitButton(self))
+        # Ajout des boutons après la définition des classes
+        # Les boutons seront ajoutés dans Wordle.__init__ après la définition des classes
+
 
     async def update_message(self, interaction=None):
         embed = self.make_embed()
@@ -95,9 +113,8 @@ class WordleView(discord.ui.View):
         return embed
 
 class WordleGuessModalButton(discord.ui.Button):
-    def __init__(self, view):
+    def __init__(self):
         super().__init__(label="Proposer un mot", style=discord.ButtonStyle.primary)
-        self.view = view
 
     async def callback(self, interaction: discord.Interaction):
         if self.view.game.finished:
@@ -109,15 +126,14 @@ class WordleGuessModal(discord.ui.Modal, title="Proposer un mot"):
     guess = discord.ui.TextInput(label="Mot de 5 lettres", min_length=5, max_length=5)
     def __init__(self, view):
         super().__init__()
-        self.view = view
+        self._view = view
     async def on_submit(self, interaction: discord.Interaction):
-        result = self.view.game.guess(self.guess.value)
-        await self.view.update_message(interaction)
+        result = self._view.game.guess(self.guess.value)
+        await self._view.update_message(interaction)
 
 class WordleForfeitButton(discord.ui.Button):
-    def __init__(self, view):
+    def __init__(self):
         super().__init__(label="Abandonner", style=discord.ButtonStyle.danger)
-        self.view = view
     async def callback(self, interaction: discord.Interaction):
         if self.view.game.finished:
             await interaction.response.send_message("La partie est déjà terminée.", ephemeral=True)
@@ -134,6 +150,8 @@ class Wordle(commands.Cog):
         word = await get_random_word()
         game = WordleGame(word)
         view = WordleView(game, interaction)
+        view.add_item(WordleGuessModalButton())
+        view.add_item(WordleForfeitButton())
         await interaction.response.send_message(embed=view.make_embed(), view=view)
 
 async def setup(bot):

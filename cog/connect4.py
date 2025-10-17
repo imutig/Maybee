@@ -56,6 +56,19 @@ class Connect4Game:
         return '\n'.join(rows)
 
 class Connect4View(discord.ui.View):
+    def make_embed(self):
+        embed = discord.Embed(title="Puissance 4", color=discord.Color.gold())
+        embed.description = f"{self.game.render()}"
+        embed.add_field(name="Joueurs", value=f"🔴 {self.game.players[0].mention}  vs  🟡 {self.game.players[1].mention}", inline=False)
+        if self.game.last_col is not None:
+            embed.add_field(name="Dernière colonne jouée", value=f"{self.game.last_col+1}", inline=True)
+        if self.game.finished:
+            embed.add_field(name="Résultat", value=f"Victoire de {self.game.winner.mention} !", inline=False)
+        else:
+            embed.add_field(name="Tour", value=f"C'est au tour de {self.game.players[self.game.turn].mention}", inline=False)
+        embed.set_thumbnail(url=self.game.players[self.game.turn].display_avatar.url)
+        embed.set_footer(text="Connect4 Discord")
+        return embed
     def __init__(self, game, cog, interaction):
         super().__init__(timeout=180)
         self.game = game
@@ -70,7 +83,7 @@ class Connect4ForfeitButton(discord.ui.Button):
         super().__init__(label="Abandonner", style=discord.ButtonStyle.danger, row=1)
 
     async def callback(self, interaction: discord.Interaction):
-        game = self.view.view.game
+        game = self.view.game
         if game.finished:
             await interaction.response.send_message("La partie est déjà terminée.", ephemeral=True)
             return
@@ -81,7 +94,7 @@ class Connect4ForfeitButton(discord.ui.Button):
         gagnant = game.players[1] if quitter == game.players[0] else game.players[0]
         game.finished = True
         game.winner = gagnant
-        await self.view.view.update_message(interaction)
+        await self.view.update_message(interaction)
 
     async def update_message(self, interaction=None):
         embed = self.make_embed()
@@ -124,21 +137,20 @@ class Connect4Button(discord.ui.Button):
         if not game.drop_piece(self.column):
             await interaction.response.send_message("Cette colonne est pleine.", ephemeral=True)
             return
-        await self.view.update_message(interaction)
+        await interaction.response.edit_message(embed=self.view.make_embed(), view=(None if game.finished else self.view))
         # Si c'est au bot de jouer et la partie n'est pas finie
         if not game.finished and game.players[game.turn].bot:
             await self.bot_play()
 
     async def bot_play(self):
         game = self.view.game
-        # Cherche toutes les colonnes non pleines
         valid_cols = [col for col in range(CONNECT4_COLUMNS) if any(game.board[row][col] == 0 for row in range(CONNECT4_ROWS))]
         if not valid_cols:
             return
         import random
         col = random.choice(valid_cols)
         game.drop_piece(col)
-        await self.view.update_message()
+        await self.view.interaction.edit_original_response(embed=self.view.make_embed(), view=(None if game.finished else self.view))
 
 class Connect4(commands.Cog):
     def __init__(self, bot):
