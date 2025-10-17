@@ -481,6 +481,15 @@ class TicketCloseButton(discord.ui.Button):
             await interaction.response.send_message(_('ticket_system.not_a_ticket', user_id, guild_id), ephemeral=True)
             return
         
+        # Récupérer les données du panel pour les options de vérification
+        panel_data = None
+        if ticket_data.get('panel_id'):
+            panel_data = await interaction.client.db.query(
+                "SELECT * FROM ticket_panels WHERE id = %s AND guild_id = %s",
+                (ticket_data['panel_id'], str(guild_id)),
+                fetchone=True
+            )
+        
         # Retirer les permissions du créateur du ticket
         ticket_creator_id = int(ticket_data['user_id'])
         ticket_creator = interaction.guild.get_member(ticket_creator_id)
@@ -504,8 +513,8 @@ class TicketCloseButton(discord.ui.Button):
         )
         embed.set_footer(text=_('ticket_system.closed_by', user_id, guild_id, user=interaction.user), icon_url=interaction.user.display_avatar.url)
         
-        # Créer la vue de confirmation
-        view = TicketConfirmCloseView(interaction.user.id)
+        # Créer la vue de confirmation avec les données du panel
+        view = TicketConfirmCloseView(interaction.user.id, panel_data)
         
         await interaction.response.send_message(embed=embed, view=view)
         
@@ -526,10 +535,16 @@ class TicketPanelView(discord.ui.View):
 class TicketConfirmCloseView(discord.ui.View):
     """Vue de confirmation pour la suppression définitive du ticket"""
     
-    def __init__(self, closer_id: int):
+    def __init__(self, closer_id: int, panel_data: dict = None):
         super().__init__(timeout=300)  # 5 minutes de timeout
         self.closer_id = closer_id
+        self.panel_data = panel_data
         self.add_item(TicketConfirmDeleteButton())
+        
+        # Ajouter le bouton de vérification si le panel a l'option de vérification activée
+        if panel_data and panel_data.get('verification_enabled'):
+            self.add_item(TicketCloseAndVerifyButton(panel_data))
+        
         self.add_item(TicketReopenButton())
 
 class TicketConfirmDeleteButton(discord.ui.Button):
@@ -537,7 +552,7 @@ class TicketConfirmDeleteButton(discord.ui.Button):
     
     def __init__(self):
         super().__init__(style=discord.ButtonStyle.danger,
-                         label=_('ticket_system.delete_permanently', 0, 0),
+                         label="Fermer définitivement",
                          custom_id="confirm_delete_ticket")
     
     async def callback(self, interaction: discord.Interaction):
@@ -614,12 +629,134 @@ class TicketConfirmDeleteButton(discord.ui.Button):
         await asyncio.sleep(2)
         await channel.delete(reason=f"Ticket deleted by {interaction.user}")
 
+class TicketCloseAndVerifyButton(discord.ui.Button):
+    """Bouton pour fermer le ticket et vérifier le membre"""
+    
+    def __init__(self, panel_data: dict):
+        super().__init__(style=discord.ButtonStyle.primary,
+                         label="Fermer et vérifier le membre",
+                         custom_id="close_and_verify_ticket")
+        self.panel_data = panel_data
+    
+    async def callback(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
+        # Vérifier si l'utilisateur a le rôle vérificateur
+        verifier_role_id = self.panel_data.get('verifier_role_id')
+        if verifier_role_id:
+            has_role = any(role.id == int(verifier_role_id) for role in interaction.user.roles)
+            if not has_role and not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(
+                    "❌ Vous n'avez pas le rôle nécessaire pour vérifier des membres.", 
+                    ephemeral=True
+                )
+                return
+        
+        channel = interaction.channel
+        
+        # Récupérer les données du ticket
+        ticket_data = await interaction.client.db.query(
+            "SELECT * FROM active_tickets WHERE channel_id = %s AND guild_id = %s",
+            (str(channel.id), str(guild_id)),
+            fetchone=True
+        )
+        
+        if not ticket_data:
+            await interaction.response.send_message("❌ Ticket introuvable dans la base de données.", ephemeral=True)
+            return
+        
+        # Récupérer le membre du ticket
+        ticket_user_id = int(ticket_data['user_id'])
+        ticket_member = interaction.guild.get_member(ticket_user_id)
+        
+        if not ticket_member:
+            await interaction.response.send_message("❌ Le membre du ticket est introuvable.", ephemeral=True)
+            return
+        
+        try:
+            # Retirer les rôles spécifiés
+            roles_to_remove = self.panel_data.get('roles_to_remove', [])
+            if roles_to_remove:
+                try:
+                    roles_to_remove = json.loads(roles_to_remove) if isinstance(roles_to_remove, str) else roles_to_remove
+                except:
+                    roles_to_remove = []
+                
+                for role_id in roles_to_remove:
+                    role = interaction.guild.get_role(int(role_id))
+                    if role and role in ticket_member.roles:
+                        await ticket_member.remove_roles(role)
+            
+            # Ajouter les rôles spécifiés
+            roles_to_add = self.panel_data.get('roles_to_add', [])
+            if roles_to_add:
+                try:
+                    roles_to_add = json.loads(roles_to_add) if isinstance(roles_to_add, str) else roles_to_add
+                except:
+                    roles_to_add = []
+                
+                for role_id in roles_to_add:
+                    role = interaction.guild.get_role(int(role_id))
+                    if role and role not in ticket_member.roles:
+                        await ticket_member.add_roles(role)
+            
+            # Envoyer le message de vérification
+            verification_channel_id = self.panel_data.get('verification_channel')
+            verification_message = self.panel_data.get('verification_message', '{user} a été vérifié avec succès !')
+            
+            if verification_channel_id:
+                verification_channel = interaction.guild.get_channel(int(verification_channel_id))
+                if verification_channel:
+                    message = verification_message.replace('{user}', ticket_member.mention)
+                    message = message.replace('{server}', interaction.guild.name)
+                    message = message.replace('{channel}', channel.mention)
+                    
+                    embed = discord.Embed(
+                        title="✅ Membre vérifié",
+                        description=message,
+                        color=discord.Color.green(),
+                        timestamp=datetime.utcnow()
+                    )
+                    embed.set_footer(text=f"Vérifié par {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+                    
+                    await verification_channel.send(embed=embed)
+            
+            # Enregistrer l'événement
+            await interaction.client.get_cog('Ticket').ticket_logger.log_ticket_event(
+                guild_id, channel.id, "verified", user_id, interaction.user.display_name,
+                f"Membre {ticket_member.display_name} vérifié et ticket fermé par {interaction.user.display_name}"
+            )
+            
+            # Supprimer le ticket de la base de données
+            await interaction.client.db.execute(
+                "DELETE FROM active_tickets WHERE channel_id = %s AND guild_id = %s",
+                (str(channel.id), str(guild_id))
+            )
+            
+            # Finaliser et uploader les logs
+            ticket_cog = interaction.client.get_cog('Ticket')
+            file_id = await ticket_cog.ticket_logger.finalize_ticket_logs(guild_id, channel.id)
+            
+            await interaction.response.send_message(
+                f"✅ Membre {ticket_member.mention} vérifié avec succès ! Le ticket sera supprimé dans 5 secondes.", 
+                ephemeral=True
+            )
+            
+            # Supprimer le canal après 5 secondes
+            await asyncio.sleep(5)
+            await channel.delete(reason=f"Ticket fermé et membre vérifié par {interaction.user}")
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la vérification du membre: {e}")
+            await interaction.response.send_message(f"❌ Erreur lors de la vérification: {str(e)}", ephemeral=True)
+
 class TicketReopenButton(discord.ui.Button):
     """Bouton pour rouvrir le ticket"""
     
     def __init__(self):
         super().__init__(style=discord.ButtonStyle.green,
-                         label=_('ticket_system.reopen_ticket', 0, 0),
+                         label="Réouvrir le ticket",
                          custom_id="reopen_ticket")
     
     async def callback(self, interaction: discord.Interaction):

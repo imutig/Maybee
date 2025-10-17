@@ -102,6 +102,7 @@ async def lifespan(app: FastAPI):
     await create_level_up_config_table()  # Add level up config table
     await migrate_level_up_config_show_avatar()  # Add show_user_avatar column
     await migrate_xp_data_message_count()  # Add message_count column
+    await migrate_ticket_panels_verification()  # Add verification workflow columns
     yield
     # Shutdown
     if database:
@@ -311,6 +312,7 @@ class TicketPanel(BaseModel):
     roles_to_add: Optional[List[str]] = None
     verification_channel: Optional[str] = None
     verification_message: Optional[str] = None
+    verifier_role_id: Optional[str] = None
 
 class TicketConfig(BaseModel):
     enabled: bool = False
@@ -711,6 +713,7 @@ async def create_ticket_tables():
         roles_to_add JSON,
         verification_channel VARCHAR(20),
         verification_message TEXT,
+        verifier_role_id VARCHAR(20),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_guild_id (guild_id),
@@ -906,6 +909,43 @@ async def migrate_xp_data_message_count():
             
     except Exception as e:
         print(f"⚠️ Migration error for message_count: {e}")
+
+async def migrate_ticket_panels_verification():
+    """Add verification workflow columns to ticket_panels table"""
+    try:
+        columns_to_add = [
+            ('verification_enabled', 'BOOLEAN DEFAULT 0 AFTER embed_footer'),
+            ('roles_to_remove', 'JSON AFTER verification_enabled'),
+            ('roles_to_add', 'JSON AFTER roles_to_remove'),
+            ('verification_channel', 'VARCHAR(20) AFTER roles_to_add'),
+            ('verification_message', 'TEXT AFTER verification_channel'),
+            ('verifier_role_id', 'VARCHAR(20) AFTER verification_message')
+        ]
+        
+        for column_name, column_definition in columns_to_add:
+            # Check if column exists
+            check_query = f"""
+            SELECT COLUMN_NAME 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'ticket_panels' 
+            AND COLUMN_NAME = '{column_name}'
+            """
+            
+            result = await database.fetch_one(check_query)
+            
+            if not result:
+                print(f"🔧 Adding {column_name} column to ticket_panels table...")
+                await database.execute(f"""
+                    ALTER TABLE ticket_panels 
+                    ADD COLUMN {column_name} {column_definition}
+                """)
+                print(f"✅ Added {column_name} column")
+            else:
+                print(f"✅ {column_name} column already exists")
+                
+    except Exception as e:
+        print(f"⚠️ Migration error for ticket_panels verification columns: {e}")
 
 async def migrate_welcome_config_table():
     """Add missing columns to existing welcome_config table"""
@@ -3653,8 +3693,8 @@ async def create_ticket_panel(
         panel_id = await database.execute_and_get_id(
             """INSERT INTO ticket_panels 
                (guild_id, panel_name, embed_title, embed_description, embed_color, 
-                embed_thumbnail, embed_image, embed_footer, verification_enabled, roles_to_remove, roles_to_add, verification_channel, verification_message, created_at, updated_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                embed_thumbnail, embed_image, embed_footer, verification_enabled, roles_to_remove, roles_to_add, verification_channel, verification_message, verifier_role_id, created_at, updated_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (
                 guild_id, panel.panel_name, panel.embed_title, panel.embed_description,
                 panel.embed_color, panel.embed_thumbnail, panel.embed_image, 
@@ -3664,6 +3704,7 @@ async def create_ticket_panel(
                 json.dumps(panel.roles_to_add) if panel.roles_to_add else None,
                 panel.verification_channel,
                 panel.verification_message,
+                panel.verifier_role_id,
                 datetime.utcnow(), datetime.utcnow()
             )
         )
@@ -3717,7 +3758,7 @@ async def update_ticket_panel(
             """UPDATE ticket_panels SET 
                panel_name = %s, embed_title = %s, embed_description = %s,
                embed_color = %s, embed_thumbnail = %s, embed_image = %s,
-               embed_footer = %s, verification_enabled = %s, roles_to_remove = %s, roles_to_add = %s, verification_channel = %s, verification_message = %s, updated_at = %s
+               embed_footer = %s, verification_enabled = %s, roles_to_remove = %s, roles_to_add = %s, verification_channel = %s, verification_message = %s, verifier_role_id = %s, updated_at = %s
                WHERE id = %s AND guild_id = %s""",
             (
                 panel.panel_name, panel.embed_title, panel.embed_description,
@@ -3728,6 +3769,7 @@ async def update_ticket_panel(
                 json.dumps(panel.roles_to_add) if panel.roles_to_add else None,
                 panel.verification_channel,
                 panel.verification_message,
+                panel.verifier_role_id,
                 datetime.utcnow(), panel_id, guild_id
             )
         )

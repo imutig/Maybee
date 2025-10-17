@@ -3104,6 +3104,11 @@ class Dashboard {
         // Show/hide verification options based on checkbox
         document.getElementById('verificationOptions').style.display = panelData.verification_enabled ? 'block' : 'none';
         
+        // Set verifier role (after populate)
+        setTimeout(() => {
+            document.getElementById('verifierRole').value = panelData.verifier_role_id || '';
+        }, 100);
+        
         // Set roles to remove (after populate)
         if (Array.isArray(panelData.roles_to_remove)) {
             setTimeout(() => {
@@ -3222,6 +3227,7 @@ class Dashboard {
                 embed_footer: document.getElementById('ticketEmbedFooter').value || null,
                 buttons: [],
                 verification_enabled: document.getElementById('panelVerification').checked,
+                verifier_role_id: document.getElementById('verifierRole').value || null,
                 roles_to_remove: Array.from(document.getElementById('rolesToRemove').selectedOptions).map(opt => opt.value),
                 roles_to_add: Array.from(document.getElementById('rolesToAdd').selectedOptions).map(opt => opt.value),
                 verification_channel: document.getElementById('verificationChannel').value,
@@ -3333,8 +3339,9 @@ class Dashboard {
     populateVerificationRoleSelects() {
         const rolesToRemove = document.getElementById('rolesToRemove');
         const rolesToAdd = document.getElementById('rolesToAdd');
+        const verifierRole = document.getElementById('verifierRole');
         
-        if (!rolesToRemove || !rolesToAdd) {
+        if (!rolesToRemove || !rolesToAdd || !verifierRole) {
             console.warn('Verification role selects not found');
             return;
         }
@@ -3342,6 +3349,7 @@ class Dashboard {
         // Clear existing options
         rolesToRemove.innerHTML = '';
         rolesToAdd.innerHTML = '';
+        verifierRole.innerHTML = '<option value="">Aucun (tous les modérateurs peuvent vérifier)</option>';
         
         // Populate with available roles
         if (this.roles && this.roles.length > 0) {
@@ -3358,6 +3366,12 @@ class Dashboard {
                     optionAdd.value = role.id;
                     optionAdd.textContent = role.name;
                     rolesToAdd.appendChild(optionAdd);
+                    
+                    // Add to "verifier" select
+                    const optionVerifier = document.createElement('option');
+                    optionVerifier.value = role.id;
+                    optionVerifier.textContent = role.name;
+                    verifierRole.appendChild(optionVerifier);
                 }
             });
         }

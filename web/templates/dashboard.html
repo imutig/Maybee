@@ -1561,6 +1561,14 @@
 
                             <div id="verificationOptions" style="display: none;">
                                 <div class="form-group">
+                                    <label class="form-label">Rôle vérificateur</label>
+                                    <select id="verifierRole" class="form-select">
+                                        <option value="">Aucun (tous les modérateurs peuvent vérifier)</option>
+                                    </select>
+                                    <div class="form-hint">Seuls les membres avec ce rôle pourront vérifier les membres</div>
+                                </div>
+
+                                <div class="form-group">
                                     <label class="form-label">Rôles à retirer lors de la vérification</label>
                                     <select id="rolesToRemove" class="form-select" multiple>
                                         <!-- Options dynamiques -->
