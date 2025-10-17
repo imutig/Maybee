@@ -47,27 +47,45 @@ class TicTacToeView(discord.ui.View):
         super().__init__(timeout=120)
         self.game = game
         self.interaction = interaction
+        self.buttons = []
         for r in range(3):
             for c in range(3):
-                self.add_item(TicTacToeButton(r, c, self))
+                btn = TicTacToeButton(r, c, self, label=EMOJIS[game.board[r][c]])
+                self.add_item(btn)
+                self.buttons.append(btn)
 
-    async def update_message(self):
-        content = f"TicTacToe : {self.game.players[0].mention} vs {self.game.players[1].mention}\n{self.game.render()}"
+    async def update_message(self, interaction=None):
+        # Met à jour les labels des boutons selon l'état du plateau
+        for btn in self.buttons:
+            btn.label = EMOJIS[self.game.board[btn.row][btn.col]]
+            btn.disabled = self.game.board[btn.row][btn.col] != 0 or self.game.finished
+        embed = self.make_embed()
+        if interaction:
+            await interaction.response.edit_message(embed=embed, view=(None if self.game.finished else self))
+        else:
+            await self.interaction.edit_original_response(embed=embed, view=(None if self.game.finished else self))
+
+    def make_embed(self):
+        embed = discord.Embed(title="TicTacToe", color=discord.Color.blurple())
+        embed.description = f"{self.game.render()}"
+        embed.add_field(name="Joueurs", value=f"❌ {self.game.players[0].mention}  vs  ⭕ {self.game.players[1].mention}", inline=False)
         if self.game.finished:
             if self.game.winner:
-                content += f"\nVictoire de {self.game.winner.mention} !"
+                embed.add_field(name="Résultat", value=f"Victoire de {self.game.winner.mention} !", inline=False)
             else:
-                content += "\nMatch nul !"
+                embed.add_field(name="Résultat", value="Match nul !", inline=False)
         else:
-            content += f"\nC'est au tour de {self.game.players[self.game.turn].mention} !"
-        await self.interaction.edit_original_response(content=content, view=(None if self.game.finished else self))
+            embed.add_field(name="Tour", value=f"C'est au tour de {self.game.players[self.game.turn].mention}", inline=False)
+        embed.set_thumbnail(url=self.game.players[self.game.turn].display_avatar.url)
+        embed.set_footer(text="TicTacToe Discord")
+        return embed
 
+import random
 class TicTacToeButton(discord.ui.Button):
-    def __init__(self, row, col, view):
-        super().__init__(label="", style=discord.ButtonStyle.secondary, row=row)
+    def __init__(self, row, col, view, label):
+        super().__init__(label=label, style=discord.ButtonStyle.secondary, row=row)
         self.row = row
         self.col = col
-        self.view = view
 
     async def callback(self, interaction: discord.Interaction):
         game = self.view.game
@@ -80,6 +98,18 @@ class TicTacToeButton(discord.ui.Button):
         if not game.play(self.row, self.col):
             await interaction.response.send_message("Case déjà prise.", ephemeral=True)
             return
+        await self.view.update_message(interaction)
+        # Si c'est au bot de jouer et la partie n'est pas finie
+        if not game.finished and game.players[game.turn].bot:
+            await self.bot_play()
+
+    async def bot_play(self):
+        game = self.view.game
+        empty = [(r, c) for r in range(3) for c in range(3) if game.board[r][c] == 0]
+        if not empty:
+            return
+        row, col = random.choice(empty)
+        game.play(row, col)
         await self.view.update_message()
 
 class TicTacToe(commands.Cog):
@@ -87,13 +117,13 @@ class TicTacToe(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="tictactoe", description="Jouer à TicTacToe contre un joueur ou le bot")
-    @app_commands.describe(opponent="Mentionnez un joueur ou choisissez 'bot'")
+    @app_commands.describe(opponent="Mentionnez un joueur (optionnel, par défaut le bot)")
     async def tictactoe(self, interaction: discord.Interaction, opponent: discord.User = None):
         player1 = interaction.user
-        player2 = opponent if opponent else self.bot.user
+        player2 = opponent if opponent is not None else self.bot.user
         game = TicTacToeGame(player1, player2)
         view = TicTacToeView(game, interaction)
-        await interaction.response.send_message(f"TicTacToe : {player1.mention} vs {player2.mention}\n{game.render()}\nC'est au tour de {game.players[game.turn].mention} !", view=view)
+        await interaction.response.send_message(embed=view.make_embed(), view=view)
 
 async def setup(bot):
     await bot.add_cog(TicTacToe(bot))

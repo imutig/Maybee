@@ -59,19 +59,33 @@ class Connect4View(discord.ui.View):
         for i in range(CONNECT4_COLUMNS):
             self.add_item(Connect4Button(i, self))
 
-    async def update_message(self):
-        content = f"Puissance 4 : {self.game.players[0].mention} vs {self.game.players[1].mention}\n{self.game.render()}"
-        if self.game.finished:
-            content += f"\nVictoire de {self.game.winner.mention} !"
+    async def update_message(self, interaction=None):
+        embed = self.make_embed()
+        for btn in self.children:
+            if isinstance(btn, Connect4Button):
+                col_full = all(self.game.board[row][btn.column] != 0 for row in range(CONNECT4_ROWS))
+                btn.disabled = self.game.finished or col_full
+        if interaction:
+            await interaction.response.edit_message(embed=embed, view=(None if self.game.finished else self))
         else:
-            content += f"\nC'est au tour de {self.game.players[self.game.turn].mention} !"
-        await self.interaction.edit_original_response(content=content, view=(None if self.game.finished else self))
+            await self.interaction.edit_original_response(embed=embed, view=(None if self.game.finished else self))
+
+    def make_embed(self):
+        embed = discord.Embed(title="Puissance 4", color=discord.Color.gold())
+        embed.description = f"{self.game.render()}"
+        embed.add_field(name="Joueurs", value=f"🔴 {self.game.players[0].mention}  vs  🟡 {self.game.players[1].mention}", inline=False)
+        if self.game.finished:
+            embed.add_field(name="Résultat", value=f"Victoire de {self.game.winner.mention} !", inline=False)
+        else:
+            embed.add_field(name="Tour", value=f"C'est au tour de {self.game.players[self.game.turn].mention}", inline=False)
+        embed.set_thumbnail(url=self.game.players[self.game.turn].display_avatar.url)
+        embed.set_footer(text="Connect4 Discord")
+        return embed
 
 class Connect4Button(discord.ui.Button):
     def __init__(self, column, view):
         super().__init__(label=str(column+1), style=discord.ButtonStyle.primary)
         self.column = column
-        self.view = view
 
     async def callback(self, interaction: discord.Interaction):
         game = self.view.game
@@ -84,6 +98,20 @@ class Connect4Button(discord.ui.Button):
         if not game.drop_piece(self.column):
             await interaction.response.send_message("Cette colonne est pleine.", ephemeral=True)
             return
+        await self.view.update_message(interaction)
+        # Si c'est au bot de jouer et la partie n'est pas finie
+        if not game.finished and game.players[game.turn].bot:
+            await self.bot_play()
+
+    async def bot_play(self):
+        game = self.view.game
+        # Cherche toutes les colonnes non pleines
+        valid_cols = [col for col in range(CONNECT4_COLUMNS) if any(game.board[row][col] == 0 for row in range(CONNECT4_ROWS))]
+        if not valid_cols:
+            return
+        import random
+        col = random.choice(valid_cols)
+        game.drop_piece(col)
         await self.view.update_message()
 
 class Connect4(commands.Cog):
@@ -92,14 +120,14 @@ class Connect4(commands.Cog):
         self.active_games = {}
 
     @app_commands.command(name="connect4", description="Jouer à Puissance 4 contre un joueur ou le bot")
-    @app_commands.describe(opponent="Mentionnez un joueur ou choisissez 'bot'")
+    @app_commands.describe(opponent="Mentionnez un joueur (optionnel, par défaut le bot)")
     async def connect4(self, interaction: discord.Interaction, opponent: discord.User = None):
         player1 = interaction.user
-        player2 = opponent if opponent else self.bot.user
+        player2 = opponent if opponent is not None else self.bot.user
         game = Connect4Game(player1, player2)
         self.active_games[interaction.channel_id] = game
         view = Connect4View(game, self, interaction)
-        await interaction.response.send_message(f"Puissance 4 : {player1.mention} vs {player2.mention}\n{game.render()}\nC'est au tour de {game.players[game.turn].mention} !", view=view)
+        await interaction.response.send_message(embed=view.make_embed(), view=view)
 
 async def setup(bot):
     await bot.add_cog(Connect4(bot))
