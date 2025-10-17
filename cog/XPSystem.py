@@ -272,8 +272,8 @@ class XPSystem(commands.Cog):
         logger.info("Voice XP loop completed")
 
     def format_voice_time(self, voice_xp: int) -> str:
-        """Convert voice XP to formatted time string (15 XP = 1 minute)"""
-        total_minutes = voice_xp // 15
+        """Convert voice XP to formatted time string (15 XP = 10 minutes)"""
+        total_minutes = (voice_xp // 15) * 10
         hours = total_minutes // 60
         minutes = total_minutes % 60
         
