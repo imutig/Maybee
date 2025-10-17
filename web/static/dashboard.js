@@ -2163,7 +2163,23 @@ class Dashboard {
         try {
             const config = await this.apiCall(`/guild/${this.currentGuild}/level-up-config`);
             // Set the channel select value
-            document.getElementById('levelUpChannel').value = config.channel_id || '';
+            // Set the channel select value after a short delay to ensure options are loaded
+            const levelUpChannelSelect = document.getElementById('levelUpChannel');
+            const setChannelValue = () => {
+                if (!config.channel_id) return;
+                // Try to set value, if not present, add it
+                if ([...levelUpChannelSelect.options].some(opt => opt.value === String(config.channel_id))) {
+                    levelUpChannelSelect.value = String(config.channel_id);
+                } else {
+                    // Add the option if missing (should not happen, but fallback)
+                    const opt = document.createElement('option');
+                    opt.value = String(config.channel_id);
+                    opt.textContent = `#Salon ${config.channel_id}`;
+                    levelUpChannelSelect.appendChild(opt);
+                    levelUpChannelSelect.value = String(config.channel_id);
+                }
+            };
+            setTimeout(setChannelValue, 100);
             // Message type
             document.getElementById('levelUpMessageType').value = config.message_type || 'embed';
             // Simple message

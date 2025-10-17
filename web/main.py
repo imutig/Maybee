@@ -1973,6 +1973,7 @@ async def send_test_levelup_message(
             target_channel = xp_config[1]
         if not target_channel:
             return {"message": "No XP or level up channel configured. Please set up a channel first.", "success": False}
+        target_channel = str(target_channel)
         
         # Send message via Discord bot
         bot_token = DISCORD_BOT_TOKEN  # Use the global variable
