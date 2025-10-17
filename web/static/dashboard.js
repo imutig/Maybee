@@ -3068,6 +3068,12 @@ class Dashboard {
         // Add first button by default
         this.addTicketButton();
         
+        // Populate verification role selects
+        this.populateVerificationRoleSelects();
+        
+        // Populate verification channel select
+        this.populateVerificationChannelSelect();
+        
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('ticketPanelModal'));
         modal.show();
@@ -3086,25 +3092,47 @@ class Dashboard {
         document.getElementById('ticketEmbedThumbnail').value = panelData.embed_thumbnail || '';
         document.getElementById('ticketEmbedFooter').value = panelData.embed_footer || '';
 
+        // Populate verification role selects first
+        this.populateVerificationRoleSelects();
+        
+        // Populate verification channel select
+        this.populateVerificationChannelSelect();
+
         // Verification options
         document.getElementById('panelVerification').checked = panelData.verification_enabled || false;
-        // Roles to remove
-        const rolesToRemove = document.getElementById('rolesToRemove');
-        if (rolesToRemove && Array.isArray(panelData.roles_to_remove)) {
-            Array.from(rolesToRemove.options).forEach(opt => {
-                opt.selected = panelData.roles_to_remove.includes(opt.value);
-            });
+        
+        // Show/hide verification options based on checkbox
+        document.getElementById('verificationOptions').style.display = panelData.verification_enabled ? 'block' : 'none';
+        
+        // Set roles to remove (after populate)
+        if (Array.isArray(panelData.roles_to_remove)) {
+            setTimeout(() => {
+                const rolesToRemove = document.getElementById('rolesToRemove');
+                if (rolesToRemove) {
+                    Array.from(rolesToRemove.options).forEach(opt => {
+                        opt.selected = panelData.roles_to_remove.includes(opt.value);
+                    });
+                }
+            }, 100);
         }
-        // Roles to add
-        const rolesToAdd = document.getElementById('rolesToAdd');
-        if (rolesToAdd && Array.isArray(panelData.roles_to_add)) {
-            Array.from(rolesToAdd.options).forEach(opt => {
-                opt.selected = panelData.roles_to_add.includes(opt.value);
-            });
+        
+        // Set roles to add (after populate)
+        if (Array.isArray(panelData.roles_to_add)) {
+            setTimeout(() => {
+                const rolesToAdd = document.getElementById('rolesToAdd');
+                if (rolesToAdd) {
+                    Array.from(rolesToAdd.options).forEach(opt => {
+                        opt.selected = panelData.roles_to_add.includes(opt.value);
+                    });
+                }
+            }, 100);
         }
-        // Channel and message
-        document.getElementById('verificationChannel').value = panelData.verification_channel || '';
-        document.getElementById('verificationMessage').value = panelData.verification_message || '';
+        
+        // Channel and message (after populate)
+        setTimeout(() => {
+            document.getElementById('verificationChannel').value = panelData.verification_channel || '';
+            document.getElementById('verificationMessage').value = panelData.verification_message || '';
+        }, 100);
 
         document.getElementById('ticketPanelModalTitle').textContent = 'Edit Ticket Panel';
 
@@ -3300,6 +3328,61 @@ class Dashboard {
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('deployPanelModal'));
         modal.show();
+    }
+
+    populateVerificationRoleSelects() {
+        const rolesToRemove = document.getElementById('rolesToRemove');
+        const rolesToAdd = document.getElementById('rolesToAdd');
+        
+        if (!rolesToRemove || !rolesToAdd) {
+            console.warn('Verification role selects not found');
+            return;
+        }
+        
+        // Clear existing options
+        rolesToRemove.innerHTML = '';
+        rolesToAdd.innerHTML = '';
+        
+        // Populate with available roles
+        if (this.roles && this.roles.length > 0) {
+            this.roles.forEach(role => {
+                if (role.name !== '@everyone' && !role.managed) {
+                    // Add to "remove" select
+                    const optionRemove = document.createElement('option');
+                    optionRemove.value = role.id;
+                    optionRemove.textContent = role.name;
+                    rolesToRemove.appendChild(optionRemove);
+                    
+                    // Add to "add" select
+                    const optionAdd = document.createElement('option');
+                    optionAdd.value = role.id;
+                    optionAdd.textContent = role.name;
+                    rolesToAdd.appendChild(optionAdd);
+                }
+            });
+        }
+    }
+
+    populateVerificationChannelSelect() {
+        const verificationChannel = document.getElementById('verificationChannel');
+        
+        if (!verificationChannel) {
+            console.warn('Verification channel select not found');
+            return;
+        }
+        
+        // Clear existing options except first
+        verificationChannel.innerHTML = '<option value="">Sélectionner un salon...</option>';
+        
+        // Populate with available channels
+        if (this.channels && this.channels.length > 0) {
+            this.channels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel.id;
+                option.textContent = `# ${channel.name}`;
+                verificationChannel.appendChild(option);
+            });
+        }
     }
 
     async confirmDeployPanel() {

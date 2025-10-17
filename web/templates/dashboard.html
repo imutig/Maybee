@@ -1242,90 +1242,6 @@
                     </div>
                 </div>
                 
-                <!-- Ticket Logs System -->
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Créer un panneau de ticket</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="createTicketPanelForm">
-                                <div class="form-group">
-                                    <label class="form-label">Nom du panneau</label>
-                                    <input type="text" id="panelName" class="form-control" placeholder="Nom du panneau" required>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Description du panneau</label>
-                                    <textarea id="panelDescription" class="form-control" placeholder="Description du panneau" rows="2"></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Salon cible</label>
-                                    <select id="panelChannel" class="form-select" required>
-                                        <option value="">Sélectionner un salon...</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Boutons du panneau</label>
-                                    <div id="panelButtonsList">
-                                        <!-- Les boutons seront ajoutés ici -->
-                                    </div>
-                                    <button type="button" class="btn-secondary" id="addPanelButton">
-                                        <i class="fas fa-plus me-2"></i>Ajouter un bouton
-                                    </button>
-                                </div>
-                                <div class="form-group">
-                                    <div class="toggle-switch">
-                                        <input type="checkbox" id="panelVerification" class="toggle-input" onchange="document.getElementById('verificationOptions').style.display = this.checked ? 'block' : 'none';">
-                                        <label for="panelVerification" class="toggle-label">
-                                            <span class="toggle-text">Ce panneau sert à la vérification de membre</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="verificationOptions" style="display: none;">
-                                    <div class="form-group">
-                                        <label class="form-label">Rôles à retirer lors de la vérification</label>
-                                        <select id="rolesToRemove" class="form-select" multiple>
-                                            <!-- Options dynamiques -->
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Rôles à ajouter lors de la vérification</label>
-                                        <select id="rolesToAdd" class="form-select" multiple>
-                                            <!-- Options dynamiques -->
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Salon pour le message de vérification</label>
-                                        <select id="verificationChannel" class="form-select">
-                                            <option value="">Sélectionner un salon...</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Message à envoyer lors de la vérification</label>
-                                        <textarea id="verificationMessage" class="form-control" placeholder="{user} a été vérifié !" rows="2"></textarea>
-                                    </div>
-                                </div>
-                                <div class="form-actions">
-                                    <button type="submit" class="btn-primary">
-                                        <i class="fas fa-save me-2"></i>Créer le panneau
-                                    </button>
-                                    <button type="button" class="btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn-outline" data-bs-dismiss="modal" data-translate="common.close">Close</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Embed Creator System -->
                 <div class="tab-pane fade" id="embed">
                     <div class="content-card">
@@ -1628,6 +1544,52 @@
                             </div>
                             
                             <div class="form-hint">Create multiple buttons for different ticket categories</div>
+                        </div>
+
+                        <!-- Verification Workflow -->
+                        <div class="settings-section">
+                            <h5 class="section-title">Workflow de vérification</h5>
+                            
+                            <div class="form-group">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="panelVerification" class="toggle-input" onchange="document.getElementById('verificationOptions').style.display = this.checked ? 'block' : 'none';">
+                                    <label for="panelVerification" class="toggle-label">
+                                        <span class="toggle-text">Ce panneau sert à la vérification de membre</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="verificationOptions" style="display: none;">
+                                <div class="form-group">
+                                    <label class="form-label">Rôles à retirer lors de la vérification</label>
+                                    <select id="rolesToRemove" class="form-select" multiple>
+                                        <!-- Options dynamiques -->
+                                    </select>
+                                    <div class="form-hint">Sélectionnez les rôles à retirer quand un membre est vérifié</div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Rôles à ajouter lors de la vérification</label>
+                                    <select id="rolesToAdd" class="form-select" multiple>
+                                        <!-- Options dynamiques -->
+                                    </select>
+                                    <div class="form-hint">Sélectionnez les rôles à ajouter quand un membre est vérifié</div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Salon pour le message de vérification</label>
+                                    <select id="verificationChannel" class="form-select">
+                                        <option value="">Sélectionner un salon...</option>
+                                    </select>
+                                    <div class="form-hint">Salon où sera envoyé le message de confirmation</div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Message à envoyer lors de la vérification</label>
+                                    <textarea id="verificationMessage" class="form-control" placeholder="{user} a été vérifié avec succès !" rows="2"></textarea>
+                                    <div class="form-hint">Variables disponibles : {user}, {server}, {channel}</div>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
