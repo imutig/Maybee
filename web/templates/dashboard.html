@@ -751,32 +751,32 @@
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="welcomeEnabled" class="toggle-input">
                                                 <label for="welcomeEnabled" class="toggle-label">
-                                                    <span class="toggle-text" data-translate="welcome.enable_welcome">Enable Welcome Messages</span>
+                                                    <span class="toggle-text">Enable Welcome Messages</span>
                                                 </label>
                                             </div>
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label" data-translate="welcome.welcome_channel">Welcome Channel</label>
+                                            <label class="form-label">Welcome Channel</label>
                                             <select id="welcomeChannel" class="form-select">
-                                                <option value="" data-translate="common.channel">Select a channel...</option>
+                                                <option value="">Select a channel...</option>
                                             </select>
-                                            <div class="form-hint" data-translate="welcome.welcome_channel_description">Channel where welcome messages will be sent</div>
+                                            <div class="form-hint">Channel where welcome messages will be sent</div>
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label" data-translate="welcome.welcome_title">Welcome Title</label>
+                                            <label class="form-label">Welcome Title</label>
                                             <input type="text" id="welcomeTitle" class="form-control" placeholder="👋 New member!" maxlength="256">
-                                            <div class="form-hint" data-translate="welcome.welcome_title_description">Title displayed at the top of the welcome embed (max 256 characters)</div>
+                                            <div class="form-hint">Title displayed at the top of the welcome embed (max 256 characters)</div>
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label" data-translate="welcome.welcome_message">Welcome Message</label>
+                                            <label class="form-label">Welcome Message</label>
                                             <textarea id="welcomeMessage" class="form-textarea" rows="4" placeholder="Welcome {user} to {server}!" data-translate="welcome_system.welcome_message_placeholder"></textarea>
-                                            <div class="form-hint" data-translate="welcome.welcome_message_description">
-                                                <strong data-translate="welcome.message_variables">Available placeholders:</strong><br>
-                                                <code>{user}</code> - <span data-translate="common.user">Member mention (@User)</span> • 
-                                                <code>{server}</code> - <span data-translate="common.server">Server name</span> • 
+                                            <div class="form-hint">
+                                                <strong>Available placeholders:</strong><br>
+                                                <code>{user}</code> - Member mention (@User) • 
+                                                <code>{server}</code> - Server name • 
                                                 <code>{username}</code> - Username<br>
                                                 <code>{displayname}</code> - Display name • 
                                                 <code>{memberCount}</code> - Current member count
@@ -784,32 +784,32 @@
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label" data-translate="welcome.welcome_image_url">Welcome Image URL</label>
+                                            <label class="form-label">Welcome Image URL</label>
                                             <input type="url" id="welcomeImageUrl" class="form-control" placeholder="https://example.com/image.png">
-                                            <div class="form-hint" data-translate="welcome.welcome_image_url_hint">Optional image to display in the welcome embed (must be a valid URL)</div>
+                                            <div class="form-hint">Optional image to display in the welcome embed (must be a valid URL)</div>
                                         </div>
 
                                         <div class="form-group">
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="welcomeFields" class="toggle-input">
                                                 <label for="welcomeFields" class="toggle-label">
-                                                    <span class="toggle-text" data-translate="welcome.add_custom_fields">Add Custom Fields</span>
+                                                    <span class="toggle-text">Add Custom Fields</span>
                                                 </label>
                                             </div>
-                                            <div class="form-hint" data-translate="welcome.add_custom_fields_hint">Add custom fields to the welcome embed</div>
+                                            <div class="form-hint">Add custom fields to the welcome embed</div>
                                         </div>
 
                                         <div id="welcomeFieldsContainer" style="display: none;">
                                             <div class="form-group">
-                                                <label class="form-label" data-translate="welcome.custom_fields">Custom Fields</label>
+                                                <label class="form-label">Custom Fields</label>
                                                 <div id="welcomeFieldsList">
                                                     <!-- Dynamic fields will be added here -->
                                                 </div>
                                                 <button type="button" class="add-field-btn" id="addWelcomeField">
-                                                    <i class="fas fa-plus me-2"></i><span data-translate="welcome.add_field">Add Field</span>
+                                                    <i class="fas fa-plus me-2"></i>Add Field
                                                 </button>
                                                 <div class="form-hint">
-                                                    <strong data-translate="welcome.message_variables">Available placeholders:</strong> {user}, {server}, {username}, {displayname}, {memberCount}
+                                                    <strong>Available placeholders:</strong> {user}, {server}, {username}, {displayname}, {memberCount}
                                                 </div>
                                             </div>
                                         </div>
@@ -823,32 +823,32 @@
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="goodbyeEnabled" class="toggle-input">
                                                 <label for="goodbyeEnabled" class="toggle-label">
-                                                    <span class="toggle-text" data-translate="welcome.enable_goodbye">Enable Goodbye Messages</span>
+                                                    <span class="toggle-text">Enable Goodbye Messages</span>
                                                 </label>
                                             </div>
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label" data-translate="welcome.goodbye_channel">Goodbye Channel</label>
+                                            <label class="form-label">Goodbye Channel</label>
                                             <select id="goodbyeChannel" class="form-select">
-                                                <option value="" data-translate="common.channel">Select a channel...</option>
+                                                <option value="">Select a channel...</option>
                                             </select>
-                                            <div class="form-hint" data-translate="welcome.goodbye_channel_description">Channel where goodbye messages will be sent</div>
+                                            <div class="form-hint">Channel where goodbye messages will be sent</div>
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label" data-translate="welcome.goodbye_title">Goodbye Title</label>
+                                            <label class="form-label">Goodbye Title</label>
                                             <input type="text" id="goodbyeTitle" class="form-control" placeholder="👋 Departure" maxlength="256">
-                                            <div class="form-hint" data-translate="welcome.goodbye_title_description">Title displayed at the top of the goodbye embed (max 256 characters)</div>
+                                            <div class="form-hint">Title displayed at the top of the goodbye embed (max 256 characters)</div>
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label" data-translate="welcome.goodbye_message">Goodbye Message</label>
+                                            <label class="form-label">Goodbye Message</label>
                                             <textarea id="goodbyeMessage" class="form-textarea" rows="4" placeholder="Goodbye {user}, thanks for being part of {server}!" data-translate="welcome_system.goodbye_message_placeholder"></textarea>
-                                            <div class="form-hint" data-translate="welcome.goodbye_message_description">
-                                                <strong data-translate="welcome.message_variables">Available placeholders:</strong><br>
-                                                <code>{user}</code> - <span data-translate="common.user">Member mention (@User)</span> • 
-                                                <code>{server}</code> - <span data-translate="common.server">Server name</span> • 
+                                            <div class="form-hint">
+                                                <strong>Available placeholders:</strong><br>
+                                                <code>{user}</code> - Member mention (@User) • 
+                                                <code>{server}</code> - Server name • 
                                                 <code>{username}</code> - Username<br>
                                                 <code>{displayname}</code> - Display name • 
                                                 <code>{memberCount}</code> - Current member count
@@ -856,35 +856,35 @@
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="form-label" data-translate="welcome.goodbye_image_url">Goodbye Image URL</label>
+                                            <label class="form-label">Goodbye Image URL</label>
                                             <input type="url" id="goodbyeImageUrl" class="form-control" placeholder="https://example.com/image.png">
-                                            <div class="form-hint" data-translate="welcome.goodbye_image_url_hint">Optional image to display in the goodbye embed (must be a valid URL)</div>
+                                            <div class="form-hint">Optional image to display in the goodbye embed (must be a valid URL)</div>
                                         </div>
 
                                         <div class="form-group">
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="goodbyeFields" class="toggle-input">
                                                 <label for="goodbyeFields" class="toggle-label">
-                                                    <span class="toggle-text" data-translate="welcome.add_custom_fields">Add Custom Fields</span>
+                                                    <span class="toggle-text">Add Custom Fields</span>
                                                 </label>
                                             </div>
-                                            <div class="form-hint" data-translate="welcome.add_custom_fields_hint">Add custom fields to the goodbye embed</div>
+                                            <div class="form-hint">Add custom fields to the goodbye embed</div>
                                         </div>
 
                                         <div id="goodbyeFieldsContainer" style="display: none;">
                                             <div class="form-group">
-                                                <label class="form-label" data-translate="welcome.custom_fields">Custom Fields</label>
+                                                <label class="form-label">Custom Fields</label>
                                                 <div id="goodbyeFieldsList">
                                                     <!-- Dynamic fields will be added here -->
                                                 </div>
                                                 <button type="button" class="add-field-btn" id="addGoodbyeField">
-                                                    <i class="fas fa-plus me-2"></i><span data-translate="welcome.add_field">Add Field</span>
+                                                    <i class="fas fa-plus me-2"></i>Add Field
                                                 </button>
                                                 <div class="form-hint">
-                                                    <strong data-translate="welcome.message_variables">Available placeholders:</strong> {user}, {server}, {username}, {displayname}, {memberCount}
+                                                    <strong>Available placeholders:</strong> {user}, {server}, {username}, {displayname}, {memberCount}
                                                 </div>
                                             </div>
-                                        </div
+                                        </div>
                                     </div>
 
                                     <!-- Auto-Role Settings -->
