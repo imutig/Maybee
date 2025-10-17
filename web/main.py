@@ -314,6 +314,7 @@ class TicketPanel(BaseModel):
     verification_channel: Optional[str] = None
     verification_message: Optional[str] = None
     verifier_role_id: Optional[str] = None
+    verification_image_url: Optional[str] = None
 
 class TicketConfig(BaseModel):
     enabled: bool = False
@@ -920,7 +921,8 @@ async def migrate_ticket_panels_verification():
             ('roles_to_add', 'JSON AFTER roles_to_remove'),
             ('verification_channel', 'VARCHAR(20) AFTER roles_to_add'),
             ('verification_message', 'TEXT AFTER verification_channel'),
-            ('verifier_role_id', 'VARCHAR(20) AFTER verification_message')
+            ('verifier_role_id', 'VARCHAR(20) AFTER verification_message'),
+            ('verification_image_url', 'VARCHAR(512) AFTER verifier_role_id')
         ]
         
         for column_name, column_definition in columns_to_add:
@@ -3771,8 +3773,8 @@ async def create_ticket_panel(
         panel_id = await database.execute_and_get_id(
             """INSERT INTO ticket_panels 
                (guild_id, panel_name, embed_title, embed_description, embed_color, 
-                embed_thumbnail, embed_image, embed_footer, verification_enabled, roles_to_remove, roles_to_add, verification_channel, verification_message, verifier_role_id, created_at, updated_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                embed_thumbnail, embed_image, embed_footer, verification_enabled, roles_to_remove, roles_to_add, verification_channel, verification_message, verifier_role_id, verification_image_url, created_at, updated_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (
                 guild_id, panel.panel_name, panel.embed_title, panel.embed_description,
                 panel.embed_color, panel.embed_thumbnail, panel.embed_image, 
@@ -3783,6 +3785,7 @@ async def create_ticket_panel(
                 panel.verification_channel,
                 panel.verification_message,
                 panel.verifier_role_id,
+                panel.verification_image_url,
                 datetime.utcnow(), datetime.utcnow()
             )
         )
@@ -3836,7 +3839,7 @@ async def update_ticket_panel(
             """UPDATE ticket_panels SET 
                panel_name = %s, embed_title = %s, embed_description = %s,
                embed_color = %s, embed_thumbnail = %s, embed_image = %s,
-               embed_footer = %s, verification_enabled = %s, roles_to_remove = %s, roles_to_add = %s, verification_channel = %s, verification_message = %s, verifier_role_id = %s, updated_at = %s
+               embed_footer = %s, verification_enabled = %s, roles_to_remove = %s, roles_to_add = %s, verification_channel = %s, verification_message = %s, verifier_role_id = %s, verification_image_url = %s, updated_at = %s
                WHERE id = %s AND guild_id = %s""",
             (
                 panel.panel_name, panel.embed_title, panel.embed_description,
@@ -3848,6 +3851,7 @@ async def update_ticket_panel(
                 panel.verification_channel,
                 panel.verification_message,
                 panel.verifier_role_id,
+                panel.verification_image_url,
                 datetime.utcnow(), panel_id, guild_id
             )
         )

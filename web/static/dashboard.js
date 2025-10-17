@@ -3189,6 +3189,7 @@ class Dashboard {
         setTimeout(() => {
             document.getElementById('verificationChannel').value = panelData.verification_channel || '';
             document.getElementById('verificationMessage').value = panelData.verification_message || '';
+            document.getElementById('verificationImageUrl').value = panelData.verification_image_url || '';
         }, 100);
 
         document.getElementById('ticketPanelModalTitle').textContent = 'Edit Ticket Panel';
@@ -3283,7 +3284,8 @@ class Dashboard {
                 roles_to_remove: Array.from(document.getElementById('rolesToRemove').selectedOptions).map(opt => opt.value),
                 roles_to_add: Array.from(document.getElementById('rolesToAdd').selectedOptions).map(opt => opt.value),
                 verification_channel: document.getElementById('verificationChannel').value,
-                verification_message: document.getElementById('verificationMessage').value
+                verification_message: document.getElementById('verificationMessage').value,
+                verification_image_url: document.getElementById('verificationImageUrl').value || null
             };
             
             // Collect button data

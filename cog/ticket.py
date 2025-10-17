@@ -731,9 +731,11 @@ class TicketCloseAndVerifyButton(discord.ui.Button):
             # Envoyer le message de vérification
             verification_channel_id = self.panel_data.get('verification_channel')
             verification_message = self.panel_data.get('verification_message', '{user} a été vérifié avec succès !')
+            verification_image_url = self.panel_data.get('verification_image_url')
             
             print(f"DEBUG: verification_channel_id = {verification_channel_id}")
             print(f"DEBUG: verification_message = {verification_message}")
+            print(f"DEBUG: verification_image_url = {verification_image_url}")
             
             if verification_channel_id:
                 verification_channel = interaction.guild.get_channel(int(verification_channel_id))
@@ -754,8 +756,13 @@ class TicketCloseAndVerifyButton(discord.ui.Button):
                     )
                     embed.set_footer(text=f"Vérifié par {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
                     
+                    # Ajouter l'image si une URL est fournie
+                    if verification_image_url:
+                        embed.set_image(url=verification_image_url)
+                    
                     try:
-                        await verification_channel.send(embed=embed)
+                        # Envoyer le message avec mention du membre vérifié
+                        await verification_channel.send(content=ticket_member.mention, embed=embed)
                         print("DEBUG: Message de vérification envoyé avec succès")
                     except Exception as send_error:
                         print(f"DEBUG: Erreur lors de l'envoi du message: {send_error}")

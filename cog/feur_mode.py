@@ -13,7 +13,6 @@ class FeurMode(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.feur_gif_url = "https://media1.tenor.com/m/CJIntL3axZUAAAAd/feur-meme.gif"
         
         # Variations possibles de "quoi" à détecter
         self.quoi_patterns = [
@@ -77,8 +76,8 @@ class FeurMode(commands.Cog):
         # Vérifier si le message se termine par "quoi" ou une variation
         if self.message_ends_with_quoi(message.content):
             try:
-                # Répondre avec le gif Feur
-                await message.reply(self.feur_gif_url, mention_author=False)
+                # Répondre avec "Feur !"
+                await message.reply("Feur !", mention_author=False)
                 logger.info(f"Feur mode triggered in {message.guild.name} by {message.author}")
             except discord.Forbidden:
                 logger.warning(f"Missing permissions to send Feur in {message.guild.name}")
