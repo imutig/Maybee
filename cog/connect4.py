@@ -14,11 +14,13 @@ class Connect4Game:
         self.turn = 0  # 0: player1, 1: player2
         self.winner = None
         self.finished = False
+        self.last_col = None
 
     def drop_piece(self, col):
         for row in reversed(range(CONNECT4_ROWS)):
             if self.board[row][col] == 0:
                 self.board[row][col] = self.turn + 1
+                self.last_col = col
                 if self.check_win(row, col):
                     self.winner = self.players[self.turn]
                     self.finished = True
@@ -97,6 +99,8 @@ class Connect4ForfeitButton(discord.ui.Button):
         embed = discord.Embed(title="Puissance 4", color=discord.Color.gold())
         embed.description = f"{self.game.render()}"
         embed.add_field(name="Joueurs", value=f"🔴 {self.game.players[0].mention}  vs  🟡 {self.game.players[1].mention}", inline=False)
+        if self.game.last_col is not None:
+            embed.add_field(name="Dernière colonne jouée", value=f"{self.game.last_col+1}", inline=True)
         if self.game.finished:
             embed.add_field(name="Résultat", value=f"Victoire de {self.game.winner.mention} !", inline=False)
         else:
