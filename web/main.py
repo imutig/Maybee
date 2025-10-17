@@ -821,9 +821,9 @@ async def create_level_up_config_table():
         enabled BOOLEAN DEFAULT TRUE,
         channel_id BIGINT NULL,
         message_type ENUM('simple', 'embed') DEFAULT 'embed',
-        message_content TEXT DEFAULT 'Congratulations {user}! You have reached level {level}!',
+        message_content TEXT,
         embed_title VARCHAR(256) DEFAULT 'Level Up!',
-        embed_description TEXT DEFAULT '{user} has reached level **{level}**!',
+        embed_description TEXT,
         embed_color VARCHAR(7) DEFAULT '#FFD700',
         embed_thumbnail_url VARCHAR(512) NULL,
         embed_image_url VARCHAR(512) NULL,
@@ -1974,43 +1974,66 @@ async def send_test_levelup_message(
         if not bot_token:
             raise HTTPException(status_code=500, detail="Bot token not configured")
         
-        # Send test message through Discord API
+        # Get level up config
+        levelup_config = await database.fetch_one(
+            "SELECT * FROM level_up_config WHERE guild_id = %s",
+            (guild_id,)
+        )
+        # Fallbacks if config missing
+        message_type = levelup_config["message_type"] if levelup_config and levelup_config.get("message_type") else "embed"
+        message_content = levelup_config["message_content"] if levelup_config and levelup_config.get("message_content") else "Congratulations {user}! You have reached level {level}!"
+        embed_title = levelup_config["embed_title"] if levelup_config and levelup_config.get("embed_title") else "Level Up!"
+        embed_description = levelup_config["embed_description"] if levelup_config and levelup_config.get("embed_description") else "{user} has reached level **{level}**!"
+        embed_color = int(levelup_config["embed_color"].replace("#", ""), 16) if levelup_config and levelup_config.get("embed_color") else 0xFFD700
+        embed_footer_text = levelup_config["embed_footer_text"] if levelup_config and levelup_config.get("embed_footer_text") else "Keep up the great work!"
+        embed_timestamp = levelup_config["embed_timestamp"] if levelup_config and levelup_config.get("embed_timestamp") else True
+        show_user_avatar = levelup_config["show_user_avatar"] if levelup_config and levelup_config.get("show_user_avatar") is not None else True
+        embed_thumbnail_url = levelup_config["embed_thumbnail_url"] if levelup_config and levelup_config.get("embed_thumbnail_url") else None
+        embed_image_url = levelup_config["embed_image_url"] if levelup_config and levelup_config.get("embed_image_url") else None
+
+        # Prepare replacements
+        user_mention = f"<@{user_id}>"
+        replacements = {
+            "{user}": user_mention,
+            "{level}": "5",
+            "{server}": general_config["server_name"] if general_config and general_config.get("server_name") else "this server"
+        }
+        def fill_template(template: str) -> str:
+            for k, v in replacements.items():
+                template = template.replace(k, v)
+            return template
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             headers = {
                 "Authorization": f"Bot {bot_token}",
                 "Content-Type": "application/json"
             }
-            
-            embed_data = {
-                "embeds": [{
-                    "title": "🎉 Level Up! (Test Message)",
-                    "description": f"<@{user_id}> just reached **Level 5**! 🐝",
-                    "color": 0xFFD700,  # Gold color
-                    "fields": [
-                        {
-                            "name": "Total XP",
-                            "value": "1,250 XP",
-                            "inline": True
-                        },
-                        {
-                            "name": "Next Level",
-                            "value": "1,500 XP needed",
-                            "inline": True
-                        }
-                    ],
-                    "footer": {
-                        "text": "This is a test message from Maybee Dashboard"
-                    },
-                    "timestamp": datetime.utcnow().isoformat()
-                }]
-            }
-            
+            if message_type == "simple":
+                # Send as simple text message
+                data = {"content": fill_template(message_content)}
+            else:
+                # Send as embed
+                embed = {
+                    "title": fill_template(embed_title),
+                    "description": fill_template(embed_description),
+                    "color": embed_color,
+                    "footer": {"text": fill_template(embed_footer_text)},
+                }
+                if embed_timestamp:
+                    embed["timestamp"] = datetime.utcnow().isoformat()
+                if embed_thumbnail_url:
+                    embed["thumbnail"] = {"url": embed_thumbnail_url}
+                elif show_user_avatar:
+                    # Use user's avatar if available (simulate with Discord CDN)
+                    embed["thumbnail"] = {"url": f"https://cdn.discordapp.com/avatars/{user_id}/.png"}
+                if embed_image_url:
+                    embed["image"] = {"url": embed_image_url}
+                data = {"embeds": [embed]}
             response = await client.post(
                 f"https://discord.com/api/v10/channels/{target_channel}/messages",
                 headers=headers,
-                json=embed_data
+                json=data
             )
-            
             if response.status_code == 200:
                 return {
                     "message": f"Test level up message sent successfully to <#{target_channel}>!",
