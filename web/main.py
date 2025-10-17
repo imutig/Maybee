@@ -99,6 +99,9 @@ async def lifespan(app: FastAPI):
     await create_ticket_tables()  # Add ticket system tables
     await create_level_roles_table()  # Add level roles table
     await create_embed_config_table()  # Add embed config table
+    await create_level_up_config_table()  # Add level up config table
+    await migrate_level_up_config_show_avatar()  # Add show_user_avatar column
+    await migrate_xp_data_message_count()  # Add message_count column
     yield
     # Shutdown
     if database:
@@ -233,10 +236,12 @@ class WelcomeSettings(BaseModel):
     welcome_title: str = "👋 New member!"
     welcome_message: str = "Welcome {user} to {server}!"
     welcome_fields: Optional[List[dict]] = None
+    welcome_image_url: Optional[str] = None
     goodbye_channel: Optional[str] = None
     goodbye_title: str = "👋 Departure"
     goodbye_message: str = "Goodbye {user}, we'll miss you!"
     goodbye_fields: Optional[List[dict]] = None
+    goodbye_image_url: Optional[str] = None
     auto_role_enabled: bool = False
     auto_role_ids: Optional[List[str]] = None
 
@@ -255,6 +260,20 @@ class ServerLogsSettings(BaseModel):
     channel_create: bool = True
     channel_delete: bool = True
     channel_update: bool = True
+
+class LevelUpConfig(BaseModel):
+    enabled: bool = True
+    channel_id: Optional[str] = None
+    message_type: str = "embed"  # "simple" or "embed"
+    message_content: str = "Congratulations {user}! You have reached level {level}!"
+    embed_title: str = "Level Up!"
+    embed_description: str = "{user} has reached level **{level}**!"
+    embed_color: str = "#FFD700"
+    embed_thumbnail_url: Optional[str] = None
+    show_user_avatar: bool = True  # Show user's profile picture as thumbnail
+    embed_image_url: Optional[str] = None
+    embed_footer_text: str = "Keep up the great work!"
+    embed_timestamp: bool = True
 
 class ModerationAction(BaseModel):
     action: str  # "warn", "timeout", "kick", "ban"
@@ -582,9 +601,11 @@ async def create_welcome_config_table():
         welcome_channel VARCHAR(20) NULL,
         welcome_message VARCHAR(500) DEFAULT 'Welcome {user} to {server}!',
         welcome_fields JSON NULL,
+        welcome_image_url VARCHAR(500) NULL,
         goodbye_channel VARCHAR(20) NULL,
         goodbye_message VARCHAR(500) DEFAULT 'Goodbye {user}, we will miss you!',
         goodbye_fields JSON NULL,
+        goodbye_image_url VARCHAR(500) NULL,
         auto_role_enabled BOOLEAN DEFAULT FALSE,
         auto_role_ids JSON NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -599,6 +620,7 @@ async def create_welcome_config_table():
         # Check if new columns exist, add them if they don't
         await migrate_welcome_config_table()
         await migrate_auto_role_columns()
+        await migrate_welcome_image_columns()
         
         return True
     except Exception as e:
@@ -791,6 +813,90 @@ async def create_embed_config_table():
         print(f"❌ Error creating embed_config table: {e}")
         return False
 
+async def create_level_up_config_table():
+    """Create the level_up_config table for storing custom level up message configurations"""
+    level_up_config_table = """
+    CREATE TABLE IF NOT EXISTS level_up_config (
+        guild_id BIGINT PRIMARY KEY,
+        enabled BOOLEAN DEFAULT TRUE,
+        channel_id BIGINT NULL,
+        message_type ENUM('simple', 'embed') DEFAULT 'embed',
+        message_content TEXT DEFAULT 'Congratulations {user}! You have reached level {level}!',
+        embed_title VARCHAR(256) DEFAULT 'Level Up!',
+        embed_description TEXT DEFAULT '{user} has reached level **{level}**!',
+        embed_color VARCHAR(7) DEFAULT '#FFD700',
+        embed_thumbnail_url VARCHAR(512) NULL,
+        embed_image_url VARCHAR(512) NULL,
+        embed_footer_text VARCHAR(2048) DEFAULT 'Keep up the great work!',
+        embed_timestamp BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_guild_id (guild_id)
+    )
+    """
+    
+    try:
+        await database.execute(level_up_config_table)
+        print("✅ Level up config table created/verified")
+        return True
+    except Exception as e:
+        print(f"❌ Error creating level_up_config table: {e}")
+        return False
+
+async def migrate_level_up_config_show_avatar():
+    """Add show_user_avatar column to level_up_config table"""
+    try:
+        # Check if show_user_avatar column exists
+        check_query = """
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'level_up_config' 
+        AND COLUMN_NAME = 'show_user_avatar'
+        """
+        
+        result = await database.fetch_one(check_query)
+        
+        if not result:
+            print("🔧 Adding show_user_avatar column to level_up_config table...")
+            await database.execute("""
+                ALTER TABLE level_up_config 
+                ADD COLUMN show_user_avatar BOOLEAN DEFAULT TRUE AFTER embed_thumbnail_url
+            """)
+            print("✅ Added show_user_avatar column (default: TRUE)")
+        else:
+            print("✅ show_user_avatar column already exists")
+            
+    except Exception as e:
+        print(f"⚠️ Migration error for show_user_avatar: {e}")
+
+async def migrate_xp_data_message_count():
+    """Add message_count column to xp_data table"""
+    try:
+        # Check if message_count column exists
+        check_query = """
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'xp_data' 
+        AND COLUMN_NAME = 'message_count'
+        """
+        
+        result = await database.fetch_one(check_query)
+        
+        if not result:
+            print("🔧 Adding message_count column to xp_data table...")
+            await database.execute("""
+                ALTER TABLE xp_data 
+                ADD COLUMN message_count INT DEFAULT 0 AFTER voice_xp
+            """)
+            print("✅ Added message_count column (default: 0)")
+        else:
+            print("✅ message_count column already exists")
+            
+    except Exception as e:
+        print(f"⚠️ Migration error for message_count: {e}")
+
 async def migrate_welcome_config_table():
     """Add missing columns to existing welcome_config table"""
     try:
@@ -916,6 +1022,50 @@ async def migrate_auto_role_columns():
             
     except Exception as e:
         print(f"⚠️ Auto-role migration error (this may be normal if columns already exist): {e}")
+
+async def migrate_welcome_image_columns():
+    """Add image URL columns to welcome_config table"""
+    try:
+        # Check if welcome_image_url column exists
+        check_query = """
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'welcome_config' 
+        AND COLUMN_NAME = 'welcome_image_url'
+        """
+        
+        result = await database.fetch_one(check_query)
+        
+        if not result:
+            print("🔧 Adding welcome_image_url column to welcome_config table...")
+            await database.execute("""
+                ALTER TABLE welcome_config 
+                ADD COLUMN welcome_image_url VARCHAR(500) NULL AFTER welcome_fields
+            """)
+            print("✅ Added welcome_image_url column")
+        
+        # Check if goodbye_image_url column exists
+        check_query2 = """
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'welcome_config' 
+        AND COLUMN_NAME = 'goodbye_image_url'
+        """
+        
+        result2 = await database.fetch_one(check_query2)
+        
+        if not result2:
+            print("🔧 Adding goodbye_image_url column to welcome_config table...")
+            await database.execute("""
+                ALTER TABLE welcome_config 
+                ADD COLUMN goodbye_image_url VARCHAR(500) NULL AFTER goodbye_fields
+            """)
+            print("✅ Added goodbye_image_url column")
+            
+    except Exception as e:
+        print(f"⚠️ Welcome image migration error (this may be normal if columns already exist): {e}")
 
 # Routes
 @app.get("/", response_class=HTMLResponse)
@@ -2134,6 +2284,117 @@ async def sync_level_roles(
         print(f"Sync traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Level Up Message Configuration Endpoints
+@app.get("/api/guild/{guild_id}/level-up-config")
+async def get_level_up_config(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get level up message configuration for a guild"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get config from database
+        config = await database.fetch_one(
+            "SELECT * FROM level_up_config WHERE guild_id = %s",
+            (guild_id,)
+        )
+        
+        if config:
+            return {
+                "enabled": config.get("enabled", True),
+                "channel_id": str(config["channel_id"]) if config.get("channel_id") else None,
+                "message_type": config.get("message_type", "embed"),
+                "message_content": config.get("message_content", "Congratulations {user}! You have reached level {level}!"),
+                "embed_title": config.get("embed_title", "Level Up!"),
+                "embed_description": config.get("embed_description", "{user} has reached level **{level}**!"),
+                "embed_color": config.get("embed_color", "#FFD700"),
+                "embed_thumbnail_url": config.get("embed_thumbnail_url"),
+                "show_user_avatar": config.get("show_user_avatar", True),
+                "embed_image_url": config.get("embed_image_url"),
+                "embed_footer_text": config.get("embed_footer_text", "Keep up the great work!"),
+                "embed_timestamp": config.get("embed_timestamp", True)
+            }
+        else:
+            # Return default configuration
+            return {
+                "enabled": True,
+                "channel_id": None,
+                "message_type": "embed",
+                "message_content": "Congratulations {user}! You have reached level {level}!",
+                "embed_title": "Level Up!",
+                "embed_description": "{user} has reached level **{level}**!",
+                "embed_color": "#FFD700",
+                "embed_thumbnail_url": None,
+                "show_user_avatar": True,
+                "embed_image_url": None,
+                "embed_footer_text": "Keep up the great work!",
+                "embed_timestamp": True
+            }
+    
+    except Exception as e:
+        print(f"Level up config get error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/guild/{guild_id}/level-up-config")
+async def update_level_up_config(
+    guild_id: str,
+    config: LevelUpConfig,
+    current_user: str = Depends(get_current_user)
+):
+    """Update level up message configuration for a guild"""
+    try:
+        print(f"Received level up config update for guild {guild_id}")
+        
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Insert or update configuration
+        await database.execute(
+            """INSERT INTO level_up_config 
+               (guild_id, enabled, channel_id, message_type, message_content, 
+                embed_title, embed_description, embed_color, embed_thumbnail_url, 
+                show_user_avatar, embed_image_url, embed_footer_text, embed_timestamp, updated_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) AS new_values
+               ON DUPLICATE KEY UPDATE
+               enabled = new_values.enabled,
+               channel_id = new_values.channel_id,
+               message_type = new_values.message_type,
+               message_content = new_values.message_content,
+               embed_title = new_values.embed_title,
+               embed_description = new_values.embed_description,
+               embed_color = new_values.embed_color,
+               embed_thumbnail_url = new_values.embed_thumbnail_url,
+               show_user_avatar = new_values.show_user_avatar,
+               embed_image_url = new_values.embed_image_url,
+               embed_footer_text = new_values.embed_footer_text,
+               embed_timestamp = new_values.embed_timestamp,
+               updated_at = new_values.updated_at""",
+            (guild_id,
+             config.enabled,
+             int(config.channel_id) if config.channel_id else None,
+             config.message_type,
+             config.message_content,
+             config.embed_title,
+             config.embed_description,
+             config.embed_color,
+             config.embed_thumbnail_url,
+             config.show_user_avatar,
+             config.embed_image_url,
+             config.embed_footer_text,
+             config.embed_timestamp,
+             datetime.utcnow())
+        )
+        
+        return {"message": "Level up configuration updated successfully"}
+        
+    except Exception as e:
+        print(f"Level up config update error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Role Menu Endpoints
 @app.get("/api/guild/{guild_id}/role-menus")
 async def get_role_menus(
@@ -2806,11 +3067,13 @@ async def get_welcome_config(
                 "welcome_title": welcome_config.get("welcome_title", "👋 New member!"),
                 "welcome_message": welcome_config["welcome_message"] or "Welcome {user} to {server}!",
                 "welcome_fields": json.loads(welcome_config["welcome_fields"]) if welcome_config.get("welcome_fields") else None,
+                "welcome_image_url": welcome_config.get("welcome_image_url"),
                 "goodbye_enabled": bool(welcome_config.get("goodbye_channel")),
                 "goodbye_channel": str(welcome_config["goodbye_channel"]) if welcome_config["goodbye_channel"] else None,
                 "goodbye_title": welcome_config.get("goodbye_title", "👋 Departure"),
                 "goodbye_message": welcome_config["goodbye_message"] or "Goodbye {user}, we'll miss you!",
                 "goodbye_fields": json.loads(welcome_config["goodbye_fields"]) if welcome_config.get("goodbye_fields") else None,
+                "goodbye_image_url": welcome_config.get("goodbye_image_url"),
                 "auto_role_enabled": welcome_config.get("auto_role_enabled", False),
                 "auto_role_ids": json.loads(welcome_config["auto_role_ids"]) if welcome_config.get("auto_role_ids") else []
             }
@@ -2837,11 +3100,13 @@ async def get_welcome_config(
                 "welcome_title": "👋 New member!",
                 "welcome_message": "Welcome {user} to {server}!",
                 "welcome_fields": None,
+                "welcome_image_url": None,
                 "goodbye_enabled": False,
                 "goodbye_channel": None,
                 "goodbye_title": "👋 Departure",
                 "goodbye_message": "Goodbye {user}, we'll miss you!",
                 "goodbye_fields": None,
+                "goodbye_image_url": None,
                 "auto_role_enabled": False,
                 "auto_role_ids": []
             }
@@ -2871,17 +3136,19 @@ async def update_welcome_config(
                 # Essayer d'abord avec toutes les colonnes
                 await database.execute(
                     """INSERT INTO welcome_config 
-                       (guild_id, welcome_channel, welcome_title, welcome_message, welcome_fields, goodbye_channel, goodbye_title, goodbye_message, goodbye_fields, auto_role_enabled, auto_role_ids, updated_at)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) AS new_values
+                       (guild_id, welcome_channel, welcome_title, welcome_message, welcome_fields, welcome_image_url, goodbye_channel, goodbye_title, goodbye_message, goodbye_fields, goodbye_image_url, auto_role_enabled, auto_role_ids, updated_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) AS new_values
                        ON DUPLICATE KEY UPDATE
                        welcome_channel = new_values.welcome_channel,
                        welcome_title = new_values.welcome_title,
                        welcome_message = new_values.welcome_message,
                        welcome_fields = new_values.welcome_fields,
+                       welcome_image_url = new_values.welcome_image_url,
                        goodbye_channel = new_values.goodbye_channel,
                        goodbye_title = new_values.goodbye_title,
                        goodbye_message = new_values.goodbye_message,
                        goodbye_fields = new_values.goodbye_fields,
+                       goodbye_image_url = new_values.goodbye_image_url,
                        auto_role_enabled = new_values.auto_role_enabled,
                        auto_role_ids = new_values.auto_role_ids,
                        updated_at = new_values.updated_at""",
@@ -2890,10 +3157,12 @@ async def update_welcome_config(
                      config.welcome_title,
                      config.welcome_message,
                      json.dumps(config.welcome_fields) if config.welcome_fields else None,
+                     config.welcome_image_url,
                      int(config.goodbye_channel) if config.goodbye_channel else None,
                      config.goodbye_title,
                      config.goodbye_message,
                      json.dumps(config.goodbye_fields) if config.goodbye_fields else None,
+                     config.goodbye_image_url,
                      config.auto_role_enabled,
                      json.dumps(config.auto_role_ids) if config.auto_role_ids else None,
                      datetime.utcnow())

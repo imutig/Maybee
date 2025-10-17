@@ -170,6 +170,11 @@ class Welcome(commands.Cog):
                 )
                 embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
                 
+                # Add custom image if configured
+                welcome_image_url = config.get("welcome_image_url")
+                if welcome_image_url:
+                    embed.set_image(url=welcome_image_url)
+                
                 # Add custom fields if configured
                 welcome_fields = config.get("welcome_fields")
                 if welcome_fields:
@@ -224,6 +229,11 @@ class Welcome(commands.Cog):
                     color=discord.Color.red()
                 )
                 embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
+                
+                # Add custom image if configured
+                goodbye_image_url = config.get("goodbye_image_url")
+                if goodbye_image_url:
+                    embed.set_image(url=goodbye_image_url)
                 
                 # Add custom fields if configured
                 goodbye_fields = config.get("goodbye_fields")

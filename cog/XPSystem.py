@@ -271,6 +271,35 @@ class XPSystem(commands.Cog):
 
         logger.info("Voice XP loop completed")
 
+    def format_voice_time(self, voice_xp: int) -> str:
+        """Convert voice XP to formatted time string (15 XP = 1 minute)"""
+        total_minutes = voice_xp // 15
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        
+        if hours > 0:
+            return f"{hours}h {minutes}min"
+        else:
+            return f"{minutes}min"
+    
+    def format_leaderboard_entry(self, rank: int, name: str, value: str, highlight: bool = False) -> str:
+        """Format a leaderboard entry with consistent styling"""
+        # Medal emojis for top 3
+        if rank == 1:
+            medal = "🥇"
+        elif rank == 2:
+            medal = "🥈"
+        elif rank == 3:
+            medal = "🥉"
+        else:
+            medal = f"`#{rank:02d}`"
+        
+        # Add highlight for special entries
+        prefix = "**" if highlight else ""
+        suffix = "**" if highlight else ""
+        
+        return f"{medal} {prefix}{name}{suffix}: {value}\n"
+
     async def add_xp(self, user_id, guild_id, amount, source="text"):
         """Add XP to a user with improved performance and history tracking"""
         try:
@@ -279,10 +308,10 @@ class XPSystem(commands.Cog):
 
             if not data:
                 await self.bot.db.query(
-                    "INSERT INTO xp_data (user_id, guild_id, xp, level, text_xp, voice_xp) VALUES (%s, %s, 0, 1, 0, 0)",
+                    "INSERT INTO xp_data (user_id, guild_id, xp, level, text_xp, voice_xp, message_count) VALUES (%s, %s, 0, 1, 0, 0, 0)",
                     (user_id, guild_id)
                 )
-                data = {"xp": 0, "level": 1, "text_xp": 0, "voice_xp": 0}
+                data = {"xp": 0, "level": 1, "text_xp": 0, "voice_xp": 0, "message_count": 0}
 
             # Get guild-specific multipliers
             guild_multiplier = await self.xp_multiplier.get_multiplier(guild_id, source)
@@ -295,6 +324,11 @@ class XPSystem(commands.Cog):
             text_xp = data["text_xp"] + actual_xp_gained if source == "text" else data["text_xp"]
             voice_xp = data["voice_xp"] + actual_xp_gained if source == "voice" else data["voice_xp"]
             
+            # Increment message count for text messages
+            message_count = data.get("message_count", 0)
+            if source == "text":
+                message_count += 1
+            
             # Log XP gain (only for debugging, not spam)
             logger.debug(f"XP gained: {actual_xp_gained} ({source}) - User {user_id} in guild {guild_id}")
             
@@ -304,8 +338,8 @@ class XPSystem(commands.Cog):
 
             # Update main XP table
             await self.bot.db.query(
-                "UPDATE xp_data SET xp=%s, text_xp=%s, voice_xp=%s, level=%s WHERE user_id=%s AND guild_id=%s",
-                (new_xp, text_xp, voice_xp, new_level, user_id, guild_id)
+                "UPDATE xp_data SET xp=%s, text_xp=%s, voice_xp=%s, message_count=%s, level=%s WHERE user_id=%s AND guild_id=%s",
+                (new_xp, text_xp, voice_xp, message_count, new_level, user_id, guild_id)
             )
             
             # Track XP history for leaderboards (only if we have the table)
@@ -449,24 +483,115 @@ class XPSystem(commands.Cog):
 
         # Annonce dans le salon s'il est configuré ET si les messages de level up sont activés
         if level_up_enabled and level_up_channel:
-            embed = discord.Embed(
-                title=_("xp_system.level_up.title", user_id, guild_id),
-                description=_("xp_system.level_up.description", user_id, guild_id, user=member.mention, level=level),
-                color=discord.Color.gold()
+            # Get custom level-up message configuration
+            level_up_config = await self.bot.db.query(
+                "SELECT * FROM level_up_config WHERE guild_id = %s",
+                (guild.id,),
+                fetchone=True
             )
-            embed.set_thumbnail(url=member.display_avatar.url)
-            if gained_roles:
-                embed.add_field(
-                    name=_("xp_system.level_up.roles_gained", user_id, guild_id), 
-                    value=", ".join(gained_roles), 
-                    inline=False
+            
+            # Use custom config if available, otherwise use defaults
+            if level_up_config and level_up_config.get("enabled", True):
+                message_type = level_up_config.get("message_type", "embed")
+                
+                # Use custom channel if specified
+                if level_up_config.get("channel_id"):
+                    custom_channel_id = int(level_up_config["channel_id"])
+                    custom_channel = self.bot.get_channel(custom_channel_id)
+                    if custom_channel:
+                        level_up_channel = custom_channel
+                
+                if message_type == "simple":
+                    # Simple text message
+                    message_content = level_up_config.get("message_content", "Congratulations {user}! You have reached level {level}!")
+                    message_content = message_content.replace("{user}", member.mention).replace("{level}", str(level))
+                    
+                    try:
+                        await level_up_channel.send(message_content)
+                        logger.debug(f"Simple level up message sent to {level_up_channel.name}")
+                    except Exception as e:
+                        logger.warning(f"Failed to send level up message: {e}")
+                        
+                else:
+                    # Embed message with custom configuration
+                    embed_title = level_up_config.get("embed_title", "Level Up!")
+                    embed_description = level_up_config.get("embed_description", "{user} has reached level **{level}**!")
+                    embed_color = level_up_config.get("embed_color", "#FFD700")
+                    
+                    # Replace placeholders
+                    embed_title = embed_title.replace("{user}", member.display_name).replace("{level}", str(level))
+                    embed_description = embed_description.replace("{user}", member.mention).replace("{level}", str(level))
+                    
+                    # Parse color (hex to int)
+                    try:
+                        if embed_color.startswith("#"):
+                            color_int = int(embed_color[1:], 16)
+                        else:
+                            color_int = int(embed_color, 16)
+                        embed_color_obj = discord.Color(color_int)
+                    except:
+                        embed_color_obj = discord.Color.gold()
+                    
+                    embed = discord.Embed(
+                        title=embed_title,
+                        description=embed_description,
+                        color=embed_color_obj
+                    )
+                    
+                    # Add thumbnail if specified
+                    if level_up_config.get("embed_thumbnail_url"):
+                        # Custom thumbnail URL takes priority
+                        embed.set_thumbnail(url=level_up_config["embed_thumbnail_url"])
+                    elif level_up_config.get("show_user_avatar", True):
+                        # Show user avatar only if enabled (default: True)
+                        embed.set_thumbnail(url=member.display_avatar.url)
+                    # If show_user_avatar is False and no custom thumbnail, no thumbnail is set
+                    
+                    # Add image if specified
+                    if level_up_config.get("embed_image_url"):
+                        embed.set_image(url=level_up_config["embed_image_url"])
+                    
+                    # Add footer if specified
+                    if level_up_config.get("embed_footer_text"):
+                        embed.set_footer(text=level_up_config["embed_footer_text"])
+                    
+                    # Add timestamp if enabled
+                    if level_up_config.get("embed_timestamp", True):
+                        embed.timestamp = discord.utils.utcnow()
+                    
+                    # Add roles gained field if any
+                    if gained_roles:
+                        embed.add_field(
+                            name="🎖️ Roles Gained",
+                            value=", ".join(gained_roles),
+                            inline=False
+                        )
+                    
+                    try:
+                        await level_up_channel.send(content=f"{member.mention}", embed=embed)
+                        logger.debug(f"Custom embed level up message sent to {level_up_channel.name}")
+                    except Exception as e:
+                        logger.warning(f"Failed to send level up message: {e}")
+            else:
+                # Default level-up message (fallback)
+                embed = discord.Embed(
+                    title=_("xp_system.level_up.title", user_id, guild_id),
+                    description=_("xp_system.level_up.description", user_id, guild_id, user=member.mention, level=level),
+                    color=discord.Color.gold()
                 )
+                embed.set_thumbnail(url=member.display_avatar.url)
+                if gained_roles:
+                    embed.add_field(
+                        name=_("xp_system.level_up.roles_gained", user_id, guild_id), 
+                        value=", ".join(gained_roles), 
+                        inline=False
+                    )
 
-            try:
-                await level_up_channel.send(content=f"{member.mention}", embed=embed)
-                logger.debug(f"Level up message sent to {level_up_channel.name}")
-            except Exception as e:
-                logger.warning(f"Failed to send level up message: {e}")
+                try:
+                    await level_up_channel.send(content=f"{member.mention}", embed=embed)
+                    logger.debug(f"Level up message sent to {level_up_channel.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to send level up message: {e}")
         else:
             logger.debug(f"Level up message not sent - enabled: {level_up_enabled}, channel: {bool(level_up_channel)}")
 
@@ -623,8 +748,9 @@ class XPSystem(commands.Cog):
                            GROUP BY user_id
                            ORDER BY weekly_xp DESC
                            LIMIT 10"""
-                color = discord.Color.blue()
-                title_suffix = f" ({_('xp_system.leaderboard.types.text', user_id, guild_id)})"
+                color = discord.Color.from_rgb(88, 101, 242)  # Discord blurple
+                title_emoji = "💬"
+                title_suffix = f" {title_emoji} {_('xp_system.leaderboard.types.text', user_id, guild_id)}"
             elif type == "voice":
                 query = """SELECT user_id, SUM(xp_gained) as weekly_xp
                            FROM xp_history 
@@ -632,8 +758,9 @@ class XPSystem(commands.Cog):
                            GROUP BY user_id
                            ORDER BY weekly_xp DESC
                            LIMIT 10"""
-                color = discord.Color.green()
-                title_suffix = f" ({_('xp_system.leaderboard.types.voice', user_id, guild_id)})"
+                color = discord.Color.from_rgb(87, 242, 135)  # Bright green
+                title_emoji = "🎤"
+                title_suffix = f" {title_emoji} {_('xp_system.leaderboard.types.voice', user_id, guild_id)}"
             else:  # total
                 query = """SELECT user_id, SUM(xp_gained) as weekly_xp
                            FROM xp_history 
@@ -641,8 +768,9 @@ class XPSystem(commands.Cog):
                            GROUP BY user_id
                            ORDER BY weekly_xp DESC
                            LIMIT 10"""
-                color = discord.Color.gold()
-                title_suffix = ""
+                color = discord.Color.from_rgb(255, 215, 0)  # Gold
+                title_emoji = "📊"
+                title_suffix = f" {title_emoji} Total"
             
             logger.debug(f"Weekly Leaderboard Debug - Type: {type}, Guild: {guild_id}")
             weekly_data = await self.bot.db.query(query, (guild_id, week_ago), fetchall=True)
@@ -656,7 +784,7 @@ class XPSystem(commands.Cog):
                 
             # Create embed
             embed = discord.Embed(
-                title=_("xp_system.weekly_leaderboard.title", user_id, guild_id) + title_suffix,
+                title=f"📅 {_('xp_system.weekly_leaderboard.title', user_id, guild_id)}{title_suffix}",
                 color=color,
                 timestamp=datetime.utcnow()
             )
@@ -666,11 +794,23 @@ class XPSystem(commands.Cog):
                 user = self.bot.get_user(data["user_id"])
                 username = user.display_name if user else _('xp_system.leaderboard.unknown_user', user_id, guild_id)
                 
-                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                leaderboard_text += f"{medal} **{username}**: {data['weekly_xp']} XP\n"
+                xp_value = data['weekly_xp']
+                
+                # Format display based on type
+                if type == "text":
+                    # Estimate messages from XP (average 10-20 XP per message, use 15)
+                    est_messages = xp_value // 15
+                    display_value = f"~**{est_messages:,}** messages `({xp_value:,} XP)`"
+                elif type == "voice":
+                    voice_time = self.format_voice_time(xp_value)
+                    display_value = f"**{voice_time}** `({xp_value:,} XP)`"
+                else:  # total
+                    display_value = f"**{xp_value:,}** XP"
+                
+                leaderboard_text += self.format_leaderboard_entry(i, username, display_value)
                 
             embed.description = leaderboard_text
-            embed.set_footer(text=_("xp_system.weekly_leaderboard.footer", user_id, guild_id))
+            embed.set_footer(text=f"⏱️ {_('xp_system.weekly_leaderboard.footer', user_id, guild_id)} • {datetime.now().strftime('%d/%m/%Y %H:%M')}")
             
             # Cache the result as dict (for persistence) - 30 minutes TTL
             self.bot.cache.leaderboards.set(cache_key, embed.to_dict(), ttl=1800)
@@ -709,8 +849,9 @@ class XPSystem(commands.Cog):
                            GROUP BY user_id
                            ORDER BY monthly_xp DESC
                            LIMIT 10"""
-                color = discord.Color.blue()
-                title_suffix = f" ({_('xp_system.leaderboard.types.text', user_id, guild_id)})"
+                color = discord.Color.from_rgb(88, 101, 242)  # Discord blurple
+                title_emoji = "💬"
+                title_suffix = f" {title_emoji} {_('xp_system.leaderboard.types.text', user_id, guild_id)}"
             elif type == "voice":
                 query = """SELECT user_id, SUM(xp_gained) as monthly_xp
                            FROM xp_history 
@@ -718,8 +859,9 @@ class XPSystem(commands.Cog):
                            GROUP BY user_id
                            ORDER BY monthly_xp DESC
                            LIMIT 10"""
-                color = discord.Color.green()
-                title_suffix = f" ({_('xp_system.leaderboard.types.voice', user_id, guild_id)})"
+                color = discord.Color.from_rgb(87, 242, 135)  # Bright green
+                title_emoji = "🎤"
+                title_suffix = f" {title_emoji} {_('xp_system.leaderboard.types.voice', user_id, guild_id)}"
             else:  # total
                 query = """SELECT user_id, SUM(xp_gained) as monthly_xp
                            FROM xp_history 
@@ -727,8 +869,9 @@ class XPSystem(commands.Cog):
                            GROUP BY user_id
                            ORDER BY monthly_xp DESC
                            LIMIT 10"""
-                color = discord.Color.purple()
-                title_suffix = ""
+                color = discord.Color.from_rgb(255, 215, 0)  # Gold
+                title_emoji = "📊"
+                title_suffix = f" {title_emoji} Total"
             
             logger.debug(f"Monthly Leaderboard Debug - Type: {type}, Guild: {guild_id}")
             monthly_data = await self.bot.db.query(query, (guild_id, month_ago), fetchall=True)
@@ -742,7 +885,7 @@ class XPSystem(commands.Cog):
                 
             # Create embed
             embed = discord.Embed(
-                title=_("xp_system.monthly_leaderboard.title", user_id, guild_id) + title_suffix,
+                title=f"📅 {_('xp_system.monthly_leaderboard.title', user_id, guild_id)}{title_suffix}",
                 color=color,
                 timestamp=datetime.utcnow()
             )
@@ -752,11 +895,23 @@ class XPSystem(commands.Cog):
                 user = self.bot.get_user(data["user_id"])
                 username = user.display_name if user else _('xp_system.leaderboard.unknown_user', user_id, guild_id)
                 
-                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                leaderboard_text += f"{medal} **{username}**: {data['monthly_xp']} XP\n"
+                xp_value = data['monthly_xp']
+                
+                # Format display based on type
+                if type == "text":
+                    # Estimate messages from XP (average 10-20 XP per message, use 15)
+                    est_messages = xp_value // 15
+                    display_value = f"~**{est_messages:,}** messages `({xp_value:,} XP)`"
+                elif type == "voice":
+                    voice_time = self.format_voice_time(xp_value)
+                    display_value = f"**{voice_time}** `({xp_value:,} XP)`"
+                else:  # total
+                    display_value = f"**{xp_value:,}** XP"
+                
+                leaderboard_text += self.format_leaderboard_entry(i, username, display_value)
                 
             embed.description = leaderboard_text
-            embed.set_footer(text=_("xp_system.monthly_leaderboard.footer", user_id, guild_id))
+            embed.set_footer(text=f"⏱️ {_('xp_system.monthly_leaderboard.footer', user_id, guild_id)} • {datetime.now().strftime('%d/%m/%Y %H:%M')}")
             
             # Cache the result as dict (for persistence) - 30 minutes TTL
             self.bot.cache.leaderboards.set(cache_key, embed.to_dict(), ttl=1800)
@@ -787,17 +942,20 @@ class XPSystem(commands.Cog):
             if type == "total":
                 query = """SELECT user_id, xp FROM xp_data WHERE guild_id = %s ORDER BY xp DESC LIMIT 10"""
                 field_name = f"{STAR} {_('xp_system.leaderboard.types.total', user_id, guild_id)}"
-                color = discord.Color.gold()
+                color = discord.Color.from_rgb(255, 215, 0)  # Gold
+                title_emoji = "📊"
                 xp_field = "xp"
             elif type == "text":
-                query = """SELECT user_id, text_xp FROM xp_data WHERE guild_id = %s ORDER BY text_xp DESC LIMIT 10"""
+                query = """SELECT user_id, text_xp, message_count FROM xp_data WHERE guild_id = %s ORDER BY text_xp DESC LIMIT 10"""
                 field_name = f"💬 {_('xp_system.leaderboard.types.text', user_id, guild_id)}"
-                color = discord.Color.blue()
+                color = discord.Color.from_rgb(88, 101, 242)  # Discord blurple
+                title_emoji = "💬"
                 xp_field = "text_xp"
             else:  # voice
                 query = """SELECT user_id, voice_xp FROM xp_data WHERE guild_id = %s ORDER BY voice_xp DESC LIMIT 10"""
                 field_name = f"🎤 {_('xp_system.leaderboard.types.voice', user_id, guild_id)}"
-                color = discord.Color.green()
+                color = discord.Color.from_rgb(87, 242, 135)  # Bright green
+                title_emoji = "🎤"
                 xp_field = "voice_xp"
             
             rows = await self.bot.db.query(query, (guild_id,), fetchall=True)
@@ -814,7 +972,7 @@ class XPSystem(commands.Cog):
             
             # Create embed
             embed = discord.Embed(
-                title=f"{TROPHY} {_('xp_system.alltime_leaderboard.title', user_id, guild_id, type=type.title())}",
+                title=f"🏆 {_('xp_system.alltime_leaderboard.title', user_id, guild_id, type=type.title())} {title_emoji}",
                 color=color,
                 timestamp=datetime.utcnow()
             )
@@ -824,11 +982,25 @@ class XPSystem(commands.Cog):
                 member = interaction.guild.get_member(row["user_id"])
                 name = member.display_name if member else _('xp_system.leaderboard.unknown_user', user_id, guild_id)
                 
-                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                leaderboard_text += f"{medal} **{name}**: {row[xp_field]} XP\n"
+                # Format display based on type
+                if type == "text":
+                    # Show message count and XP in parentheses
+                    msg_count = row.get("message_count", 0)
+                    xp_value = row[xp_field]
+                    display_value = f"**{msg_count:,}** messages `({xp_value:,} XP)`"
+                elif type == "voice":
+                    # Show voice time and XP in parentheses
+                    xp_value = row[xp_field]
+                    voice_time = self.format_voice_time(xp_value)
+                    display_value = f"**{voice_time}** `({xp_value:,} XP)`"
+                else:  # total
+                    # Just show total XP
+                    display_value = f"**{row[xp_field]:,}** XP"
+                
+                leaderboard_text += self.format_leaderboard_entry(i, name, display_value)
             
             embed.description = leaderboard_text
-            embed.set_footer(text=_("commands.topxp.embed_footer", user_id, guild_id))
+            embed.set_footer(text=f"⏱️ {_('commands.topxp.embed_footer', user_id, guild_id)} • {datetime.now().strftime('%d/%m/%Y %H:%M')}")
             
             # Cache the result - 10 minutes TTL
             self.bot.cache.leaderboards.set(cache_key, embed.to_dict(), ttl=600)

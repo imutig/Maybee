@@ -81,6 +81,7 @@ class Dashboard {
             setTimeout(() => {
                 setupModernNavigation();
                 this.setupRoleMenuButtons();
+                setupLevelUpEventListeners();
             }, 100);
             
             // Hide loading overlay
@@ -1166,7 +1167,12 @@ class Dashboard {
                 level_up_channel: document.getElementById('levelUpChannel').value || null
             };
 
-            await this.apiCall(`/guild/${this.currentGuild}/xp`, 'PUT', xpConfig);
+            // Save both XP settings and level-up message config
+            await Promise.all([
+                this.apiCall(`/guild/${this.currentGuild}/xp`, 'PUT', xpConfig),
+                this.saveLevelUpConfig()
+            ]);
+            
             this.showSuccess(this.getString('messages.xp_settings_saved') || 'XP settings saved successfully!');
             
         } catch (error) {
@@ -2088,6 +2094,7 @@ class Dashboard {
             document.getElementById('welcomeChannel').value = config.welcome_channel || '';
             document.getElementById('welcomeTitle').value = config.welcome_title || '👋 New member!';
             document.getElementById('welcomeMessage').value = config.welcome_message || 'Welcome {user} to {server}!';
+            document.getElementById('welcomeImageUrl').value = config.welcome_image_url || '';
             
             // Handle welcome fields
             const welcomeFieldsToggle = document.getElementById('welcomeFields');
@@ -2118,6 +2125,7 @@ class Dashboard {
             document.getElementById('goodbyeChannel').value = config.goodbye_channel || '';
             document.getElementById('goodbyeTitle').value = config.goodbye_title || '👋 Departure';
             document.getElementById('goodbyeMessage').value = config.goodbye_message || 'Goodbye {user}, thanks for being part of {server}!';
+            document.getElementById('goodbyeImageUrl').value = config.goodbye_image_url || '';
             
             // Handle goodbye fields
             const goodbyeFieldsToggle = document.getElementById('goodbyeFields');
@@ -2146,6 +2154,80 @@ class Dashboard {
             
         } catch (error) {
             console.error('Failed to load welcome config:', error);
+        }
+    }
+
+    async loadLevelUpConfig() {
+        if (!this.currentGuild) return;
+
+        try {
+            const config = await this.apiCall(`/guild/${this.currentGuild}/level-up-config`);
+            
+            // Message type
+            document.getElementById('levelUpMessageType').value = config.message_type || 'embed';
+            
+            // Simple message
+            document.getElementById('levelUpSimpleMessage').value = config.message_content || 'Congratulations {user}! You have reached level {level}!';
+            
+            // Embed configuration
+            document.getElementById('levelUpEmbedTitle').value = config.embed_title || 'Level Up!';
+            document.getElementById('levelUpEmbedDescription').value = config.embed_description || '{user} has reached level **{level}**!';
+            document.getElementById('levelUpEmbedColor').value = config.embed_color || '#FFD700';
+            document.getElementById('levelUpEmbedThumbnail').value = config.embed_thumbnail_url || '';
+            document.getElementById('levelUpShowUserAvatar').checked = config.show_user_avatar !== false;
+            document.getElementById('levelUpEmbedImage').value = config.embed_image_url || '';
+            document.getElementById('levelUpEmbedFooter').value = config.embed_footer_text || 'Keep up the great work!';
+            document.getElementById('levelUpEmbedTimestamp').checked = config.embed_timestamp !== false;
+            
+            // Toggle visibility based on message type
+            this.toggleLevelUpMessageType();
+            
+        } catch (error) {
+            console.error('Failed to load level up config:', error);
+        }
+    }
+
+    toggleLevelUpMessageType() {
+        const messageType = document.getElementById('levelUpMessageType').value;
+        const simpleGroup = document.getElementById('simpleMessageGroup');
+        const embedGroup = document.getElementById('embedConfigGroup');
+        
+        if (messageType === 'simple') {
+            simpleGroup.style.display = 'block';
+            embedGroup.style.display = 'none';
+        } else {
+            simpleGroup.style.display = 'none';
+            embedGroup.style.display = 'block';
+        }
+    }
+
+    async saveLevelUpConfig() {
+        if (!this.currentGuild) {
+            return; // Silent fail, will be caught by saveXPSettings
+        }
+
+        try {
+            const config = {
+                enabled: true,
+                channel_id: document.getElementById('levelUpChannel').value || null,
+                message_type: document.getElementById('levelUpMessageType').value,
+                message_content: document.getElementById('levelUpSimpleMessage').value || 'Congratulations {user}! You have reached level {level}!',
+                embed_title: document.getElementById('levelUpEmbedTitle').value || 'Level Up!',
+                embed_description: document.getElementById('levelUpEmbedDescription').value || '{user} has reached level **{level}**!',
+                embed_color: document.getElementById('levelUpEmbedColor').value || '#FFD700',
+                embed_thumbnail_url: document.getElementById('levelUpEmbedThumbnail').value || null,
+                show_user_avatar: document.getElementById('levelUpShowUserAvatar').checked,
+                embed_image_url: document.getElementById('levelUpEmbedImage').value || null,
+                embed_footer_text: document.getElementById('levelUpEmbedFooter').value || 'Keep up the great work!',
+                embed_timestamp: document.getElementById('levelUpEmbedTimestamp').checked
+            };
+
+            await this.apiCall(`/guild/${this.currentGuild}/level-up-config`, 'PUT', config);
+            // Success message will be shown by saveXPSettings
+            
+        } catch (error) {
+            console.error('Failed to save level up config:', error);
+            throw error; // Re-throw to be caught by saveXPSettings
         }
     }
 
@@ -2262,11 +2344,13 @@ class Dashboard {
                 welcome_title: document.getElementById('welcomeTitle').value || '👋 New member!',
                 welcome_message: document.getElementById('welcomeMessage').value || 'Welcome {user} to {server}!',
                 welcome_fields: welcomeFields,
+                welcome_image_url: document.getElementById('welcomeImageUrl').value || null,
                 goodbye_enabled: document.getElementById('goodbyeEnabled').checked,
                 goodbye_channel: document.getElementById('goodbyeChannel').value || null,
                 goodbye_title: document.getElementById('goodbyeTitle').value || '👋 Departure',
                 goodbye_message: document.getElementById('goodbyeMessage').value || 'Goodbye {user}, thanks for being part of {server}!',
                 goodbye_fields: goodbyeFields,
+                goodbye_image_url: document.getElementById('goodbyeImageUrl').value || null,
                 auto_role_enabled: document.getElementById('autoRoleEnabled').checked,
                 auto_role_ids: this.getSelectedAutoRoles()
             };
@@ -2501,6 +2585,7 @@ class Dashboard {
         await this.loadGuildConfig();
         await this.loadGuildChannels();
         await this.loadGuildRoles();  // Add this to load roles for level roles dropdown
+        await this.loadLevelUpConfig();  // Load level-up message configuration
         this.populateXPSettings();
         
         // Mark as loaded
@@ -4655,6 +4740,52 @@ function setupModernNavigation() {
     } catch (error) {
         console.error('❌ Error in modern navigation setup:', error);
         setupSimpleNavigation();
+    }
+}
+
+// Setup level-up customization event listeners
+function setupLevelUpEventListeners() {
+    console.log('🔧 Setting up level-up customization event listeners...');
+    
+    // Message type change listener
+    const messageTypeSelect = document.getElementById('levelUpMessageType');
+    if (messageTypeSelect) {
+        messageTypeSelect.addEventListener('change', () => {
+            if (window.dashboard) {
+                window.dashboard.toggleLevelUpMessageType();
+            }
+        });
+        console.log('✅ Message type change listener added');
+    } else {
+        console.warn('⚠️ Message type select not found');
+    }
+    
+    // Intercept XP Settings Form submission
+    const xpForm = document.getElementById('xpSettingsForm');
+    if (xpForm) {
+        xpForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (window.dashboard) {
+                window.dashboard.saveXPSettings(e);
+            }
+        });
+        console.log('✅ XP Settings Form submit listener added');
+    } else {
+        console.warn('⚠️ XP Settings Form not found');
+    }
+    
+    // Welcome Settings Form
+    const welcomeForm = document.getElementById('welcomeSettingsForm');
+    if (welcomeForm) {
+        welcomeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (window.dashboard) {
+                window.dashboard.saveWelcomeSettings(e);
+            }
+        });
+        console.log('✅ Welcome Settings Form submit listener added');
+    } else {
+        console.warn('⚠️ Welcome Settings Form not found');
     }
 }
 

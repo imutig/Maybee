@@ -423,6 +423,86 @@
                                         </div>
                                     </div>
 
+                                    <!-- Level Up Message Customization -->
+                                    <div class="settings-section">
+                                        <h4 class="section-title">
+                                            <i class="fas fa-edit me-2"></i>
+                                            <span data-translate="xp_system.customize_level_up">Customize Level Up Message</span>
+                                        </h4>
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label" data-translate="xp_system.message_type">Message Type</label>
+                                            <select id="levelUpMessageType" class="form-select">
+                                                <option value="simple" data-translate="xp_system.simple_message">Simple Text Message</option>
+                                                <option value="embed" selected data-translate="xp_system.embed_message">Embed Message</option>
+                                            </select>
+                                            <div class="form-hint" data-translate="xp_system.message_type_hint">Choose between a simple text message or a rich embed</div>
+                                        </div>
+
+                                        <!-- Simple Message Content -->
+                                        <div class="form-group" id="simpleMessageGroup">
+                                            <label class="form-label" data-translate="xp_system.simple_message_content">Simple Message</label>
+                                            <textarea id="levelUpSimpleMessage" class="form-control" rows="2" placeholder="Congratulations {user}! You have reached level {level}!"></textarea>
+                                            <div class="form-hint" data-translate="xp_system.simple_message_hint">Variables: {user} = mention, {level} = level number</div>
+                                        </div>
+
+                                        <!-- Embed Configuration -->
+                                        <div id="embedConfigGroup">
+                                            <div class="form-group">
+                                                <label class="form-label" data-translate="xp_system.embed_title">Embed Title</label>
+                                                <input type="text" id="levelUpEmbedTitle" class="form-control" placeholder="Level Up!">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="form-label" data-translate="xp_system.embed_description">Embed Description</label>
+                                                <textarea id="levelUpEmbedDescription" class="form-control" rows="3" placeholder="{user} has reached level **{level}**!"></textarea>
+                                                <div class="form-hint" data-translate="xp_system.embed_description_hint">Variables: {user} = mention, {level} = level number. Supports markdown.</div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="form-label" data-translate="xp_system.embed_color">Embed Color</label>
+                                                <input type="color" id="levelUpEmbedColor" class="form-control form-control-color" value="#FFD700">
+                                                <div class="form-hint" data-translate="xp_system.embed_color_hint">Color of the embed border</div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="form-label" data-translate="xp_system.embed_thumbnail">Thumbnail URL</label>
+                                                <input type="url" id="levelUpEmbedThumbnail" class="form-control" placeholder="https://example.com/thumbnail.png">
+                                                <div class="form-hint" data-translate="xp_system.embed_thumbnail_hint">Small image displayed in the top-right corner</div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <div class="toggle-switch">
+                                                    <input type="checkbox" id="levelUpShowUserAvatar" class="toggle-input" checked>
+                                                    <label for="levelUpShowUserAvatar" class="toggle-label">
+                                                        <span class="toggle-text" data-translate="xp_system.show_user_avatar">Show User Profile Picture</span>
+                                                    </label>
+                                                </div>
+                                                <div class="form-hint" data-translate="xp_system.show_user_avatar_hint">Display the user's avatar as thumbnail when no custom thumbnail URL is set</div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="form-label" data-translate="xp_system.embed_image">Image URL</label>
+                                                <input type="url" id="levelUpEmbedImage" class="form-control" placeholder="https://example.com/image.png">
+                                                <div class="form-hint" data-translate="xp_system.embed_image_hint">Large image displayed at the bottom of the embed</div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="form-label" data-translate="xp_system.embed_footer">Footer Text</label>
+                                                <input type="text" id="levelUpEmbedFooter" class="form-control" placeholder="Keep up the great work!">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <div class="toggle-switch">
+                                                    <input type="checkbox" id="levelUpEmbedTimestamp" class="toggle-input" checked>
+                                                    <label for="levelUpEmbedTimestamp" class="toggle-label">
+                                                        <span class="toggle-text" data-translate="xp_system.embed_timestamp">Show Timestamp</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Level Roles Settings -->
                                     <div class="settings-section">
                                         <h4 class="section-title">
@@ -704,6 +784,12 @@
                                         </div>
 
                                         <div class="form-group">
+                                            <label class="form-label">Welcome Image URL</label>
+                                            <input type="url" id="welcomeImageUrl" class="form-control" placeholder="https://example.com/image.png">
+                                            <div class="form-hint">Optional image to display in the welcome embed (must be a valid URL)</div>
+                                        </div>
+
+                                        <div class="form-group">
                                             <div class="toggle-switch">
                                                 <input type="checkbox" id="welcomeFields" class="toggle-input">
                                                 <label for="welcomeFields" class="toggle-label">
@@ -767,6 +853,12 @@
                                                 <code>{displayname}</code> - Display name • 
                                                 <code>{memberCount}</code> - Current member count
                                             </div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Goodbye Image URL</label>
+                                            <input type="url" id="goodbyeImageUrl" class="form-control" placeholder="https://example.com/image.png">
+                                            <div class="form-hint">Optional image to display in the goodbye embed (must be a valid URL)</div>
                                         </div>
 
                                         <div class="form-group">
