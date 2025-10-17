@@ -48,6 +48,9 @@ class Connect4Game:
         rows = []
         for row in self.board:
             rows.append(''.join(EMOJIS[cell] for cell in row))
+        # Ajoute les numéros de colonne en bas
+        col_numbers = ''.join(f'{i+1}\u20e3' for i in range(CONNECT4_COLUMNS))
+        rows.append(col_numbers)
         return '\n'.join(rows)
 
 class Connect4View(discord.ui.View):
@@ -58,6 +61,26 @@ class Connect4View(discord.ui.View):
         self.interaction = interaction
         for i in range(CONNECT4_COLUMNS):
             self.add_item(Connect4Button(i, self))
+        self.add_item(Connect4ForfeitButton(self))
+
+class Connect4ForfeitButton(discord.ui.Button):
+    def __init__(self, view):
+        super().__init__(label="Abandonner", style=discord.ButtonStyle.danger, row=1)
+        self.view = view
+
+    async def callback(self, interaction: discord.Interaction):
+        game = self.view.game
+        if game.finished:
+            await interaction.response.send_message("La partie est déjà terminée.", ephemeral=True)
+            return
+        if interaction.user not in game.players:
+            await interaction.response.send_message("Vous ne jouez pas dans cette partie.", ephemeral=True)
+            return
+        quitter = interaction.user
+        gagnant = game.players[1] if quitter == game.players[0] else game.players[0]
+        game.finished = True
+        game.winner = gagnant
+        await self.view.update_message(interaction)
 
     async def update_message(self, interaction=None):
         embed = self.make_embed()
