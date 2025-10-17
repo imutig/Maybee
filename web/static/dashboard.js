@@ -2162,13 +2162,12 @@ class Dashboard {
 
         try {
             const config = await this.apiCall(`/guild/${this.currentGuild}/level-up-config`);
-            
+            // Set the channel select value
+            document.getElementById('levelUpChannel').value = config.channel_id || '';
             // Message type
             document.getElementById('levelUpMessageType').value = config.message_type || 'embed';
-            
             // Simple message
             document.getElementById('levelUpSimpleMessage').value = config.message_content || 'Congratulations {user}! You have reached level {level}!';
-            
             // Embed configuration
             document.getElementById('levelUpEmbedTitle').value = config.embed_title || 'Level Up!';
             document.getElementById('levelUpEmbedDescription').value = config.embed_description || '{user} has reached level **{level}**!';
@@ -2178,10 +2177,8 @@ class Dashboard {
             document.getElementById('levelUpEmbedImage').value = config.embed_image_url || '';
             document.getElementById('levelUpEmbedFooter').value = config.embed_footer_text || 'Keep up the great work!';
             document.getElementById('levelUpEmbedTimestamp').checked = config.embed_timestamp !== false;
-            
             // Toggle visibility based on message type
             this.toggleLevelUpMessageType();
-            
         } catch (error) {
             console.error('Failed to load level up config:', error);
         }

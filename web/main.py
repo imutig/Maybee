@@ -1959,13 +1959,18 @@ async def send_test_levelup_message(
                 (guild_id,)
             )
         
-        # Determine which channel to send to
+        # Determine which channel to send to (priority: level_up_config > guild_config > xp_config)
+        levelup_config = await database.fetch_one(
+            "SELECT * FROM level_up_config WHERE guild_id = %s",
+            (guild_id,)
+        )
         target_channel = None
-        if general_config and general_config.get('level_up_channel'):  # level_up_channel
+        if levelup_config and levelup_config.get('channel_id'):
+            target_channel = levelup_config['channel_id']
+        elif general_config and general_config.get('level_up_channel'):
             target_channel = general_config['level_up_channel']
-        elif xp_config and len(xp_config) > 1 and xp_config[1]:  # xp_channel
+        elif xp_config and len(xp_config) > 1 and xp_config[1]:
             target_channel = xp_config[1]
-        
         if not target_channel:
             return {"message": "No XP or level up channel configured. Please set up a channel first.", "success": False}
         
