@@ -4912,6 +4912,13 @@ function setupModernNavigation() {
                     });
                 }
                 
+                if (targetId === 'embed' && window.dashboard) {
+                    console.log('🚀 Loading embed creator data...');
+                    window.dashboard.loadEmbedCreatorData().catch(error => {
+                        console.error('Failed to load embed creator data:', error);
+                    });
+                }
+                
                 // Double-check visibility
                 setTimeout(() => {
                     const rect = targetPane.getBoundingClientRect();

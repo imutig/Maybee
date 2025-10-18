@@ -751,7 +751,7 @@ class TicketCloseAndVerifyButton(discord.ui.Button):
                     embed = discord.Embed(
                         title="✅ Membre vérifié",
                         description=message,
-                        color=discord.Color.green(),
+                        color=0xFFD700,  # Couleur or
                         timestamp=datetime.utcnow()
                     )
                     embed.set_footer(text=f"Vérifié par {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
