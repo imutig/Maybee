@@ -4913,7 +4913,10 @@ function setupModernNavigation() {
                 }
                 
                 if (targetId === 'embed' && window.dashboard) {
-                    console.log('🚀 Loading embed creator data...');
+                    console.log('🚀 Initializing embed creator...');
+                    window.dashboard.initEmbedCreator().catch(error => {
+                        console.error('Failed to initialize embed creator:', error);
+                    });
                     window.dashboard.loadEmbedCreatorData().catch(error => {
                         console.error('Failed to load embed creator data:', error);
                     });
