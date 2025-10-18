@@ -46,7 +46,8 @@ ROLES = {
 class LoupGarouGame:
     """Classe représentant une partie de Loup-Garou"""
     
-    def __init__(self, guild_id: int, channel: discord.TextChannel, organizer: discord.Member):
+    def __init__(self, guild_id: int, channel: discord.TextChannel, organizer: discord.Member, 
+                 debate_time: int = 60, vote_time: int = 120):
         self.guild_id = guild_id
         self.channel = channel
         self.organizer = organizer
@@ -68,6 +69,9 @@ class LoupGarouGame:
         self.sorciere_heal_used = False
         self.sorciere_poison_used = False
         self.last_victim: Optional[int] = None
+        # Durées configurables
+        self.debate_time = debate_time  # Durée du débat en secondes
+        self.vote_time = vote_time  # Durée du vote en secondes
         
     def add_player(self, member: discord.Member) -> bool:
         """Ajoute un joueur à la partie"""
@@ -180,6 +184,18 @@ class GameSetupView(discord.ui.View):
         modal = RoleConfigModal(self)
         await interaction.response.send_modal(modal)
     
+    @discord.ui.button(label="Temps", style=discord.ButtonStyle.secondary, emoji="⏱️")
+    async def time_config_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.game.organizer.id:
+            await interaction.response.send_message(
+                _("loupgarou.only_organizer", interaction.user.id, self.game.guild_id),
+                ephemeral=True
+            )
+            return
+        
+        modal = TimeConfigModal(self)
+        await interaction.response.send_modal(modal)
+    
     @discord.ui.button(label="Lancer", style=discord.ButtonStyle.primary, emoji="🎮")
     async def start_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.game.organizer.id:
@@ -241,6 +257,22 @@ class GameSetupView(discord.ui.View):
         embed.add_field(
             name=f"🎭 {_('loupgarou.roles', self.game.organizer.id, self.game.guild_id)}",
             value=roles_text,
+            inline=False
+        )
+        
+        # Affiche les temps configurés
+        debate_min = self.game.debate_time // 60
+        debate_sec = self.game.debate_time % 60
+        vote_min = self.game.vote_time // 60
+        vote_sec = self.game.vote_time % 60
+        
+        debate_str = f"{debate_min}m{debate_sec}s" if debate_sec > 0 else f"{debate_min}m"
+        vote_str = f"{vote_min}m{vote_sec}s" if vote_sec > 0 else f"{vote_min}m"
+        
+        embed.add_field(
+            name=f"⏱️ {_('loupgarou.time_settings', self.game.organizer.id, self.game.guild_id)}",
+            value=f"💬 {_('loupgarou.debate_time_label', self.game.organizer.id, self.game.guild_id)}: {debate_str}\n"
+                  f"🗳️ {_('loupgarou.vote_time_label', self.game.organizer.id, self.game.guild_id)}: {vote_str}",
             inline=False
         )
         
@@ -337,11 +369,74 @@ class RoleConfigModal(discord.ui.Modal):
                 ephemeral=True
             )
 
+class TimeConfigModal(discord.ui.Modal):
+    """Modal pour configurer les temps de débat et de vote"""
+    
+    def __init__(self, view: GameSetupView):
+        super().__init__(title="Configuration des temps")
+        self.view = view
+        
+        # Champ pour le temps de débat
+        self.debate_time = discord.ui.TextInput(
+            label="Temps de débat (en secondes)",
+            placeholder="60 (1 minute par défaut)",
+            default=str(view.game.debate_time),
+            min_length=1,
+            max_length=4
+        )
+        self.add_item(self.debate_time)
+        
+        # Champ pour le temps de vote
+        self.vote_time = discord.ui.TextInput(
+            label="Temps de vote (en secondes)",
+            placeholder="120 (2 minutes par défaut)",
+            default=str(view.game.vote_time),
+            min_length=1,
+            max_length=4
+        )
+        self.add_item(self.vote_time)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            debate = int(self.debate_time.value)
+            vote = int(self.vote_time.value)
+            
+            # Validation des valeurs (entre 10 secondes et 30 minutes)
+            if not (10 <= debate <= 1800):
+                await interaction.response.send_message(
+                    _("loupgarou.invalid_debate_time", interaction.user.id, self.view.game.guild_id),
+                    ephemeral=True
+                )
+                return
+            
+            if not (10 <= vote <= 1800):
+                await interaction.response.send_message(
+                    _("loupgarou.invalid_vote_time", interaction.user.id, self.view.game.guild_id),
+                    ephemeral=True
+                )
+                return
+            
+            self.view.game.debate_time = debate
+            self.view.game.vote_time = vote
+            
+            await interaction.response.send_message(
+                _("loupgarou.time_config_updated", interaction.user.id, self.view.game.guild_id)
+                .format(debate, vote),
+                ephemeral=True
+            )
+            await self.view.update_game_message()
+        
+        except ValueError:
+            await interaction.response.send_message(
+                _("loupgarou.invalid_numbers", interaction.user.id, self.view.game.guild_id),
+                ephemeral=True
+            )
+
 class VoteView(discord.ui.View):
     """Vue pour voter pendant la phase de jour"""
     
     def __init__(self, game: LoupGarouGame, cog):
-        super().__init__(timeout=120)
+        super().__init__(timeout=game.vote_time)
         self.game = game
         self.cog = cog
         self.vote_complete = asyncio.Event()
@@ -1084,9 +1179,19 @@ class LoupGarou(commands.Cog):
         """Phase de jour - discussion et vote"""
         game.phase = "day"
         
+        # Formatage du temps de débat
+        debate_min = game.debate_time // 60
+        debate_sec = game.debate_time % 60
+        if debate_min > 0 and debate_sec > 0:
+            debate_str = f"{debate_min} minute{'s' if debate_min > 1 else ''} {debate_sec}s"
+        elif debate_min > 0:
+            debate_str = f"{debate_min} minute{'s' if debate_min > 1 else ''}"
+        else:
+            debate_str = f"{debate_sec} secondes"
+        
         embed = discord.Embed(
             title=f"☀️ {_('loupgarou.day_phase', game.organizer.id, game.guild_id).format(game.day_number)}",
-            description=_("loupgarou.day_description", game.organizer.id, game.guild_id),
+            description=_("loupgarou.day_description", game.organizer.id, game.guild_id).format(debate_str),
             color=discord.Color.gold()
         )
         
@@ -1104,7 +1209,7 @@ class LoupGarou(commands.Cog):
         discussion_msg = await game.channel.send(embed=embed)
         
         # Attend un peu pour la discussion avec compte à rebours
-        discussion_time = 60
+        discussion_time = game.debate_time
         for remaining in range(discussion_time, 0, -15):
             if remaining < discussion_time:
                 embed.set_footer(text=f"⏱️ Discussion - Temps restant: {remaining}s")
@@ -1126,9 +1231,19 @@ class LoupGarou(commands.Cog):
         import time
         game.vote_start_time = time.time()
         
+        # Formatage du temps de vote
+        vote_min = game.vote_time // 60
+        vote_sec = game.vote_time % 60
+        if vote_min > 0 and vote_sec > 0:
+            vote_str = f"{vote_min} minute{'s' if vote_min > 1 else ''} {vote_sec}s"
+        elif vote_min > 0:
+            vote_str = f"{vote_min} minute{'s' if vote_min > 1 else ''}"
+        else:
+            vote_str = f"{vote_sec} secondes"
+        
         embed = discord.Embed(
             title=f"🗳️ {_('loupgarou.voting_phase', game.organizer.id, game.guild_id)}",
-            description=_("loupgarou.voting_description", game.organizer.id, game.guild_id),
+            description=_("loupgarou.voting_description", game.organizer.id, game.guild_id).format(vote_str),
             color=discord.Color.blue()
         )
         
@@ -1136,7 +1251,7 @@ class LoupGarou(commands.Cog):
         vote_message = await game.channel.send(embed=embed, view=view)
         
         # Attend les votes avec compte à rebours
-        timeout = 120
+        timeout = game.vote_time
         start_time = asyncio.get_event_loop().time()
         
         try:
