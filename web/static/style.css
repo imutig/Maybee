@@ -5461,3 +5461,131 @@ canvas {
     margin: 0;
     opacity: 0.8;
 }
+
+/* ========================= */
+/* Ticket Logs Configuration */
+/* ========================= */
+
+.event-list {
+    margin: var(--spacing-md) 0 0 var(--spacing-lg);
+    padding: 0;
+    list-style: none;
+}
+
+.event-list li {
+    margin: var(--spacing-sm) 0;
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+}
+
+.event-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 4px;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    margin-right: var(--spacing-sm);
+    min-width: 140px;
+}
+
+.event-badge.green {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.event-badge.blue {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--info);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.event-badge.orange {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.event-badge.red {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.event-badge.purple {
+    background: rgba(168, 85, 247, 0.15);
+    color: #A855F7;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.event-badge.gold {
+    background: rgba(255, 215, 0, 0.15);
+    color: var(--primary-yellow);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.event-preview {
+    background: var(--surface-dark);
+    border-radius: 8px;
+    padding: var(--spacing-md);
+}
+
+.embed {
+    border-left: 4px solid;
+    padding: var(--spacing-md);
+    border-radius: 4px;
+    background: var(--surface-lighter);
+    font-size: var(--font-size-sm);
+}
+
+.embed.green-embed {
+    border-left-color: var(--success);
+}
+
+.embed.blue-embed {
+    border-left-color: var(--info);
+}
+
+.embed.orange-embed {
+    border-left-color: var(--warning);
+}
+
+.embed-title {
+    font-weight: 700;
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+}
+
+.embed-field {
+    margin: var(--spacing-xs) 0;
+    color: var(--text-secondary);
+}
+
+.embed-field strong {
+    color: var(--text-primary);
+}
+
+.embed-footer {
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-subtle);
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.form-hint-inline {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    font-weight: 400;
+    margin-left: var(--spacing-xs);
+}

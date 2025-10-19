@@ -22,6 +22,73 @@ class Ticket(commands.Cog):
         self.cloud_storage = GoogleDriveStorage()
         self.ticket_logger = CloudTicketLogger(bot, self.cloud_storage)
         self.cloud_enabled = False  # Sera défini à True si l'initialisation réussit
+    
+    async def log_ticket_event(self, guild: discord.Guild, event_type: str, ticket_channel: discord.TextChannel, 
+                               user: discord.Member, details: str = ""):
+        """Log un événement de ticket dans le channel configuré"""
+        try:
+            # Récupérer le channel de logs configuré
+            config = await self.bot.db.query(
+                "SELECT ticket_events_log_channel_id FROM server_config WHERE guild_id = %s",
+                (str(guild.id),),
+                fetchone=True
+            )
+            
+            if not config or not config.get('ticket_events_log_channel_id'):
+                return  # Pas de channel configuré, on ne log pas
+            
+            log_channel_id = int(config['ticket_events_log_channel_id'])
+            log_channel = guild.get_channel(log_channel_id)
+            
+            if not log_channel:
+                return
+            
+            # Créer l'embed selon le type d'événement
+            color_map = {
+                "created": discord.Color.green(),
+                "claimed": discord.Color.blue(),
+                "closed": discord.Color.orange(),
+                "deleted": discord.Color.red(),
+                "reopened": discord.Color.purple(),
+                "verified": discord.Color.gold()
+            }
+            
+            emoji_map = {
+                "created": "🎫",
+                "claimed": "🙋",
+                "closed": "🔒",
+                "deleted": "🗑️",
+                "reopened": "🔓",
+                "verified": "✅"
+            }
+            
+            title_map = {
+                "created": "Ticket créé",
+                "claimed": "Ticket pris en charge",
+                "closed": "Ticket fermé",
+                "deleted": "Ticket supprimé",
+                "reopened": "Ticket rouvert",
+                "verified": "Utilisateur vérifié"
+            }
+            
+            embed = discord.Embed(
+                title=f"{emoji_map.get(event_type, '📋')} {title_map.get(event_type, 'Événement')}",
+                color=color_map.get(event_type, discord.Color.blue()),
+                timestamp=datetime.now()
+            )
+            
+            embed.add_field(name="Canal", value=ticket_channel.mention, inline=True)
+            embed.add_field(name="Utilisateur", value=user.mention, inline=True)
+            
+            if details:
+                embed.add_field(name="Détails", value=details, inline=False)
+            
+            embed.set_footer(text=f"ID: {ticket_channel.id}")
+            
+            await log_channel.send(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Erreur lors du log d'événement de ticket: {e}")
 
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
@@ -162,8 +229,17 @@ class Ticket(commands.Cog):
             
             mention_content = " ".join(mentions) if mentions else ""
             
-            # Add close button
-            view = TicketCloseView()
+            # Fetch panel data to check if this is a verification ticket
+            panel_data = None
+            if panel_id:
+                panel_data = await self.bot.db.query(
+                    "SELECT * FROM ticket_panels WHERE id = %s AND guild_id = %s",
+                    (panel_id, str(guild.id)),
+                    fetchone=True
+                )
+            
+            # Add close button (and claim button if verification ticket)
+            view = TicketCloseView(panel_data)
             
             await channel.send(content=f"{user.mention} {mention_content}".strip(), embed=embed, view=view)
             
@@ -174,10 +250,7 @@ class Ticket(commands.Cog):
             """, (str(guild.id), str(channel.id), str(user.id), button_id, panel_id))
             
             # Enregistrer l'événement de création
-            await self.ticket_logger.log_ticket_event(
-                guild.id, channel.id, "created", user.id, user.display_name,
-                f"Ticket créé via {button_label}"
-            )
+            await self.log_ticket_event(guild, "created", channel, user, f"Ticket créé via {button_label}")
             
             await interaction.response.send_message(_('ticket_system.created_success', interaction.user.id, interaction.guild.id, channel=channel.mention), ephemeral=True)
             
@@ -235,7 +308,7 @@ class Ticket(commands.Cog):
             embed.add_field(
                 name=_('ticket_system.ticket_logs.statistics', user_id, guild_id),
                 value=_('ticket_system.ticket_logs.stats_content', user_id, guild_id, 
-                       count=len(user_logs), user=user.mention),
+                       count=len(user_logs), user=user.mention, user_id=user.id),
                 inline=False
             )
             
@@ -528,10 +601,82 @@ class TicketCloseButton(discord.ui.Button):
         await interaction.response.send_message(embed=embed, view=view)
         
         # Enregistrer l'événement de fermeture
-        await interaction.client.get_cog('Ticket').ticket_logger.log_ticket_event(
-            guild_id, channel.id, "closed", user_id, interaction.user.display_name,
-            f"Ticket fermé par {interaction.user.display_name}"
+        ticket_cog = interaction.client.get_cog('Ticket')
+        if ticket_cog and ticket_creator:
+            await ticket_cog.log_ticket_event(
+                interaction.guild, "closed", channel, interaction.user,
+                f"Ticket fermé par {interaction.user.display_name}"
+            )
+
+
+class ClaimTicketButton(discord.ui.Button):
+    """Bouton pour prendre en charge un ticket de vérification"""
+    
+    def __init__(self):
+        super().__init__(style=discord.ButtonStyle.primary,
+                         label="Prendre en charge",
+                         emoji="🙋",
+                         custom_id="claim_ticket")
+    
+    async def callback(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        channel = interaction.channel
+        
+        # Récupérer les données du ticket
+        ticket_data = await interaction.client.db.query(
+            "SELECT * FROM active_tickets WHERE channel_id = %s AND guild_id = %s",
+            (str(channel.id), str(guild_id)),
+            fetchone=True
         )
+        
+        if not ticket_data:
+            await interaction.response.send_message("❌ Ticket introuvable.", ephemeral=True)
+            return
+        
+        # Récupérer les données du panel
+        panel_data = None
+        if ticket_data.get('panel_id'):
+            panel_data = await interaction.client.db.query(
+                "SELECT * FROM ticket_panels WHERE id = %s AND guild_id = %s",
+                (ticket_data['panel_id'], str(guild_id)),
+                fetchone=True
+            )
+        
+        # Vérifier si l'utilisateur a le rôle vérificateur
+        if panel_data and panel_data.get('verifier_role_id'):
+            verifier_role_id = int(panel_data['verifier_role_id'])
+            has_role = any(role.id == verifier_role_id for role in interaction.user.roles)
+            if not has_role and not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(
+                    "❌ Vous n'avez pas le rôle nécessaire pour prendre en charge ce ticket.", 
+                    ephemeral=True
+                )
+                return
+        
+        # Mettre à jour le ticket avec le claimer
+        await interaction.client.db.execute(
+            "UPDATE active_tickets SET claimed_by = %s WHERE channel_id = %s AND guild_id = %s",
+            (str(user_id), str(channel.id), str(guild_id))
+        )
+        
+        # Enregistrer l'événement
+        ticket_cog = interaction.client.get_cog('Ticket')
+        if ticket_cog:
+            await ticket_cog.log_ticket_event(
+                interaction.guild, "claimed", channel, interaction.user,
+                f"Ticket pris en charge par {interaction.user.display_name}"
+            )
+        
+        # Créer l'embed de confirmation
+        embed = discord.Embed(
+            title="✅ Ticket pris en charge",
+            description=f"{interaction.user.mention} a pris en charge ce ticket.",
+            color=discord.Color.blue(),
+            timestamp=datetime.utcnow()
+        )
+        
+        await interaction.response.send_message(embed=embed)
 
 
 class TicketPanelView(discord.ui.View):
@@ -596,10 +741,12 @@ class TicketConfirmDeleteButton(discord.ui.Button):
         channel = interaction.channel
         
         # Enregistrer l'événement de suppression
-        await interaction.client.get_cog('Ticket').ticket_logger.log_ticket_event(
-            guild_id, channel.id, "deleted", user_id, interaction.user.display_name,
-            f"Ticket supprimé définitivement par {interaction.user.display_name}"
-        )
+        ticket_cog = interaction.client.get_cog('Ticket')
+        if ticket_cog:
+            await ticket_cog.log_ticket_event(
+                interaction.guild, "deleted", channel, interaction.user,
+                f"Ticket supprimé définitivement par {interaction.user.display_name}"
+            )
         
         # Récupérer les informations du ticket depuis la base de données
         ticket_data = await interaction.client.db.query(
@@ -773,10 +920,12 @@ class TicketCloseAndVerifyButton(discord.ui.Button):
                 print("DEBUG: Pas de canal de vérification configuré")
             
             # Enregistrer l'événement
-            await interaction.client.get_cog('Ticket').ticket_logger.log_ticket_event(
-                guild_id, channel.id, "verified", user_id, interaction.user.display_name,
-                f"Membre {ticket_member.display_name} vérifié et ticket fermé par {interaction.user.display_name}"
-            )
+            ticket_cog = interaction.client.get_cog('Ticket')
+            if ticket_cog:
+                await ticket_cog.log_ticket_event(
+                    interaction.guild, "verified", channel, interaction.user,
+                    f"Membre {ticket_member.display_name} vérifié et ticket fermé par {interaction.user.display_name}"
+                )
             
             # Supprimer le ticket de la base de données
             await interaction.client.db.execute(
@@ -860,10 +1009,12 @@ class TicketReopenButton(discord.ui.Button):
         await interaction.response.send_message(embed=embed, view=view)
         
         # Enregistrer l'événement de réouverture
-        await interaction.client.get_cog('Ticket').ticket_logger.log_ticket_event(
-            guild_id, channel.id, "reopened", user_id, interaction.user.display_name,
-            f"Ticket rouvert par {interaction.user.display_name}"
-        )
+        ticket_cog = interaction.client.get_cog('Ticket')
+        if ticket_cog and ticket_creator:
+            await ticket_cog.log_ticket_event(
+                interaction.guild, "reopened", channel, interaction.user,
+                f"Ticket rouvert par {interaction.user.display_name}"
+            )
 
 class TicketLogsDropdown(discord.ui.Select):
     """Dropdown pour sélectionner un ticket dans les logs"""
@@ -1573,9 +1724,13 @@ class TicketPageNextButton(discord.ui.Button):
 
 class TicketCloseView(discord.ui.View):
 
-    def __init__(self):
+    def __init__(self, panel_data: dict = None):
         super().__init__(timeout=None)
         self.add_item(TicketCloseButton())
+        
+        # Ajouter le bouton "Prendre en charge" si c'est un ticket de vérification
+        if panel_data and panel_data.get('verification_enabled') in (1, True, '1'):
+            self.add_item(ClaimTicketButton())
 
 
 async def setup(bot):

@@ -1420,6 +1420,99 @@ async def update_guild_config(
         print(f"Config update error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/guild/{guild_id}/server-config")
+async def get_server_config(guild_id: str, current_user: str = Depends(get_current_user)):
+    """Get server configuration including ticket logs channels"""
+    try:
+        # Verify user has access to this guild
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get server config from database
+        config_data = await database.fetch_one(
+            "SELECT * FROM server_config WHERE guild_id = %s",
+            (guild_id,)
+        )
+        
+        # Default configuration
+        default_config = {
+            "guild_id": guild_id,
+            "ticket_category_id": None,
+            "ticket_logs_channel_id": None,
+            "ticket_events_log_channel_id": None
+        }
+        
+        # Update with actual config data if it exists
+        if config_data:
+            try:
+                config_dict = dict(config_data)
+                # Ensure string conversion for IDs
+                for key in ['ticket_category_id', 'ticket_logs_channel_id', 'ticket_events_log_channel_id']:
+                    if key in config_dict and config_dict[key]:
+                        config_dict[key] = str(config_dict[key])
+                default_config.update(config_dict)
+            except Exception as config_convert_error:
+                print(f"Server config conversion error: {config_convert_error}")
+        
+        return default_config
+        
+    except Exception as e:
+        print(f"Server config error: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(f"Server config traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/guild/{guild_id}/server-config")
+async def update_server_config(
+    guild_id: str,
+    request: Request,
+    current_user: str = Depends(get_current_user)
+):
+    """Update server configuration including ticket logs channels"""
+    try:
+        # Verify user has access
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get request body
+        body = await request.json()
+        
+        ticket_events_log_channel_id = body.get('ticket_events_log_channel_id')
+        ticket_logs_channel_id = body.get('ticket_logs_channel_id')
+        
+        # Check if config exists
+        existing = await database.fetch_one(
+            "SELECT id FROM server_config WHERE guild_id = %s",
+            (guild_id,)
+        )
+        
+        if existing:
+            # Update existing config
+            await database.execute(
+                """UPDATE server_config 
+                   SET ticket_events_log_channel_id = %s,
+                       ticket_logs_channel_id = %s,
+                       updated_at = %s
+                   WHERE guild_id = %s""",
+                (ticket_events_log_channel_id, ticket_logs_channel_id, datetime.utcnow(), guild_id)
+            )
+        else:
+            # Insert new config
+            await database.execute(
+                """INSERT INTO server_config 
+                   (guild_id, ticket_events_log_channel_id, ticket_logs_channel_id, created_at, updated_at)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (guild_id, ticket_events_log_channel_id, ticket_logs_channel_id, datetime.utcnow(), datetime.utcnow())
+            )
+        
+        return {"success": True, "message": "Server configuration updated successfully"}
+        
+    except Exception as e:
+        print(f"Server config update error: {e}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/guild/{guild_id}/stats")
 async def get_guild_stats(guild_id: str, current_user: str = Depends(get_current_user)):
     """Get guild statistics"""

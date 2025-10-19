@@ -5079,6 +5079,106 @@ function setupSimpleNavigation() {
     console.log('✅ Simple navigation setup complete');
 }
 
+// ====================================
+// Ticket Logs Configuration
+// ====================================
+
+async function loadTicketLogsConfig() {
+    const dashboard = window.dashboard;
+    if (!dashboard || !dashboard.currentGuild) return;
+
+    try {
+        // Load server config to get ticket logs channels
+        const config = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/server-config`);
+        
+        // Populate channels dropdowns
+        const ticketEventsLogChannel = document.getElementById('ticketEventsLogChannel');
+        const ticketLogsChannel = document.getElementById('ticketLogsChannel');
+        
+        if (ticketEventsLogChannel && dashboard.channels) {
+            // Clear and repopulate
+            ticketEventsLogChannel.innerHTML = '<option value="">-- Désactivé --</option>';
+            dashboard.channels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel.id;
+                option.textContent = `#${channel.name}`;
+                ticketEventsLogChannel.appendChild(option);
+            });
+            
+            // Set current value
+            if (config.ticket_events_log_channel_id) {
+                ticketEventsLogChannel.value = config.ticket_events_log_channel_id;
+            }
+        }
+        
+        if (ticketLogsChannel && dashboard.channels) {
+            // Clear and repopulate
+            ticketLogsChannel.innerHTML = '<option value="">-- Non configuré --</option>';
+            dashboard.channels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel.id;
+                option.textContent = `#${channel.name}`;
+                ticketLogsChannel.appendChild(option);
+            });
+            
+            // Set current value
+            if (config.ticket_logs_channel_id) {
+                ticketLogsChannel.value = config.ticket_logs_channel_id;
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error loading ticket logs config:', error);
+    }
+}
+
+async function saveTicketLogsConfig(e) {
+    e.preventDefault();
+    const dashboard = window.dashboard;
+    if (!dashboard || !dashboard.currentGuild) return;
+
+    const ticketEventsLogChannelId = document.getElementById('ticketEventsLogChannel').value;
+    const ticketLogsChannelId = document.getElementById('ticketLogsChannel').value;
+
+    try {
+        const response = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/server-config`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ticket_events_log_channel_id: ticketEventsLogChannelId || null,
+                ticket_logs_channel_id: ticketLogsChannelId || null
+            })
+        });
+
+        if (response.success) {
+            dashboard.showSuccess('Configuration des logs de tickets sauvegardée avec succès !');
+        } else {
+            dashboard.showError('Erreur lors de la sauvegarde de la configuration.');
+        }
+    } catch (error) {
+        console.error('Error saving ticket logs config:', error);
+        dashboard.showError('Erreur lors de la sauvegarde de la configuration.');
+    }
+}
+
+// Initialize ticket logs configuration when tab is shown
+document.addEventListener('DOMContentLoaded', function() {
+    const ticketLogsForm = document.getElementById('ticketLogsConfigForm');
+    if (ticketLogsForm) {
+        ticketLogsForm.addEventListener('submit', saveTicketLogsConfig);
+    }
+    
+    // Load config when switching to ticket-logs tab
+    const ticketLogsLink = document.querySelector('a[href="#ticket-logs"]');
+    if (ticketLogsLink) {
+        ticketLogsLink.addEventListener('click', function() {
+            setTimeout(loadTicketLogsConfig, 100);
+        });
+    }
+});
+
 // Initialize dashboard when DOM is ready
 console.log('🔧 Setting up dashboard initialization...');
 document.addEventListener('DOMContentLoaded', function() {

@@ -1,6 +1,8 @@
 import asyncio
 import aiomysql
 import logging
+import os
+import glob
 
 logger = logging.getLogger(__name__)
 
@@ -518,6 +520,7 @@ class Database:
                 channel_id BIGINT NOT NULL,
                 file_id VARCHAR(255) DEFAULT NULL,
                 status ENUM('open', 'closed', 'deleted') DEFAULT 'open',
+                claimed_by BIGINT DEFAULT NULL,
                 closed_by BIGINT DEFAULT NULL,
                 closed_at TIMESTAMP NULL,
                 reopened_by BIGINT DEFAULT NULL,
@@ -531,7 +534,8 @@ class Database:
                 INDEX idx_ticket_id (ticket_id),
                 INDEX idx_status (status),
                 INDEX idx_user_guild (user_id, guild_id),
-                INDEX idx_created_by (created_by)
+                INDEX idx_created_by (created_by),
+                INDEX idx_claimed_by (claimed_by)
             )
             """,
             """
@@ -582,6 +586,7 @@ class Database:
                 guild_id BIGINT NOT NULL UNIQUE,
                 ticket_category_id BIGINT DEFAULT NULL,
                 ticket_logs_channel_id BIGINT DEFAULT NULL,
+                ticket_events_log_channel_id BIGINT DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_guild_id (guild_id)
@@ -672,3 +677,75 @@ class Database:
                 logger.error(f"Error creating table: {e}")
         
         logger.info("Tables de la base de données initialisées avec succès")
+        
+        # Exécuter les migrations
+        await self.run_migrations()
+    
+    async def run_migrations(self):
+        """Execute SQL migration files from the migrations folder"""
+        try:
+            migrations_dir = os.path.join(os.path.dirname(__file__), 'migrations')
+            
+            if not os.path.exists(migrations_dir):
+                logger.warning(f"Migrations directory not found: {migrations_dir}")
+                return
+            
+            # Create migrations tracking table if it doesn't exist
+            await self.execute("""
+                CREATE TABLE IF NOT EXISTS migrations (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    filename VARCHAR(255) NOT NULL UNIQUE,
+                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_filename (filename)
+                )
+            """)
+            
+            # Get list of already executed migrations
+            executed = await self.query(
+                "SELECT filename FROM migrations",
+                fetchall=True
+            )
+            executed_files = {row['filename'] for row in (executed or [])}
+            
+            # Get all SQL files in migrations directory
+            migration_files = sorted(glob.glob(os.path.join(migrations_dir, '*.sql')))
+            
+            for migration_file in migration_files:
+                filename = os.path.basename(migration_file)
+                
+                # Skip if already executed
+                if filename in executed_files:
+                    logger.debug(f"Migration already executed: {filename}")
+                    continue
+                
+                logger.info(f"Executing migration: {filename}")
+                
+                try:
+                    # Read migration file
+                    with open(migration_file, 'r', encoding='utf-8') as f:
+                        sql = f.read()
+                    
+                    # Split by semicolons and execute each statement
+                    statements = [s.strip() for s in sql.split(';') if s.strip()]
+                    
+                    for statement in statements:
+                        if statement and not statement.startswith('--'):
+                            await self.execute(statement)
+                    
+                    # Mark migration as executed
+                    await self.execute(
+                        "INSERT INTO migrations (filename) VALUES (%s)",
+                        (filename,)
+                    )
+                    
+                    logger.info(f"✅ Migration executed successfully: {filename}")
+                    
+                except Exception as e:
+                    logger.error(f"❌ Error executing migration {filename}: {e}")
+                    # Continue with other migrations even if one fails
+                    continue
+            
+            logger.info("All migrations executed successfully")
+            
+        except Exception as e:
+            logger.error(f"Error running migrations: {e}")

@@ -1264,6 +1264,129 @@
                     </div>
                 </div>
                 
+                <!-- Ticket Logs Configuration -->
+                <div class="tab-pane fade" id="ticket-logs">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-history me-2"></i>
+                                Configuration des Logs de Tickets
+                            </h3>
+                            <p class="card-subtitle">Configurez où les événements de tickets seront enregistrés (création, prise en charge, fermeture, etc.)</p>
+                        </div>
+                        <div class="card-content">
+                            <form id="ticketLogsConfigForm">
+                                <div class="settings-section">
+                                    <h4 class="section-title">
+                                        <i class="fas fa-bell me-2"></i>
+                                        Canal de Logs d'Événements
+                                    </h4>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label">
+                                            Canal de Logs d'Événements
+                                            <span class="form-hint-inline">(optionnel)</span>
+                                        </label>
+                                        <select id="ticketEventsLogChannel" class="form-select">
+                                            <option value="">-- Désactivé --</option>
+                                        </select>
+                                        <div class="form-hint">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Les événements suivants seront enregistrés dans ce canal :
+                                            <ul class="event-list">
+                                                <li><span class="event-badge green">🎫 Création</span> - Quand un ticket est créé</li>
+                                                <li><span class="event-badge blue">🙋 Prise en charge</span> - Quand quelqu'un prend en charge un ticket de vérification</li>
+                                                <li><span class="event-badge orange">🔒 Fermeture</span> - Quand un ticket est fermé</li>
+                                                <li><span class="event-badge red">🗑️ Suppression</span> - Quand un ticket est supprimé définitivement</li>
+                                                <li><span class="event-badge purple">🔓 Réouverture</span> - Quand un ticket est rouvert</li>
+                                                <li><span class="event-badge gold">✅ Vérification</span> - Quand un membre est vérifié via le ticket</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">
+                                            Canal de Logs de Transcripts
+                                            <span class="form-hint-inline">(existant)</span>
+                                        </label>
+                                        <select id="ticketLogsChannel" class="form-select">
+                                            <option value="">-- Non configuré --</option>
+                                        </select>
+                                        <div class="form-hint">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Canal où les transcripts complets des tickets seront envoyés après fermeture
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-section">
+                                    <h4 class="section-title">
+                                        <i class="fas fa-palette me-2"></i>
+                                        Prévisualisation des Événements
+                                    </h4>
+                                    
+                                    <div class="preview-grid">
+                                        <div class="event-preview">
+                                            <div class="embed green-embed">
+                                                <div class="embed-title">🎫 Ticket créé</div>
+                                                <div class="embed-field">
+                                                    <strong>Canal:</strong> #ticket-user123
+                                                </div>
+                                                <div class="embed-field">
+                                                    <strong>Utilisateur:</strong> @User#1234
+                                                </div>
+                                                <div class="embed-field">
+                                                    <strong>Détails:</strong> Ticket créé via Support Button
+                                                </div>
+                                                <div class="embed-footer">ID: 123456789</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="event-preview">
+                                            <div class="embed blue-embed">
+                                                <div class="embed-title">🙋 Ticket pris en charge</div>
+                                                <div class="embed-field">
+                                                    <strong>Canal:</strong> #ticket-user123
+                                                </div>
+                                                <div class="embed-field">
+                                                    <strong>Utilisateur:</strong> @Moderator#5678
+                                                </div>
+                                                <div class="embed-field">
+                                                    <strong>Détails:</strong> Ticket pris en charge par Moderator
+                                                </div>
+                                                <div class="embed-footer">ID: 123456789</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="event-preview">
+                                            <div class="embed orange-embed">
+                                                <div class="embed-title">🔒 Ticket fermé</div>
+                                                <div class="embed-field">
+                                                    <strong>Canal:</strong> #ticket-user123
+                                                </div>
+                                                <div class="embed-field">
+                                                    <strong>Utilisateur:</strong> @Moderator#5678
+                                                </div>
+                                                <div class="embed-field">
+                                                    <strong>Détails:</strong> Ticket fermé par Moderator
+                                                </div>
+                                                <div class="embed-footer">ID: 123456789</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="submit" class="btn-primary">
+                                        <i class="fas fa-save me-2"></i>
+                                        Sauvegarder la Configuration
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Embed Creator System -->
                 <div class="tab-pane fade" id="embed">
                     <div class="content-card">
