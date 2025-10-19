@@ -5221,37 +5221,51 @@ function createTicketItem(ticket) {
     const statusClass = ticket.status === 'open' ? 'open' : 'closed';
     const statusText = ticket.status === 'open' ? 'Ouvert' : 'Fermé';
     
-    const createdDate = new Date(ticket.created_at).toLocaleString('fr-FR');
-    const closedDate = ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('fr-FR') : 'N/A';
+    const createdDate = new Date(ticket.created_at).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+    
+    // Get avatar URL - use default if not available
+    const avatarUrl = ticket.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png';
+    const username = ticket.username || ticket.display_name || 'Utilisateur inconnu';
     
     item.innerHTML = `
-        <div class="ticket-header">
-            <span class="ticket-title">#${ticket.channel_id}</span>
-            <span class="ticket-status ${statusClass}">${statusText}</span>
-        </div>
+        <img src="${avatarUrl}" alt="${username}" class="ticket-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
         <div class="ticket-info">
-            <div class="ticket-info-item">
-                <i class="fas fa-calendar-plus"></i>
-                <span>Créé: ${createdDate}</span>
+            <div class="ticket-header">
+                <div class="ticket-title">
+                    <span class="ticket-username">${username}</span>
+                    <span class="ticket-id-badge">#${ticket.channel_id}</span>
+                </div>
+                <span class="ticket-status ${statusClass}">${statusText}</span>
             </div>
-            ${ticket.closed_at ? `
-                <div class="ticket-info-item">
-                    <i class="fas fa-calendar-check"></i>
-                    <span>Fermé: ${closedDate}</span>
-                </div>
-            ` : ''}
-            ${ticket.file_id ? `
-                <div class="ticket-info-item">
-                    <i class="fas fa-file-alt"></i>
-                    <span>Transcript disponible</span>
-                </div>
-            ` : ''}
+            <div class="ticket-meta">
+                <span class="ticket-date">
+                    <i class="fas fa-calendar"></i> ${createdDate}
+                </span>
+                ${ticket.message_count ? `
+                    <span class="message-count">
+                        <i class="fas fa-comment"></i> ${ticket.message_count}
+                    </span>
+                ` : ''}
+                ${ticket.event_count ? `
+                    <span class="event-count">
+                        <i class="fas fa-history"></i> ${ticket.event_count}
+                    </span>
+                ` : ''}
+            </div>
         </div>
     `;
     
-    // Add click handler to open details modal
+    // Add click handler to navigate to ticket details page
     item.style.cursor = 'pointer';
-    item.addEventListener('click', () => openTicketDetails(ticket));
+    item.addEventListener('click', () => {
+        // Navigate to ticket details page
+        const guildId = window.dashboard.currentGuild;
+        window.location.href = `/dashboard/ticket/${guildId}/${ticket.file_id}`;
+    });
     
     return item;
 }

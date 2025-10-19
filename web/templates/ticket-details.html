@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détails du Ticket - Maybee Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css?v={{ timestamp }}">
+    <style>
+        body {
+            background: #0f1116;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .ticket-details-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .ticket-details-header {
+            background: #1a1d29;
+            border: 1px solid #2d3748;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ticket-details-header h1 {
+            margin: 0;
+            font-size: 1.75rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-button {
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .back-button:hover {
+            background: #374151;
+            border-color: #60a5fa;
+        }
+
+        .ticket-info-section {
+            background: #1a1d29;
+            border: 1px solid #2d3748;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #3b82f6;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .info-item {
+            background: #252936;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #2d3748;
+        }
+
+        .info-label {
+            display: block;
+            font-size: 0.875rem;
+            color: #9ca3af;
+            margin-bottom: 8px;
+        }
+
+        .info-value {
+            display: block;
+            font-size: 1rem;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .ticket-status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .ticket-status-badge.open {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid #22c55e;
+        }
+
+        .ticket-status-badge.closed {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+
+        .transcript-section {
+            background: #1a1d29;
+            border: 1px solid #2d3748;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .transcript-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .transcript-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .transcript-messages::-webkit-scrollbar-track {
+            background: #1a1d29;
+            border-radius: 4px;
+        }
+
+        .transcript-messages::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+
+        .transcript-messages::-webkit-scrollbar-thumb:hover {
+            background: #60a5fa;
+        }
+
+        .message {
+            background: #252936;
+            border-radius: 8px;
+            padding: 16px;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2d3748;
+        }
+
+        .message-author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .message-author-name {
+            font-weight: 600;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .message-timestamp {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .message-content {
+            color: #d1d5db;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message-attachments {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #2d3748;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .attachment-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 0.875rem;
+            padding: 8px 12px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            transition: all 0.2s;
+        }
+
+        .attachment-link:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+        }
+
+        .loading-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #2d3748;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .no-messages {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket-details-container">
+        <div class="ticket-details-header">
+            <h1>
+                <i class="fas fa-ticket-alt"></i>
+                <span id="ticketTitle">Chargement...</span>
+            </h1>
+            <a href="/dashboard?guild={{ guild_id }}&page=tickets" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                Retour au Dashboard
+            </a>
+        </div>
+
+        <div class="ticket-info-section">
+            <h2 class="section-title">
+                <i class="fas fa-info-circle"></i>
+                Informations du Ticket
+            </h2>
+            <div class="info-grid" id="ticketInfo">
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Chargement des informations...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="transcript-section">
+            <h2 class="section-title">
+                <i class="fas fa-comments"></i>
+                Transcript des Messages
+            </h2>
+            <div class="transcript-messages" id="transcriptMessages">
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Chargement du transcript...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const guildId = '{{ guild_id }}';
+        const fileId = '{{ file_id }}';
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        async function apiCall(endpoint) {
+            const token = getCookie('access_token');
+            const response = await fetch(`/api${endpoint}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`API call failed: ${response.statusText}`);
+            }
+
+            return await response.json();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function loadTicketDetails() {
+            try {
+                // Load ticket data from Google Drive
+                const data = await apiCall(`/guild/${guildId}/tickets/file/${fileId}`);
+
+                // Update page title
+                const ticketId = data.metadata?.ticket_id || data.ticket_id || 'Inconnu';
+                document.getElementById('ticketTitle').textContent = `Ticket #${ticketId}`;
+
+                // Display ticket info
+                const metadata = data.metadata || {};
+                const status = data.status || metadata.status || 'closed';
+                const statusBadge = status === 'open' 
+                    ? '<span class="ticket-status-badge open">Ouvert</span>'
+                    : '<span class="ticket-status-badge closed">Fermé</span>';
+
+                const infoHtml = `
+                    <div class="info-item">
+                        <span class="info-label">ID du Ticket</span>
+                        <span class="info-value">#${ticketId}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Statut</span>
+                        <span class="info-value">${statusBadge}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Utilisateur</span>
+                        <span class="info-value">${escapeHtml(metadata.username || metadata.display_name || 'Inconnu')}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">ID Utilisateur</span>
+                        <span class="info-value">${metadata.user_id || 'Inconnu'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Date de création</span>
+                        <span class="info-value">${data.created_at ? new Date(data.created_at).toLocaleString('fr-FR') : 'Inconnue'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Date de fermeture</span>
+                        <span class="info-value">${data.closed_at ? new Date(data.closed_at).toLocaleString('fr-FR') : 'N/A'}</span>
+                    </div>
+                `;
+
+                document.getElementById('ticketInfo').innerHTML = infoHtml;
+
+                // Display messages
+                const messages = data.logs?.messages || data.messages || [];
+                
+                if (messages.length === 0) {
+                    document.getElementById('transcriptMessages').innerHTML = `
+                        <div class="no-messages">
+                            <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
+                            <p>Aucun message dans ce ticket</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const messagesHtml = messages.map(msg => {
+                    const timestamp = new Date(msg.timestamp).toLocaleString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    const attachmentsHtml = msg.attachments && msg.attachments.length > 0
+                        ? `<div class="message-attachments">
+                            ${msg.attachments.map(att => `
+                                <a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link">
+                                    <i class="fas fa-paperclip"></i>
+                                    ${escapeHtml(att.filename)}
+                                </a>
+                            `).join('')}
+                        </div>`
+                        : '';
+
+                    return `
+                        <div class="message">
+                            <div class="message-header">
+                                <div class="message-author">
+                                    <img src="${escapeHtml(msg.author_avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png')}" 
+                                         alt="Avatar" 
+                                         class="message-avatar"
+                                         onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                                    <span class="message-author-name">${escapeHtml(msg.author_name)}</span>
+                                </div>
+                                <span class="message-timestamp">${timestamp}</span>
+                            </div>
+                            <div class="message-content">${escapeHtml(msg.content)}</div>
+                            ${attachmentsHtml}
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('transcriptMessages').innerHTML = messagesHtml;
+
+            } catch (error) {
+                console.error('Error loading ticket details:', error);
+                document.getElementById('ticketInfo').innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Erreur lors du chargement des informations du ticket
+                    </div>
+                `;
+                document.getElementById('transcriptMessages').innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Erreur lors du chargement du transcript
+                    </div>
+                `;
+            }
+        }
+
+        // Load ticket details when page loads
+        loadTicketDetails();
+    </script>
+</body>
+</html>

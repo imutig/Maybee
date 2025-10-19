@@ -1665,7 +1665,9 @@ async def search_guild_members(
         print(f"❌ Ticket search error: {e}")
         import traceback
         print(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))@app.get("/api/guild/{guild_id}/tickets/user/{user_id}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guild/{guild_id}/tickets/user/{user_id}")
 async def get_user_tickets(
     guild_id: str,
     user_id: str,
@@ -1730,6 +1732,8 @@ async def get_user_tickets(
                     "channel_id": str(ticket.get("ticket_id", "unknown")),  # ticket_id est le channel_id
                     "user_id": str(user_id),
                     "username": ticket.get("username", ticket.get("display_name", f"Utilisateur {user_id}")),
+                    "avatar_url": ticket.get("avatar_url"),
+                    "display_name": ticket.get("display_name"),
                     "created_at": ticket.get("created_at"),
                     "closed_at": ticket.get("closed_at"),
                     "status": ticket.get("status", "closed"),
@@ -1908,6 +1912,8 @@ async def get_recent_tickets(
                     "channel_id": str(ticket.get("ticket_id", "unknown")),  # ticket_id est le channel_id
                     "user_id": str(ticket.get("user_id", "unknown")),
                     "username": ticket.get("username", ticket.get("display_name", "Utilisateur inconnu")),
+                    "avatar_url": ticket.get("avatar_url"),
+                    "display_name": ticket.get("display_name"),
                     "created_at": ticket.get("created_at"),
                     "closed_at": ticket.get("closed_at"),
                     "status": ticket.get("status", "closed"),
@@ -3532,6 +3538,17 @@ async def dashboard(request: Request):
         response.set_cookie("language", lang, max_age=365*24*60*60)  # 1 year
     
     return response
+
+@app.get("/dashboard/ticket/{guild_id}/{file_id}", response_class=HTMLResponse)
+async def ticket_details_page(request: Request, guild_id: str, file_id: str):
+    """Ticket details page"""
+    import time
+    return templates.TemplateResponse("ticket-details.html", {
+        "request": request,
+        "guild_id": guild_id,
+        "file_id": file_id,
+        "timestamp": int(time.time())
+    })
 
 @app.get("/language-test", response_class=HTMLResponse)
 async def language_test_page(request: Request):
@@ -5722,12 +5739,12 @@ async def get_search_suggestions(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/ticket-logs/user-tickets/{user_id}")
-async def get_user_tickets(
+async def get_user_tickets_legacy(
     user_id: str,
     guild_id: str,
     current_user: str = Depends(get_current_user)
 ):
-    """Get all tickets for a specific user from Google Drive logs"""
+    """Get all tickets for a specific user from Google Drive logs (legacy endpoint)"""
     try:
         if not guild_id:
             raise HTTPException(status_code=400, detail="No guild selected")
