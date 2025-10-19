@@ -5260,8 +5260,25 @@ async function openTicketDetails(ticket) {
     const dashboard = window.dashboard;
     currentTicketDetails = ticket;
     
-    // Show modal
-    document.getElementById('ticketDetailsModal').style.display = 'flex';
+    // Get or create modal
+    let modal = document.getElementById('ticketDetailsModal');
+    if (!modal) {
+        console.error('Modal element not found!');
+        return;
+    }
+    
+    // Ensure modal is properly positioned
+    modal.style.display = 'flex';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.right = '0';
+    modal.style.bottom = '0';
+    modal.style.zIndex = '10000';
+    modal.style.overflow = 'auto';
+    
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
     
     // Populate basic info
     document.getElementById('detailTicketId').textContent = `#${ticket.channel_id}`;
@@ -5277,19 +5294,77 @@ async function openTicketDetails(ticket) {
     
     // Load transcript if available
     const transcriptPreview = document.getElementById('transcriptPreview');
-    const openTranscriptBtn = document.getElementById('openTranscriptBtn');
+    const transcriptSection = document.getElementById('ticketTranscriptSection');
     
     if (ticket.file_id) {
-        transcriptPreview.innerHTML = '<p class="text-secondary"><i class="fas fa-file-alt me-2"></i>Transcript disponible sur Google Drive</p>';
-        openTranscriptBtn.style.display = 'inline-block';
-        openTranscriptBtn.onclick = () => window.open(`https://drive.google.com/file/d/${ticket.file_id}/view`, '_blank');
+        transcriptPreview.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Chargement du transcript...</p></div>';
+        
+        try {
+            // Load full transcript from API
+            const transcriptData = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/tickets/file/${ticket.file_id}`);
+            
+            if (transcriptData && transcriptData.messages && transcriptData.messages.length > 0) {
+                // Display messages in a beautiful format
+                let transcriptHTML = '<div class="transcript-messages">';
+                
+                transcriptData.messages.forEach(msg => {
+                    const timestamp = new Date(msg.timestamp).toLocaleString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    transcriptHTML += `
+                        <div class="transcript-message">
+                            <div class="message-header">
+                                <div class="message-author">
+                                    ${msg.author_avatar_url ? `<img src="${msg.author_avatar_url}" alt="${msg.author_name}" class="message-avatar">` : ''}
+                                    <span class="message-author-name">${msg.author_name}</span>
+                                </div>
+                                <span class="message-timestamp">${timestamp}</span>
+                            </div>
+                            <div class="message-content">${escapeHtml(msg.content)}</div>
+                            ${msg.attachments && msg.attachments.length > 0 ? `
+                                <div class="message-attachments">
+                                    ${msg.attachments.map(att => `
+                                        <a href="${att.url}" target="_blank" class="attachment-link">
+                                            <i class="fas fa-paperclip"></i> ${att.filename}
+                                        </a>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                transcriptHTML += '</div>';
+                transcriptHTML += `<div class="transcript-footer">
+                    <i class="fas fa-comment"></i> ${transcriptData.messages.length} message(s) au total
+                </div>`;
+                
+                transcriptPreview.innerHTML = transcriptHTML;
+            } else {
+                transcriptPreview.innerHTML = '<p class="text-secondary">Aucun message dans ce transcript</p>';
+            }
+        } catch (error) {
+            console.error('Error loading transcript:', error);
+            transcriptPreview.innerHTML = '<p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Erreur lors du chargement du transcript</p>';
+        }
     } else {
         transcriptPreview.innerHTML = '<p class="text-secondary">Aucun transcript disponible</p>';
-        openTranscriptBtn.style.display = 'none';
     }
     
     // Load events timeline
     await loadTicketEvents(ticket);
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 async function loadTicketEvents(ticket) {
@@ -5375,7 +5450,12 @@ function createTimelineItem(event) {
 }
 
 function closeTicketDetailsModal() {
-    document.getElementById('ticketDetailsModal').style.display = 'none';
+    const modal = document.getElementById('ticketDetailsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    // Restore body scroll
+    document.body.style.overflow = '';
     currentTicketDetails = null;
 }
 

@@ -1601,108 +1601,71 @@ async def search_guild_members(
     query: str,
     current_user: str = Depends(get_current_user)
 ):
-    """Search for guild members by username or ID - searches across multiple tables"""
+    """Search for tickets by user ID or username in Google Drive"""
     try:
         if not await verify_guild_access(guild_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this guild")
-        
-        print(f"🔍 Member search - Guild: {guild_id}, Query: '{query}'")
-        
-        result = []
-        user_ids = set()
-        
-        # Strategy 1: Search in members table (has usernames)
-        users_from_members = await database.fetch_all(
-            """SELECT DISTINCT user_id, username 
-               FROM members 
-               WHERE guild_id = %s 
-               AND (username LIKE %s OR user_id LIKE %s)
-               AND left_at IS NULL
-               LIMIT 10""",
-            (guild_id, f"%{query}%", f"%{query}%")
-        )
-        print(f"� Found {len(users_from_members) if users_from_members else 0} users from members table")
-        
-        for member in users_from_members:
-            user_id = str(member["user_id"])
-            if user_id not in user_ids:
-                user_ids.add(user_id)
-                result.append({
-                    "id": user_id,
-                    "username": member["username"],
-                    "avatar_url": None
-                })
-        
-        # Strategy 2: Search in active_tickets table (users with tickets)
-        users_from_tickets = await database.fetch_all(
-            """SELECT DISTINCT user_id 
-               FROM active_tickets 
-               WHERE guild_id = %s AND (
-                   user_id LIKE %s OR
-                   user_id IN (
-                       SELECT user_id FROM members 
-                       WHERE guild_id = %s AND username LIKE %s
-                   )
-               )
-               LIMIT 10""",
-            (guild_id, f"%{query}%", guild_id, f"%{query}%")
-        )
-        print(f"🎫 Found {len(users_from_tickets) if users_from_tickets else 0} users from tickets")
-        
-        for ticket_user in users_from_tickets:
-            user_id = str(ticket_user["user_id"])
-            if user_id not in user_ids:
-                user_ids.add(user_id)
-                # Try to get username
-                member = await database.fetch_one(
-                    "SELECT username FROM members WHERE guild_id = %s AND user_id = %s LIMIT 1",
-                    (guild_id, user_id)
-                )
-                username = member["username"] if member else f"Utilisateur {user_id}"
-                result.append({
-                    "id": user_id,
-                    "username": username,
-                    "avatar_url": None
-                })
-        
-        # Strategy 3: If still no results, try xp_data table (all users who talked)
-        if len(result) == 0:
-            print(f"🔄 No results yet, trying xp_data table...")
-            users_from_xp = await database.fetch_all(
-                """SELECT DISTINCT user_id 
-                   FROM xp_data 
-                   WHERE guild_id = %s AND user_id LIKE %s
+
+        print(f"🔍 Ticket search - Guild: {guild_id}, Query: '{query}'")
+
+        if not drive_storage:
+            print("⚠️ Google Drive not initialized, falling back to database search")
+            # Fallback: search in database
+            users_from_members = await database.fetch_all(
+                """SELECT DISTINCT user_id, username
+                   FROM members
+                   WHERE guild_id = %s
+                   AND (username LIKE %s OR user_id LIKE %s)
+                   AND left_at IS NULL
                    LIMIT 10""",
-                (guild_id, f"%{query}%")
+                (guild_id, f"%{query}%", f"%{query}%")
             )
-            print(f"💬 Found {len(users_from_xp) if users_from_xp else 0} users from xp_data")
-            
-            for xp_user in users_from_xp:
-                user_id = str(xp_user["user_id"])
-                if user_id not in user_ids:
-                    user_ids.add(user_id)
-                    # Try to get username
-                    member = await database.fetch_one(
-                        "SELECT username FROM members WHERE guild_id = %s AND user_id = %s LIMIT 1",
-                        (guild_id, user_id)
-                    )
-                    username = member["username"] if member else f"Utilisateur {user_id}"
-                    result.append({
+
+            result = []
+            for member in users_from_members:
+                result.append({
+                    "id": str(member["user_id"]),
+                    "username": member["username"],
+                    "avatar_url": None,
+                    "ticket_count": 0
+                })
+            return result
+
+        # Search in Google Drive tickets
+        all_tickets = await drive_storage.list_all_ticket_logs(int(guild_id))
+        print(f"📋 Found {len(all_tickets)} total tickets in Google Drive")
+
+        # Filter tickets by query (username or user_id)
+        query_lower = query.lower()
+        matching_users = {}
+
+        for ticket in all_tickets:
+            user_id = str(ticket.get("user_id", ""))
+            username = ticket.get("username", ticket.get("display_name", ""))
+
+            # Check if query matches user_id or username
+            if (query_lower in user_id.lower() or
+                query_lower in username.lower()):
+
+                if user_id not in matching_users:
+                    matching_users[user_id] = {
                         "id": user_id,
                         "username": username,
-                        "avatar_url": None
-                    })
-        
-        print(f"✅ Returning {len(result)} total results")
+                        "avatar_url": None,
+                        "ticket_count": 0
+                    }
+                matching_users[user_id]["ticket_count"] += 1
+
+        result = list(matching_users.values())[:10]  # Limit to 10 results
+        print(f"✅ Found {len(result)} users with tickets matching query")
+
         return result
-        
+
     except Exception as e:
-        print(f"❌ Member search error: {e}")
+        print(f"❌ Ticket search error: {e}")
         import traceback
         print(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/guild/{guild_id}/tickets/user/{user_id}")
+        raise HTTPException(status_code=500, detail=str(e))@app.get("/api/guild/{guild_id}/tickets/user/{user_id}")
 async def get_user_tickets(
     guild_id: str,
     user_id: str,
@@ -1756,9 +1719,10 @@ async def get_user_tickets(
         result = []
         for ticket in tickets:
             try:
+                # Les données sont au niveau racine
                 ticket_data = {
                     "id": ticket.get("ticket_id", "unknown"),
-                    "channel_id": ticket.get("metadata", {}).get("channel_id", "unknown"),
+                    "channel_id": str(ticket.get("ticket_id", "unknown")),  # ticket_id est le channel_id
                     "user_id": str(user_id),
                     "username": ticket.get("username", ticket.get("display_name", f"Utilisateur {user_id}")),
                     "created_at": ticket.get("created_at"),
@@ -1767,7 +1731,6 @@ async def get_user_tickets(
                     "file_id": ticket.get("file_id"),
                     "message_count": ticket.get("message_count", 0),
                     "event_count": ticket.get("event_count", 0),
-                    "closed_by": ticket.get("metadata", {}).get("closed_by")
                 }
                 result.append(ticket_data)
             except Exception as e:
@@ -1802,7 +1765,8 @@ async def get_ticket_events(
                 # Search for ticket with this channel_id in Google Drive
                 all_tickets = await drive_storage.list_all_ticket_logs(int(guild_id))
                 for ticket in all_tickets:
-                    if str(ticket.get("metadata", {}).get("channel_id")) == str(channel_id):
+                    # ticket_id est le channel_id
+                    if str(ticket.get("ticket_id")) == str(channel_id):
                         events = ticket.get("events", [])
                         print(f"✅ Found {len(events)} events in Google Drive")
                         return events
@@ -1933,10 +1897,11 @@ async def get_recent_tickets(
         result = []
         for ticket in sorted_tickets:
             try:
+                # Les données sont déjà au niveau racine, pas dans metadata
                 ticket_data = {
                     "id": ticket.get("ticket_id", "unknown"),
-                    "channel_id": ticket.get("metadata", {}).get("channel_id", "unknown"),
-                    "user_id": str(ticket.get("metadata", {}).get("user_id", "unknown")),
+                    "channel_id": str(ticket.get("ticket_id", "unknown")),  # ticket_id est le channel_id
+                    "user_id": str(ticket.get("user_id", "unknown")),
                     "username": ticket.get("username", ticket.get("display_name", "Utilisateur inconnu")),
                     "created_at": ticket.get("created_at"),
                     "closed_at": ticket.get("closed_at"),

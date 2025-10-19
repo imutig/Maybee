@@ -879,7 +879,7 @@
     "already_exists": "❌ You already have an open ticket: {channel}",
     "created_success": "✅ Ticket created successfully: {channel}",
     "no_permission_create": "❌ I don't have permission to create channels.",
-    "close_button": "Close ticket",
+    "close_button": "Fermer le ticket",
     "not_a_ticket": "❌ This channel is not a ticket.",
     "ticket_closed": "🔒 Ticket closed",
     "ticket_closed_description": "This ticket has been closed by {user}",
