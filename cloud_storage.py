@@ -314,26 +314,33 @@ class GoogleDriveStorage:
                                 is_user_ticket = True
                         
                         if is_user_ticket:
-                                # Ajouter les données complètes du ticket
+                                # Extraire les informations utilisateur
+                                user_info = {
+                                    'user_id': metadata.get('user_id', user_id),
+                                    'username': metadata.get('username', 'Inconnu'),
+                                    'discriminator': metadata.get('discriminator', '0000'),
+                                    'display_name': metadata.get('display_name', metadata.get('username', 'Inconnu')),
+                                    'avatar_url': metadata.get('avatar_url')
+                                }
+                                
+                                # Ajouter les données complètes du ticket (même structure que list_all_ticket_logs)
                                 ticket_data = {
                                     'file_id': file['id'],
                                     'filename': file['name'],
                                     'created_time': file['createdTime'],
                                     'size': file.get('size', 0),
-                                    'metadata': metadata,
                                     'message_count': len(messages),
                                     'event_count': len(logs_data.get('events', [])),
-                                    # Ajouter les données principales pour compatibilité
+                                    # Données principales au niveau racine (pas dans metadata)
                                     'ticket_id': logs_data.get('ticket_id', 'Inconnu'),
+                                    'user_id': user_info['user_id'],
+                                    'username': user_info['username'],
+                                    'discriminator': user_info['discriminator'],
+                                    'display_name': user_info.get('display_name', user_info['username']),
+                                    'avatar_url': user_info['avatar_url'],
                                     'created_at': logs_data.get('created_at', 'Inconnu'),
                                     'status': logs_data.get('status', 'closed'),
                                     'closed_at': logs_data.get('closed_at'),
-                                    'user_id': user_id,
-                                    # Ajouter les données utilisateur depuis les métadonnées
-                                    'username': metadata.get('username', 'Unknown'),
-                                    'discriminator': metadata.get('discriminator', '0000'),
-                                    'display_name': metadata.get('display_name', metadata.get('username', 'Unknown')),
-                                    'avatar_url': metadata.get('avatar_url'),
                                     'messages': messages,
                                     'events': logs_data.get('events', [])
                                 }

@@ -1919,9 +1919,9 @@
     </div>
 
     <!-- Ticket Details Modal -->
-    <div id="ticketDetailsModal" class="ticket-modal" style="display: none;">
+    <div id="ticketDetailsModal" class="ticket-modal">
         <div class="ticket-modal-overlay" onclick="closeTicketDetailsModal()"></div>
-        <div class="ticket-modal-content">
+        <div class="ticket-modal-content" onclick="event.stopPropagation()">
             <div class="ticket-modal-header">
                 <h3 class="ticket-modal-title">
                     <i class="fas fa-ticket-alt me-2"></i>

@@ -5260,22 +5260,15 @@ async function openTicketDetails(ticket) {
     const dashboard = window.dashboard;
     currentTicketDetails = ticket;
     
-    // Get or create modal
+    // Get modal elements
     let modal = document.getElementById('ticketDetailsModal');
     if (!modal) {
         console.error('Modal element not found!');
         return;
     }
     
-    // Ensure modal is properly positioned
-    modal.style.display = 'flex';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.right = '0';
-    modal.style.bottom = '0';
-    modal.style.zIndex = '10000';
-    modal.style.overflow = 'auto';
+    // Use class instead of inline styles
+    modal.classList.add('active');
     
     // Prevent body scroll when modal is open
     document.body.style.overflow = 'hidden';
@@ -5358,6 +5351,12 @@ async function openTicketDetails(ticket) {
     
     // Load events timeline
     await loadTicketEvents(ticket);
+    
+    // Scroll modal content to top
+    const modalBody = modal.querySelector('.ticket-modal-body');
+    if (modalBody) {
+        modalBody.scrollTop = 0;
+    }
 }
 
 // Helper function to escape HTML
@@ -5452,7 +5451,7 @@ function createTimelineItem(event) {
 function closeTicketDetailsModal() {
     const modal = document.getElementById('ticketDetailsModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('active');
     }
     // Restore body scroll
     document.body.style.overflow = '';

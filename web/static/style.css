@@ -5742,31 +5742,36 @@ canvas {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
     z-index: 10000 !important;
-    display: flex !important;
+    display: none !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: var(--spacing-lg);
+    padding: 20px;
     overflow-y: auto;
     background: transparent;
+}
+
+.ticket-modal.active {
+    display: flex !important;
 }
 
 .ticket-modal-overlay {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    background: rgba(0, 0, 0, 0.8);
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.85) !important;
     backdrop-filter: blur(4px);
     z-index: 10001 !important;
+    cursor: pointer;
 }
 
 .ticket-modal-content {
     position: relative !important;
-    background: var(--background-dark);
+    background: var(--background-dark) !important;
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
     max-width: 900px;
@@ -5774,9 +5779,11 @@ canvas {
     max-height: 90vh;
     display: flex !important;
     flex-direction: column !important;
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
     z-index: 10002 !important;
-    margin: auto;
+    margin: 0 auto;
+    overflow: hidden;
+    cursor: default;
 }
 
 .ticket-modal-header {
