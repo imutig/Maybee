@@ -5466,6 +5466,55 @@ document.addEventListener('DOMContentLoaded', function() {
         ticketLogsForm.addEventListener('submit', saveTicketLogsConfig);
     }
     
+    // Load recent tickets from Google Drive
+    async function loadRecentTickets() {
+        const dashboard = window.dashboard;
+        if (!dashboard || !dashboard.currentGuild) {
+            console.log('⚠️ No guild selected for recent tickets');
+            return;
+        }
+
+        const loadingDiv = document.getElementById('recentTicketsLoading');
+        const listDiv = document.getElementById('recentTicketsList');
+        const emptyDiv = document.getElementById('recentTicketsEmpty');
+
+        try {
+            // Show loading
+            loadingDiv.style.display = 'block';
+            listDiv.style.display = 'none';
+            emptyDiv.style.display = 'none';
+
+            console.log(`📋 Loading recent tickets for guild ${dashboard.currentGuild}`);
+            
+            // Fetch recent tickets
+            const tickets = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/tickets/recent`);
+            
+            // Hide loading
+            loadingDiv.style.display = 'none';
+            
+            if (!tickets || tickets.length === 0) {
+                emptyDiv.style.display = 'block';
+                return;
+            }
+
+            // Show tickets list
+            listDiv.style.display = 'block';
+            listDiv.innerHTML = '';
+            
+            tickets.forEach(ticket => {
+                const ticketItem = createTicketItem(ticket);
+                listDiv.appendChild(ticketItem);
+            });
+
+            console.log(`✅ Loaded ${tickets.length} recent tickets`);
+
+        } catch (error) {
+            console.error('❌ Error loading recent tickets:', error);
+            loadingDiv.style.display = 'none';
+            emptyDiv.style.display = 'block';
+        }
+    }
+    
     // Add input listener for search suggestions
     const ticketSearchInput = document.getElementById('ticketSearchInput');
     if (ticketSearchInput) {
@@ -5483,7 +5532,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const ticketLogsLink = document.querySelector('a[href="#ticket-logs"]');
     if (ticketLogsLink) {
         ticketLogsLink.addEventListener('click', function() {
-            setTimeout(loadTicketLogsConfig, 100);
+            setTimeout(() => {
+                loadTicketLogsConfig();
+                loadRecentTickets();
+            }, 100);
         });
     }
 });

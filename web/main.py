@@ -1878,6 +1878,87 @@ async def get_ticket_transcript(
         print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/guild/{guild_id}/tickets/recent")
+async def get_recent_tickets(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get the 5 most recent tickets from Google Drive"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        print(f"📋 Getting recent tickets for guild {guild_id}")
+        
+        if not drive_storage:
+            print("⚠️ Google Drive not initialized, falling back to database")
+            # Fallback to database
+            tickets = await database.fetch_all(
+                """SELECT t.*, m.username 
+                   FROM active_tickets t
+                   LEFT JOIN members m ON t.user_id = m.user_id AND t.guild_id = m.guild_id
+                   WHERE t.guild_id = %s
+                   ORDER BY t.created_at DESC
+                   LIMIT 5""",
+                (guild_id,)
+            )
+            
+            result = []
+            for ticket in tickets:
+                ticket_data = {
+                    "id": ticket["id"],
+                    "channel_id": str(ticket["channel_id"]),
+                    "user_id": str(ticket["user_id"]),
+                    "username": ticket.get("username") or f"Utilisateur {ticket['user_id']}",
+                    "created_at": ticket["created_at"].isoformat() if ticket.get("created_at") else None,
+                    "closed_at": ticket["closed_at"].isoformat() if ticket.get("closed_at") else None,
+                    "status": "closed" if ticket.get("closed_at") else "open",
+                    "file_id": None
+                }
+                result.append(ticket_data)
+            
+            return result
+        
+        # Get all tickets from Google Drive
+        all_tickets = await drive_storage.list_all_ticket_logs(int(guild_id))
+        print(f"📋 Found {len(all_tickets)} total tickets from Google Drive")
+        
+        # Sort by created_at and take the 5 most recent
+        sorted_tickets = sorted(
+            all_tickets,
+            key=lambda t: t.get("created_at", ""),
+            reverse=True
+        )[:5]
+        
+        result = []
+        for ticket in sorted_tickets:
+            try:
+                ticket_data = {
+                    "id": ticket.get("ticket_id", "unknown"),
+                    "channel_id": ticket.get("metadata", {}).get("channel_id", "unknown"),
+                    "user_id": str(ticket.get("metadata", {}).get("user_id", "unknown")),
+                    "username": ticket.get("username", ticket.get("display_name", "Utilisateur inconnu")),
+                    "created_at": ticket.get("created_at"),
+                    "closed_at": ticket.get("closed_at"),
+                    "status": ticket.get("status", "closed"),
+                    "file_id": ticket.get("file_id"),
+                    "message_count": ticket.get("message_count", 0),
+                    "event_count": ticket.get("event_count", 0)
+                }
+                result.append(ticket_data)
+            except Exception as e:
+                print(f"⚠️ Error processing recent ticket: {e}")
+                continue
+        
+        print(f"✅ Returning {len(result)} recent tickets")
+        return result
+        
+    except Exception as e:
+        print(f"❌ Get recent tickets error: {e}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/guild/{guild_id}/stats")
 async def get_guild_stats(guild_id: str, current_user: str = Depends(get_current_user)):
     """Get guild statistics"""

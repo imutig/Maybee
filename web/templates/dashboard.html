@@ -1320,6 +1320,37 @@
                             
                             <hr class="section-divider">
                             
+                            <!-- Recent Tickets Section -->
+                            <div class="settings-section">
+                                <h4 class="section-title">
+                                    <i class="fas fa-clock me-2"></i>
+                                    Tickets Récents
+                                </h4>
+                                <p class="form-hint mb-3">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Les 5 derniers tickets enregistrés sur Google Drive
+                                </p>
+                                
+                                <div id="recentTicketsLoading" class="loading-state" style="display: none;">
+                                    <div class="spinner"></div>
+                                    <p>Chargement des tickets récents...</p>
+                                </div>
+                                
+                                <div id="recentTicketsList" class="tickets-list">
+                                    <!-- Recent tickets will be populated here -->
+                                </div>
+                                
+                                <div id="recentTicketsEmpty" class="empty-state" style="display: none;">
+                                    <div class="empty-icon">
+                                        <i class="fas fa-inbox"></i>
+                                    </div>
+                                    <h4>Aucun ticket récent</h4>
+                                    <p>Les tickets apparaîtront ici une fois qu'ils seront créés</p>
+                                </div>
+                            </div>
+                            
+                            <hr class="section-divider">
+                            
                             <!-- Configuration Section -->
                             <div class="settings-section">
                                 <h4 class="section-title">
