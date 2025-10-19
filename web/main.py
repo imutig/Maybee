@@ -35,6 +35,7 @@ load_dotenv("../.env")  # Load from parent directory (main .env)
 import sys
 sys.path.append('..')
 from db import Database
+from cloud_storage import GoogleDriveStorage
 
 # Language support
 SUPPORTED_LANGUAGES = ['en', 'fr']
@@ -104,12 +105,91 @@ async def lifespan(app: FastAPI):
     await migrate_level_up_config_show_avatar()  # Add show_user_avatar column
     await migrate_xp_data_message_count()  # Add message_count column
     await migrate_ticket_panels_verification()  # Add verification workflow columns
+    
+    # Initialize Google Drive Storage
+    global drive_storage
+    drive_storage = GoogleDriveStorage()
+    await drive_storage.initialize()
+    
     yield
     # Shutdown
     if database:
         await database.close()
 
 app = FastAPI(
+    title="Maybee Dashboard",
+    description="Professional web interface for Maybee configuration",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# CORS middleware for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # React dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Session middleware for storing user sessions
+from starlette.middleware.sessions import SessionMiddleware
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "your-secret-key-change-in-production"))
+
+# Templates and static files
+templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Load environment variables
+load_dotenv()
+
+# Try to load from different possible .env files
+if not os.getenv("DISCORD_TOKEN"):
+    # Try railway specific env file
+    if os.path.exists(".env.railway"):
+        load_dotenv(".env.railway")
+    # Try parent directory .env
+    elif os.path.exists("../.env"):
+        load_dotenv("../.env")
+
+# Security
+security = HTTPBearer()
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_urlsafe(32))
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Discord OAuth2 settings
+DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
+DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
+DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "http://localhost:8000/auth/discord/callback")
+
+# Get and clean the Discord bot token
+_raw_token = os.getenv("DISCORD_TOKEN")
+if _raw_token:
+    # Clean the token of any potential formatting issues
+    DISCORD_BOT_TOKEN = _raw_token.strip()
+    # Remove any potential key=value format
+    if '=' in DISCORD_BOT_TOKEN and 'DISCORD_TOKEN=' in DISCORD_BOT_TOKEN:
+        DISCORD_BOT_TOKEN = DISCORD_BOT_TOKEN.split('=', 1)[1].strip()
+    # Remove any quotes
+    DISCORD_BOT_TOKEN = DISCORD_BOT_TOKEN.strip('"').strip("'")
+else:
+    DISCORD_BOT_TOKEN = None
+
+# Debug: Print environment variable status (without exposing values)
+print(f"🔍 Environment variables loaded:")
+print(f"  - DISCORD_TOKEN: {'✅ Found' if DISCORD_BOT_TOKEN else '❌ Missing'}")
+if DISCORD_BOT_TOKEN:
+    print(f"  - Token length: {len(DISCORD_BOT_TOKEN)}")
+    print(f"  - Token prefix: '{DISCORD_BOT_TOKEN[:10]}...' (should start with MTM)")
+print(f"  - DB_HOST: {'✅ Found' if os.getenv('DB_HOST') else '❌ Missing'}")
+print(f"  - DB_USER: {'✅ Found' if os.getenv('DB_USER') else '❌ Missing'}")
+print(f"  - DISCORD_CLIENT_ID: {'✅ Found' if DISCORD_CLIENT_ID else '❌ Missing'}")
+print(f"  - DISCORD_CLIENT_SECRET: {'✅ Found' if DISCORD_CLIENT_SECRET else '❌ Missing'}")
+
+# Database
+database = None
+drive_storage = None  # Global storage instance
     title="Maybee Dashboard",
     description="Professional web interface for Maybee configuration",
     version="1.0.0",
@@ -1519,33 +1599,105 @@ async def search_guild_members(
     query: str,
     current_user: str = Depends(get_current_user)
 ):
-    """Search for guild members by username or ID"""
+    """Search for guild members by username or ID - searches across multiple tables"""
     try:
         if not await verify_guild_access(guild_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this guild")
         
-        # Search in members table first
-        members = await database.fetch_all(
+        print(f"🔍 Member search - Guild: {guild_id}, Query: '{query}'")
+        
+        result = []
+        user_ids = set()
+        
+        # Strategy 1: Search in members table (has usernames)
+        users_from_members = await database.fetch_all(
             """SELECT DISTINCT user_id, username 
                FROM members 
                WHERE guild_id = %s 
                AND (username LIKE %s OR user_id LIKE %s)
+               AND left_at IS NULL
                LIMIT 10""",
             (guild_id, f"%{query}%", f"%{query}%")
         )
+        print(f"� Found {len(users_from_members) if users_from_members else 0} users from members table")
         
-        result = []
-        for member in members:
-            result.append({
-                "id": str(member["user_id"]),
-                "username": member["username"],
-                "avatar_url": None  # Could be enhanced to fetch from Discord API
-            })
+        for member in users_from_members:
+            user_id = str(member["user_id"])
+            if user_id not in user_ids:
+                user_ids.add(user_id)
+                result.append({
+                    "id": user_id,
+                    "username": member["username"],
+                    "avatar_url": None
+                })
         
+        # Strategy 2: Search in active_tickets table (users with tickets)
+        users_from_tickets = await database.fetch_all(
+            """SELECT DISTINCT user_id 
+               FROM active_tickets 
+               WHERE guild_id = %s AND (
+                   user_id LIKE %s OR
+                   user_id IN (
+                       SELECT user_id FROM members 
+                       WHERE guild_id = %s AND username LIKE %s
+                   )
+               )
+               LIMIT 10""",
+            (guild_id, f"%{query}%", guild_id, f"%{query}%")
+        )
+        print(f"🎫 Found {len(users_from_tickets) if users_from_tickets else 0} users from tickets")
+        
+        for ticket_user in users_from_tickets:
+            user_id = str(ticket_user["user_id"])
+            if user_id not in user_ids:
+                user_ids.add(user_id)
+                # Try to get username
+                member = await database.fetch_one(
+                    "SELECT username FROM members WHERE guild_id = %s AND user_id = %s LIMIT 1",
+                    (guild_id, user_id)
+                )
+                username = member["username"] if member else f"Utilisateur {user_id}"
+                result.append({
+                    "id": user_id,
+                    "username": username,
+                    "avatar_url": None
+                })
+        
+        # Strategy 3: If still no results, try xp_data table (all users who talked)
+        if len(result) == 0:
+            print(f"🔄 No results yet, trying xp_data table...")
+            users_from_xp = await database.fetch_all(
+                """SELECT DISTINCT user_id 
+                   FROM xp_data 
+                   WHERE guild_id = %s AND user_id LIKE %s
+                   LIMIT 10""",
+                (guild_id, f"%{query}%")
+            )
+            print(f"💬 Found {len(users_from_xp) if users_from_xp else 0} users from xp_data")
+            
+            for xp_user in users_from_xp:
+                user_id = str(xp_user["user_id"])
+                if user_id not in user_ids:
+                    user_ids.add(user_id)
+                    # Try to get username
+                    member = await database.fetch_one(
+                        "SELECT username FROM members WHERE guild_id = %s AND user_id = %s LIMIT 1",
+                        (guild_id, user_id)
+                    )
+                    username = member["username"] if member else f"Utilisateur {user_id}"
+                    result.append({
+                        "id": user_id,
+                        "username": username,
+                        "avatar_url": None
+                    })
+        
+        print(f"✅ Returning {len(result)} total results")
         return result
         
     except Exception as e:
-        print(f"Member search error: {e}")
+        print(f"❌ Member search error: {e}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/guild/{guild_id}/tickets/user/{user_id}")
@@ -1554,45 +1706,79 @@ async def get_user_tickets(
     user_id: str,
     current_user: str = Depends(get_current_user)
 ):
-    """Get all tickets for a specific user"""
+    """Get all tickets for a specific user from Google Drive"""
     try:
         if not await verify_guild_access(guild_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this guild")
         
-        # Get tickets from active_tickets table
-        tickets = await database.fetch_all(
-            """SELECT * FROM active_tickets 
-               WHERE guild_id = %s AND user_id = %s
-               ORDER BY created_at DESC""",
-            (guild_id, user_id)
-        )
+        print(f"🎫 Getting tickets for user {user_id} in guild {guild_id} from Google Drive")
         
-        # Get member username
-        member = await database.fetch_one(
-            "SELECT username FROM members WHERE guild_id = %s AND user_id = %s LIMIT 1",
-            (guild_id, user_id)
-        )
+        if not drive_storage:
+            print("⚠️ Google Drive not initialized, falling back to database")
+            # Fallback to database if Drive is not available
+            tickets = await database.fetch_all(
+                """SELECT * FROM active_tickets 
+                   WHERE guild_id = %s AND user_id = %s
+                   ORDER BY created_at DESC""",
+                (guild_id, user_id)
+            )
+            
+            member = await database.fetch_one(
+                "SELECT username FROM members WHERE guild_id = %s AND user_id = %s LIMIT 1",
+                (guild_id, user_id)
+            )
+            
+            username = member["username"] if member else f"Utilisateur {user_id}"
+            
+            result = []
+            for ticket in tickets:
+                ticket_data = {
+                    "id": ticket["id"],
+                    "channel_id": str(ticket["channel_id"]),
+                    "user_id": str(ticket["user_id"]),
+                    "username": username,
+                    "created_at": ticket["created_at"].isoformat() if ticket.get("created_at") else None,
+                    "closed_at": ticket["closed_at"].isoformat() if ticket.get("closed_at") else None,
+                    "status": "closed" if ticket.get("closed_at") else "open",
+                    "file_id": None,
+                    "closed_by": str(ticket["closed_by"]) if ticket.get("closed_by") else None
+                }
+                result.append(ticket_data)
+            
+            return result
         
-        username = member["username"] if member else "Unknown"
+        # Use Google Drive to get tickets
+        tickets = await drive_storage.list_user_ticket_logs(int(guild_id), int(user_id))
+        print(f"📋 Found {len(tickets)} tickets from Google Drive")
         
         result = []
         for ticket in tickets:
-            result.append({
-                "id": ticket["id"],
-                "channel_id": str(ticket["channel_id"]),
-                "user_id": str(ticket["user_id"]),
-                "username": username,
-                "status": ticket["status"],
-                "file_id": ticket["file_id"],
-                "created_at": ticket["created_at"].isoformat() if ticket["created_at"] else None,
-                "closed_at": ticket["closed_at"].isoformat() if ticket["closed_at"] else None,
-                "closed_by": str(ticket["closed_by"]) if ticket.get("closed_by") else None
-            })
+            try:
+                ticket_data = {
+                    "id": ticket.get("ticket_id", "unknown"),
+                    "channel_id": ticket.get("metadata", {}).get("channel_id", "unknown"),
+                    "user_id": str(user_id),
+                    "username": ticket.get("username", ticket.get("display_name", f"Utilisateur {user_id}")),
+                    "created_at": ticket.get("created_at"),
+                    "closed_at": ticket.get("closed_at"),
+                    "status": ticket.get("status", "closed"),
+                    "file_id": ticket.get("file_id"),
+                    "message_count": ticket.get("message_count", 0),
+                    "event_count": ticket.get("event_count", 0),
+                    "closed_by": ticket.get("metadata", {}).get("closed_by")
+                }
+                result.append(ticket_data)
+            except Exception as e:
+                print(f"⚠️ Error processing ticket: {e}")
+                continue
         
+        print(f"✅ Returning {len(result)} tickets")
         return result
         
     except Exception as e:
-        print(f"Get user tickets error: {e}")
+        print(f"❌ Get user tickets error: {e}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/guild/{guild_id}/tickets/{channel_id}/events")
@@ -1601,63 +1787,93 @@ async def get_ticket_events(
     channel_id: str,
     current_user: str = Depends(get_current_user)
 ):
-    """Get all events for a specific ticket"""
+    """Get all events for a specific ticket from Google Drive or database"""
     try:
         if not await verify_guild_access(guild_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this guild")
         
-        # For now, return mock data - you'll need to create a ticket_events table
-        # to store these events when they happen
+        print(f"📋 Getting events for ticket channel {channel_id} in guild {guild_id}")
+        
+        # Try to get events from Google Drive first (if available)
+        if drive_storage:
+            try:
+                # Search for ticket with this channel_id in Google Drive
+                all_tickets = await drive_storage.list_all_ticket_logs(int(guild_id))
+                for ticket in all_tickets:
+                    if str(ticket.get("metadata", {}).get("channel_id")) == str(channel_id):
+                        events = ticket.get("events", [])
+                        print(f"✅ Found {len(events)} events in Google Drive")
+                        return events
+            except Exception as e:
+                print(f"⚠️ Error getting events from Google Drive: {e}")
+        
+        # Fallback: Try to reconstruct from database
+        ticket = await database.fetch_one(
+            "SELECT * FROM active_tickets WHERE guild_id = %s AND channel_id = %s",
+            (guild_id, channel_id)
+        )
+        
         events = []
-        
-        # Try to get from a hypothetical ticket_events table
-        try:
-            ticket_events = await database.fetch_all(
-                """SELECT * FROM ticket_events 
-                   WHERE guild_id = %s AND channel_id = %s
-                   ORDER BY timestamp DESC""",
-                (guild_id, channel_id)
-            )
+        if ticket:
+            # Add created event
+            events.append({
+                "event_type": "created",
+                "timestamp": ticket["created_at"].isoformat() if ticket.get("created_at") else None,
+                "user_id": str(ticket["user_id"]),
+                "user_name": "User",
+                "details": "Ticket créé"
+            })
             
-            for event in ticket_events:
+            # Add closed event if closed
+            if ticket.get("closed_at"):
                 events.append({
-                    "event_type": event["event_type"],
-                    "timestamp": event["timestamp"].isoformat() if event["timestamp"] else None,
-                    "user_id": str(event["user_id"]) if event.get("user_id") else None,
-                    "user_name": event.get("user_name"),
-                    "details": event.get("details")
+                    "event_type": "closed",
+                    "timestamp": ticket["closed_at"].isoformat(),
+                    "user_id": str(ticket["closed_by"]) if ticket.get("closed_by") else None,
+                    "user_name": "Moderator",
+                    "details": "Ticket fermé"
                 })
-        except:
-            # If table doesn't exist, try to reconstruct from active_tickets data
-            ticket = await database.fetch_one(
-                "SELECT * FROM active_tickets WHERE guild_id = %s AND channel_id = %s",
-                (guild_id, channel_id)
-            )
-            
-            if ticket:
-                # Add created event
-                events.append({
-                    "event_type": "created",
-                    "timestamp": ticket["created_at"].isoformat() if ticket["created_at"] else None,
-                    "user_id": str(ticket["user_id"]),
-                    "user_name": "User",
-                    "details": "Ticket créé"
-                })
-                
-                # Add closed event if closed
-                if ticket["closed_at"]:
-                    events.append({
-                        "event_type": "closed",
-                        "timestamp": ticket["closed_at"].isoformat(),
-                        "user_id": str(ticket["closed_by"]) if ticket.get("closed_by") else None,
-                        "user_name": "Moderator",
-                        "details": "Ticket fermé"
-                    })
         
+        print(f"✅ Returning {len(events)} events (reconstructed)")
         return events
         
     except Exception as e:
-        print(f"Get ticket events error: {e}")
+        print(f"❌ Get ticket events error: {e}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guild/{guild_id}/tickets/file/{file_id}")
+async def get_ticket_transcript(
+    guild_id: str,
+    file_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get full transcript of a ticket from Google Drive"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        print(f"📄 Getting transcript for file {file_id}")
+        
+        if not drive_storage:
+            raise HTTPException(status_code=503, detail="Google Drive storage not available")
+        
+        # Download ticket logs from Google Drive
+        ticket_data = await drive_storage.download_ticket_logs(file_id)
+        
+        if not ticket_data:
+            raise HTTPException(status_code=404, detail="Ticket transcript not found")
+        
+        print(f"✅ Retrieved transcript with {len(ticket_data.get('messages', []))} messages")
+        return ticket_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Get ticket transcript error: {e}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/guild/{guild_id}/stats")

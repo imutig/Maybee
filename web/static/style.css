@@ -5526,63 +5526,6 @@ canvas {
     border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
-.preview-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--spacing-lg);
-    margin-top: var(--spacing-lg);
-}
-
-.event-preview {
-    background: var(--surface-dark);
-    border-radius: 8px;
-    padding: var(--spacing-md);
-}
-
-.embed {
-    border-left: 4px solid;
-    padding: var(--spacing-md);
-    border-radius: 4px;
-    background: var(--surface-lighter);
-    font-size: var(--font-size-sm);
-}
-
-.embed.green-embed {
-    border-left-color: var(--success);
-}
-
-.embed.blue-embed {
-    border-left-color: var(--info);
-}
-
-.embed.orange-embed {
-    border-left-color: var(--warning);
-}
-
-.embed-title {
-    font-weight: 700;
-    font-size: var(--font-size-base);
-    margin-bottom: var(--spacing-sm);
-    color: var(--text-primary);
-}
-
-.embed-field {
-    margin: var(--spacing-xs) 0;
-    color: var(--text-secondary);
-}
-
-.embed-field strong {
-    color: var(--text-primary);
-}
-
-.embed-footer {
-    margin-top: var(--spacing-sm);
-    padding-top: var(--spacing-sm);
-    border-top: 1px solid var(--border-subtle);
-    font-size: var(--font-size-xs);
-    color: var(--text-tertiary);
-}
-
 .form-hint-inline {
     font-size: var(--font-size-xs);
     color: var(--text-tertiary);
