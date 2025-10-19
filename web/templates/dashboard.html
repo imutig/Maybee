@@ -1270,11 +1270,64 @@
                         <div class="card-header">
                             <h3 class="card-title">
                                 <i class="fas fa-history me-2"></i>
-                                Configuration des Logs de Tickets
+                                Logs de Tickets
                             </h3>
-                            <p class="card-subtitle">Configurez où les événements de tickets seront enregistrés (création, prise en charge, fermeture, etc.)</p>
+                            <p class="card-subtitle">Recherchez et visualisez l'historique des tickets</p>
                         </div>
                         <div class="card-content">
+                            <!-- Ticket Search Section -->
+                            <div class="settings-section">
+                                <h4 class="section-title">
+                                    <i class="fas fa-search me-2"></i>
+                                    Rechercher des Tickets
+                                </h4>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Rechercher par utilisateur</label>
+                                    <div class="search-input-group">
+                                        <div class="autocomplete-wrapper">
+                                            <input type="text" id="ticketSearchInput" class="form-control" placeholder="Nom d'utilisateur ou ID..." autocomplete="off">
+                                            <div id="searchSuggestions" class="search-suggestions" style="display: none;">
+                                                <!-- Suggestions will appear here -->
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn-primary" onclick="searchTicketLogs()">
+                                            <i class="fas fa-search me-2"></i>
+                                            Rechercher
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Search Results -->
+                                <div id="ticketSearchResults" class="ticket-search-results" style="display: none;">
+                                    <div class="results-header">
+                                        <h5 class="results-title">Résultats de la recherche</h5>
+                                        <span class="results-count" id="ticketResultsCount">0 tickets trouvés</span>
+                                    </div>
+                                    <div class="tickets-list" id="ticketsList">
+                                        <!-- Results will be populated here -->
+                                    </div>
+                                </div>
+                                
+                                <div id="ticketSearchEmpty" class="empty-state" style="display: none;">
+                                    <div class="empty-icon">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                    <h4>Aucun ticket trouvé</h4>
+                                    <p>Essayez avec un autre nom d'utilisateur ou ID</p>
+                                </div>
+                            </div>
+                            
+                            <hr class="section-divider">
+                            
+                            <!-- Configuration Section -->
+                            <div class="settings-section">
+                                <h4 class="section-title">
+                                    <i class="fas fa-cog me-2"></i>
+                                    Configuration des Logs
+                                </h4>
+                            </div>
+                            
                             <form id="ticketLogsConfigForm">
                                 <div class="settings-section">
                                     <h4 class="section-title">
@@ -1887,6 +1940,94 @@
                         Deploy Panel
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket Details Modal -->
+    <div id="ticketDetailsModal" class="ticket-modal" style="display: none;">
+        <div class="ticket-modal-overlay" onclick="closeTicketDetailsModal()"></div>
+        <div class="ticket-modal-content">
+            <div class="ticket-modal-header">
+                <h3 class="ticket-modal-title">
+                    <i class="fas fa-ticket-alt me-2"></i>
+                    Détails du Ticket
+                </h3>
+                <button class="ticket-modal-close" onclick="closeTicketDetailsModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="ticket-modal-body">
+                <!-- Ticket Info -->
+                <div class="ticket-detail-section">
+                    <h4 class="section-title">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Informations
+                    </h4>
+                    <div class="ticket-detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">ID du Ticket</span>
+                            <span class="detail-value" id="detailTicketId">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Statut</span>
+                            <span class="detail-value" id="detailTicketStatus">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Créé par</span>
+                            <span class="detail-value" id="detailTicketUser">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Date de création</span>
+                            <span class="detail-value" id="detailTicketCreated">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Fermé par</span>
+                            <span class="detail-value" id="detailTicketClosedBy">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Date de fermeture</span>
+                            <span class="detail-value" id="detailTicketClosed">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transcript -->
+                <div class="ticket-detail-section">
+                    <h4 class="section-title">
+                        <i class="fas fa-file-alt me-2"></i>
+                        Transcript
+                    </h4>
+                    <div id="ticketTranscriptSection">
+                        <div class="transcript-preview" id="transcriptPreview">
+                            <p class="text-secondary">Chargement du transcript...</p>
+                        </div>
+                        <div class="transcript-actions">
+                            <button class="btn-primary" id="openTranscriptBtn" style="display: none;" onclick="openFullTranscript()">
+                                <i class="fas fa-external-link-alt me-2"></i>
+                                Ouvrir le transcript complet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Events Timeline -->
+                <div class="ticket-detail-section">
+                    <h4 class="section-title">
+                        <i class="fas fa-history me-2"></i>
+                        Historique des événements
+                    </h4>
+                    <div class="timeline" id="ticketEventsTimeline">
+                        <p class="text-secondary">Chargement des événements...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ticket-modal-footer">
+                <button class="btn-secondary" onclick="closeTicketDetailsModal()">
+                    Fermer
+                </button>
             </div>
         </div>
     </div>

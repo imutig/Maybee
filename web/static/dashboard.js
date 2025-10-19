@@ -5083,6 +5083,308 @@ function setupSimpleNavigation() {
 // Ticket Logs Configuration
 // ====================================
 
+let searchDebounceTimer = null;
+let currentTicketDetails = null;
+
+// Autocomplete suggestions
+async function showSearchSuggestions() {
+    const dashboard = window.dashboard;
+    if (!dashboard || !dashboard.currentGuild) return;
+
+    const searchInput = document.getElementById('ticketSearchInput');
+    const searchValue = searchInput.value.trim();
+    const suggestionsDiv = document.getElementById('searchSuggestions');
+    
+    if (searchValue.length < 2) {
+        suggestionsDiv.style.display = 'none';
+        return;
+    }
+
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(async () => {
+        try {
+            const users = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/members/search?query=${encodeURIComponent(searchValue)}`);
+            
+            if (!users || users.length === 0) {
+                suggestionsDiv.style.display = 'none';
+                return;
+            }
+
+            suggestionsDiv.innerHTML = '';
+            
+            for (const user of users) {
+                // Get ticket count for this user
+                const tickets = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/tickets/user/${user.id}`);
+                const ticketCount = tickets ? tickets.length : 0;
+                
+                if (ticketCount > 0) {
+                    const suggestionItem = document.createElement('div');
+                    suggestionItem.className = 'suggestion-item';
+                    suggestionItem.innerHTML = `
+                        <img class="suggestion-avatar" src="${user.avatar_url || '/static/default-avatar.png'}" alt="${user.username}">
+                        <div class="suggestion-info">
+                            <div class="suggestion-name">${user.username}</div>
+                            <div class="suggestion-id">ID: ${user.id}</div>
+                        </div>
+                        <span class="suggestion-count">${ticketCount} ticket${ticketCount > 1 ? 's' : ''}</span>
+                    `;
+                    suggestionItem.addEventListener('click', () => {
+                        searchInput.value = user.username;
+                        suggestionsDiv.style.display = 'none';
+                        searchTicketLogs();
+                    });
+                    suggestionsDiv.appendChild(suggestionItem);
+                }
+            }
+            
+            suggestionsDiv.style.display = suggestionsDiv.children.length > 0 ? 'block' : 'none';
+        } catch (error) {
+            console.error('Error fetching suggestions:', error);
+        }
+    }, 300);
+}
+
+// Close suggestions when clicking outside
+document.addEventListener('click', function(e) {
+    const searchInput = document.getElementById('ticketSearchInput');
+    const suggestionsDiv = document.getElementById('searchSuggestions');
+    if (searchInput && suggestionsDiv && !searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+        suggestionsDiv.style.display = 'none';
+    }
+});
+
+async function searchTicketLogs() {
+    const dashboard = window.dashboard;
+    if (!dashboard || !dashboard.currentGuild) {
+        dashboard.showError('Veuillez sélectionner un serveur');
+        return;
+    }
+
+    const searchInput = document.getElementById('ticketSearchInput');
+    const searchValue = searchInput.value.trim();
+    
+    if (!searchValue) {
+        dashboard.showError('Veuillez entrer un nom d\'utilisateur ou un ID');
+        return;
+    }
+
+    try {
+        // Show loading state
+        const ticketsList = document.getElementById('ticketsList');
+        const resultsSection = document.getElementById('ticketSearchResults');
+        const emptySection = document.getElementById('ticketSearchEmpty');
+        
+        resultsSection.style.display = 'block';
+        emptySection.style.display = 'none';
+        ticketsList.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin me-2"></i>Recherche en cours...</div>';
+
+        // Search for user first
+        const users = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/members/search?query=${encodeURIComponent(searchValue)}`);
+        
+        if (!users || users.length === 0) {
+            emptySection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            return;
+        }
+
+        // Get tickets for found users
+        const userId = users[0].id;
+        const tickets = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/tickets/user/${userId}`);
+        
+        if (!tickets || tickets.length === 0) {
+            emptySection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            return;
+        }
+
+        // Update count
+        document.getElementById('ticketResultsCount').textContent = `${tickets.length} ticket(s) trouvé(s)`;
+
+        // Populate results
+        ticketsList.innerHTML = '';
+        tickets.forEach(ticket => {
+            const ticketItem = createTicketItem(ticket);
+            ticketsList.appendChild(ticketItem);
+        });
+
+    } catch (error) {
+        console.error('Error searching tickets:', error);
+        document.getElementById('ticketSearchEmpty').style.display = 'block';
+        document.getElementById('ticketSearchResults').style.display = 'none';
+    }
+}
+
+function createTicketItem(ticket) {
+    const item = document.createElement('div');
+    item.className = 'ticket-item';
+    
+    const statusClass = ticket.status === 'open' ? 'open' : 'closed';
+    const statusText = ticket.status === 'open' ? 'Ouvert' : 'Fermé';
+    
+    const createdDate = new Date(ticket.created_at).toLocaleString('fr-FR');
+    const closedDate = ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('fr-FR') : 'N/A';
+    
+    item.innerHTML = `
+        <div class="ticket-header">
+            <span class="ticket-title">#${ticket.channel_id}</span>
+            <span class="ticket-status ${statusClass}">${statusText}</span>
+        </div>
+        <div class="ticket-info">
+            <div class="ticket-info-item">
+                <i class="fas fa-calendar-plus"></i>
+                <span>Créé: ${createdDate}</span>
+            </div>
+            ${ticket.closed_at ? `
+                <div class="ticket-info-item">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Fermé: ${closedDate}</span>
+                </div>
+            ` : ''}
+            ${ticket.file_id ? `
+                <div class="ticket-info-item">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Transcript disponible</span>
+                </div>
+            ` : ''}
+        </div>
+    `;
+    
+    // Add click handler to open details modal
+    item.style.cursor = 'pointer';
+    item.addEventListener('click', () => openTicketDetails(ticket));
+    
+    return item;
+}
+
+async function openTicketDetails(ticket) {
+    const dashboard = window.dashboard;
+    currentTicketDetails = ticket;
+    
+    // Show modal
+    document.getElementById('ticketDetailsModal').style.display = 'flex';
+    
+    // Populate basic info
+    document.getElementById('detailTicketId').textContent = `#${ticket.channel_id}`;
+    
+    const statusClass = ticket.status === 'open' ? 'open' : 'closed';
+    const statusText = ticket.status === 'open' ? 'Ouvert' : 'Fermé';
+    document.getElementById('detailTicketStatus').innerHTML = `<span class="ticket-status ${statusClass}">${statusText}</span>`;
+    
+    document.getElementById('detailTicketUser').textContent = ticket.username || 'Inconnu';
+    document.getElementById('detailTicketCreated').textContent = new Date(ticket.created_at).toLocaleString('fr-FR');
+    document.getElementById('detailTicketClosedBy').textContent = ticket.closed_by ? `ID: ${ticket.closed_by}` : 'N/A';
+    document.getElementById('detailTicketClosed').textContent = ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('fr-FR') : 'N/A';
+    
+    // Load transcript if available
+    const transcriptPreview = document.getElementById('transcriptPreview');
+    const openTranscriptBtn = document.getElementById('openTranscriptBtn');
+    
+    if (ticket.file_id) {
+        transcriptPreview.innerHTML = '<p class="text-secondary"><i class="fas fa-file-alt me-2"></i>Transcript disponible sur Google Drive</p>';
+        openTranscriptBtn.style.display = 'inline-block';
+        openTranscriptBtn.onclick = () => window.open(`https://drive.google.com/file/d/${ticket.file_id}/view`, '_blank');
+    } else {
+        transcriptPreview.innerHTML = '<p class="text-secondary">Aucun transcript disponible</p>';
+        openTranscriptBtn.style.display = 'none';
+    }
+    
+    // Load events timeline
+    await loadTicketEvents(ticket);
+}
+
+async function loadTicketEvents(ticket) {
+    const dashboard = window.dashboard;
+    const timeline = document.getElementById('ticketEventsTimeline');
+    
+    try {
+        // Fetch events from API (you'll need to create this endpoint)
+        const events = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/tickets/${ticket.channel_id}/events`);
+        
+        if (!events || events.length === 0) {
+            timeline.innerHTML = '<p class="text-secondary">Aucun événement enregistré</p>';
+            return;
+        }
+        
+        timeline.innerHTML = '';
+        
+        // Sort events by date (newest first)
+        events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        events.forEach(event => {
+            const eventItem = createTimelineItem(event);
+            timeline.appendChild(eventItem);
+        });
+        
+    } catch (error) {
+        console.error('Error loading ticket events:', error);
+        timeline.innerHTML = '<p class="text-secondary">Erreur lors du chargement des événements</p>';
+    }
+}
+
+function createTimelineItem(event) {
+    const item = document.createElement('div');
+    item.className = 'timeline-item';
+    
+    const eventIcons = {
+        'created': '🎫',
+        'claimed': '🙋',
+        'closed': '🔒',
+        'deleted': '🗑️',
+        'reopened': '🔓',
+        'verified': '✅'
+    };
+    
+    const eventTitles = {
+        'created': 'Ticket créé',
+        'claimed': 'Pris en charge',
+        'closed': 'Fermé',
+        'deleted': 'Supprimé',
+        'reopened': 'Rouvert',
+        'verified': 'Vérifié'
+    };
+    
+    const timestamp = new Date(event.timestamp).toLocaleString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    item.innerHTML = `
+        <div class="timeline-marker ${event.event_type}">
+            ${eventIcons[event.event_type] || '📝'}
+        </div>
+        <div class="timeline-content">
+            <div class="timeline-header">
+                <span class="timeline-title">
+                    ${eventIcons[event.event_type] || '📝'} ${eventTitles[event.event_type] || 'Événement'}
+                </span>
+                <span class="timeline-time">${timestamp}</span>
+            </div>
+            ${event.details ? `<div class="timeline-details">${event.details}</div>` : ''}
+            ${event.user_name ? `
+                <div class="timeline-user">
+                    <span>Par: <strong>${event.user_name}</strong></span>
+                </div>
+            ` : ''}
+        </div>
+    `;
+    
+    return item;
+}
+
+function closeTicketDetailsModal() {
+    document.getElementById('ticketDetailsModal').style.display = 'none';
+    currentTicketDetails = null;
+}
+
+function openFullTranscript() {
+    if (currentTicketDetails && currentTicketDetails.file_id) {
+        window.open(`https://drive.google.com/file/d/${currentTicketDetails.file_id}/view`, '_blank');
+    }
+}
+
 async function loadTicketLogsConfig() {
     const dashboard = window.dashboard;
     if (!dashboard || !dashboard.currentGuild) return;
@@ -5141,15 +5443,9 @@ async function saveTicketLogsConfig(e) {
     const ticketLogsChannelId = document.getElementById('ticketLogsChannel').value;
 
     try {
-        const response = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/server-config`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                ticket_events_log_channel_id: ticketEventsLogChannelId || null,
-                ticket_logs_channel_id: ticketLogsChannelId || null
-            })
+        const response = await dashboard.apiCall(`/guild/${dashboard.currentGuild}/server-config`, 'POST', {
+            ticket_events_log_channel_id: ticketEventsLogChannelId || null,
+            ticket_logs_channel_id: ticketLogsChannelId || null
         });
 
         if (response.success) {
@@ -5168,6 +5464,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const ticketLogsForm = document.getElementById('ticketLogsConfigForm');
     if (ticketLogsForm) {
         ticketLogsForm.addEventListener('submit', saveTicketLogsConfig);
+    }
+    
+    // Add input listener for search suggestions
+    const ticketSearchInput = document.getElementById('ticketSearchInput');
+    if (ticketSearchInput) {
+        ticketSearchInput.addEventListener('input', showSearchSuggestions);
+        ticketSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('searchSuggestions').style.display = 'none';
+                searchTicketLogs();
+            }
+        });
     }
     
     // Load config when switching to ticket-logs tab

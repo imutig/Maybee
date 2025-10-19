@@ -1513,6 +1513,153 @@ async def update_server_config(
         print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/guild/{guild_id}/members/search")
+async def search_guild_members(
+    guild_id: str,
+    query: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Search for guild members by username or ID"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Search in members table first
+        members = await database.fetch_all(
+            """SELECT DISTINCT user_id, username 
+               FROM members 
+               WHERE guild_id = %s 
+               AND (username LIKE %s OR user_id LIKE %s)
+               LIMIT 10""",
+            (guild_id, f"%{query}%", f"%{query}%")
+        )
+        
+        result = []
+        for member in members:
+            result.append({
+                "id": str(member["user_id"]),
+                "username": member["username"],
+                "avatar_url": None  # Could be enhanced to fetch from Discord API
+            })
+        
+        return result
+        
+    except Exception as e:
+        print(f"Member search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guild/{guild_id}/tickets/user/{user_id}")
+async def get_user_tickets(
+    guild_id: str,
+    user_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get all tickets for a specific user"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # Get tickets from active_tickets table
+        tickets = await database.fetch_all(
+            """SELECT * FROM active_tickets 
+               WHERE guild_id = %s AND user_id = %s
+               ORDER BY created_at DESC""",
+            (guild_id, user_id)
+        )
+        
+        # Get member username
+        member = await database.fetch_one(
+            "SELECT username FROM members WHERE guild_id = %s AND user_id = %s LIMIT 1",
+            (guild_id, user_id)
+        )
+        
+        username = member["username"] if member else "Unknown"
+        
+        result = []
+        for ticket in tickets:
+            result.append({
+                "id": ticket["id"],
+                "channel_id": str(ticket["channel_id"]),
+                "user_id": str(ticket["user_id"]),
+                "username": username,
+                "status": ticket["status"],
+                "file_id": ticket["file_id"],
+                "created_at": ticket["created_at"].isoformat() if ticket["created_at"] else None,
+                "closed_at": ticket["closed_at"].isoformat() if ticket["closed_at"] else None,
+                "closed_by": str(ticket["closed_by"]) if ticket.get("closed_by") else None
+            })
+        
+        return result
+        
+    except Exception as e:
+        print(f"Get user tickets error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/guild/{guild_id}/tickets/{channel_id}/events")
+async def get_ticket_events(
+    guild_id: str,
+    channel_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get all events for a specific ticket"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+        
+        # For now, return mock data - you'll need to create a ticket_events table
+        # to store these events when they happen
+        events = []
+        
+        # Try to get from a hypothetical ticket_events table
+        try:
+            ticket_events = await database.fetch_all(
+                """SELECT * FROM ticket_events 
+                   WHERE guild_id = %s AND channel_id = %s
+                   ORDER BY timestamp DESC""",
+                (guild_id, channel_id)
+            )
+            
+            for event in ticket_events:
+                events.append({
+                    "event_type": event["event_type"],
+                    "timestamp": event["timestamp"].isoformat() if event["timestamp"] else None,
+                    "user_id": str(event["user_id"]) if event.get("user_id") else None,
+                    "user_name": event.get("user_name"),
+                    "details": event.get("details")
+                })
+        except:
+            # If table doesn't exist, try to reconstruct from active_tickets data
+            ticket = await database.fetch_one(
+                "SELECT * FROM active_tickets WHERE guild_id = %s AND channel_id = %s",
+                (guild_id, channel_id)
+            )
+            
+            if ticket:
+                # Add created event
+                events.append({
+                    "event_type": "created",
+                    "timestamp": ticket["created_at"].isoformat() if ticket["created_at"] else None,
+                    "user_id": str(ticket["user_id"]),
+                    "user_name": "User",
+                    "details": "Ticket créé"
+                })
+                
+                # Add closed event if closed
+                if ticket["closed_at"]:
+                    events.append({
+                        "event_type": "closed",
+                        "timestamp": ticket["closed_at"].isoformat(),
+                        "user_id": str(ticket["closed_by"]) if ticket.get("closed_by") else None,
+                        "user_name": "Moderator",
+                        "details": "Ticket fermé"
+                    })
+        
+        return events
+        
+    except Exception as e:
+        print(f"Get ticket events error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/guild/{guild_id}/stats")
 async def get_guild_stats(guild_id: str, current_user: str = Depends(get_current_user)):
     """Get guild statistics"""

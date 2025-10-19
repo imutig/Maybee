@@ -595,10 +595,42 @@ class TicketCloseButton(discord.ui.Button):
         )
         embed.set_footer(text=_('ticket_system.closed_by', user_id, guild_id, user=interaction.user), icon_url=interaction.user.display_avatar.url)
         
+        # Créer un embed informatif pour les logs
+        info_embed = discord.Embed(
+            title="📋 Récupération des logs",
+            description="Vous pouvez consulter l'historique des tickets de plusieurs façons :",
+            color=discord.Color.blue()
+        )
+        info_embed.add_field(
+            name="📝 Via commande",
+            value=f"Utilisez `/ticket_logs` pour voir tous les tickets d'un utilisateur",
+            inline=False
+        )
+        info_embed.add_field(
+            name="🌐 Via le dashboard",
+            value="Rendez-vous sur le [dashboard web](https://web-production-448ba.up.railway.app/dashboard) dans la section **Logs de Tickets**",
+            inline=False
+        )
+        info_embed.add_field(
+            name="💾 Transcripts",
+            value="Les transcripts complets seront envoyés dans le canal de logs configuré (si activé)",
+            inline=False
+        )
+        info_embed.set_footer(text="Ce message disparaîtra après 30 secondes")
+        
         # Créer la vue de confirmation avec les données du panel
         view = TicketConfirmCloseView(interaction.user.id, panel_data)
         
-        await interaction.response.send_message(embed=embed, view=view)
+        await interaction.response.send_message(embeds=[embed, info_embed], view=view)
+        
+        # Supprimer le message informatif après 30 secondes
+        try:
+            await asyncio.sleep(30)
+            response_message = await interaction.original_response()
+            # Récréer l'embed sans l'info
+            await response_message.edit(embeds=[embed], view=view)
+        except:
+            pass  # Ignore si le message a déjà été supprimé ou le ticket fermé
         
         # Enregistrer l'événement de fermeture
         ticket_cog = interaction.client.get_cog('Ticket')
