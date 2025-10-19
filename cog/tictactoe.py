@@ -54,6 +54,32 @@ class TicTacToeView(discord.ui.View):
                 self.add_item(btn)
                 self.buttons.append(btn)
         self.add_item(TicTacToeForfeitButton())
+    
+    def make_embed(self):
+        embed = discord.Embed(title="TicTacToe", color=discord.Color.blurple())
+        embed.description = f"{self.game.render()}"
+        embed.add_field(name="Joueurs", value=f"❌ {self.game.players[0].mention}  vs  ⭕ {self.game.players[1].mention}", inline=False)
+        if self.game.finished:
+            if self.game.winner:
+                embed.add_field(name="Résultat", value=f"Victoire de {self.game.winner.mention} !", inline=False)
+            else:
+                embed.add_field(name="Résultat", value="Match nul !", inline=False)
+        else:
+            embed.add_field(name="Tour", value=f"C'est au tour de {self.game.players[self.game.turn].mention}", inline=False)
+        embed.set_thumbnail(url=self.game.players[self.game.turn].display_avatar.url)
+        embed.set_footer(text="TicTacToe Discord")
+        return embed
+    
+    async def update_message(self, interaction=None):
+        # Met à jour les labels des boutons selon l'état du plateau
+        for btn in self.buttons:
+            btn.label = EMOJIS[self.game.board[btn.row][btn.col]]
+            btn.disabled = self.game.board[btn.row][btn.col] != 0 or self.game.finished
+        embed = self.make_embed()
+        if interaction:
+            await interaction.response.edit_message(embed=embed, view=(None if self.game.finished else self))
+        else:
+            await self.interaction.edit_original_response(embed=embed, view=(None if self.game.finished else self))
 
 class TicTacToeForfeitButton(discord.ui.Button):
     def __init__(self):
@@ -73,44 +99,6 @@ class TicTacToeForfeitButton(discord.ui.Button):
         game.finished = True
         game.winner = gagnant
         await self.view.update_message(interaction)
-        if game.finished:
-            await interaction.response.send_message("La partie est déjà terminée.", ephemeral=True)
-            return
-        # Seul un joueur peut abandonner
-        if interaction.user not in game.players:
-            await interaction.response.send_message("Vous ne jouez pas dans cette partie.", ephemeral=True)
-            return
-        quitter = interaction.user
-        gagnant = game.players[1] if quitter == game.players[0] else game.players[0]
-        game.finished = True
-        game.winner = gagnant
-        await self.view.view.update_message(interaction)
-
-    async def update_message(self, interaction=None):
-        # Met à jour les labels des boutons selon l'état du plateau
-        for btn in self.buttons:
-            btn.label = EMOJIS[self.game.board[btn.row][btn.col]]
-            btn.disabled = self.game.board[btn.row][btn.col] != 0 or self.game.finished
-        embed = self.make_embed()
-        if interaction:
-            await interaction.response.edit_message(embed=embed, view=(None if self.game.finished else self))
-        else:
-            await self.interaction.edit_original_response(embed=embed, view=(None if self.game.finished else self))
-
-    def make_embed(self):
-        embed = discord.Embed(title="TicTacToe", color=discord.Color.blurple())
-        embed.description = f"{self.game.render()}"
-        embed.add_field(name="Joueurs", value=f"❌ {self.game.players[0].mention}  vs  ⭕ {self.game.players[1].mention}", inline=False)
-        if self.game.finished:
-            if self.game.winner:
-                embed.add_field(name="Résultat", value=f"Victoire de {self.game.winner.mention} !", inline=False)
-            else:
-                embed.add_field(name="Résultat", value="Match nul !", inline=False)
-        else:
-            embed.add_field(name="Tour", value=f"C'est au tour de {self.game.players[self.game.turn].mention}", inline=False)
-        embed.set_thumbnail(url=self.game.players[self.game.turn].display_avatar.url)
-        embed.set_footer(text="TicTacToe Discord")
-        return embed
 
 import random
 class TicTacToeButton(discord.ui.Button):

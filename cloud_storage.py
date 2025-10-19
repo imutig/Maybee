@@ -27,10 +27,14 @@ class GoogleDriveStorage:
         self._service = None
         
         # Support des variables d'environnement pour Railway et BisectHosting
+        # Priorité : Fichiers locaux > Variables d'environnement
+        has_local_files = os.path.exists(credentials_file) or os.path.exists(token_file)
         self.use_env_vars = (
-            os.getenv('RAILWAY_ENVIRONMENT') is not None or  # Railway
-            os.getenv('BISECT_HOSTING') is not None or        # BisectHosting
-            os.getenv('GOOGLE_CLIENT_ID') is not None         # Variables présentes
+            not has_local_files and (  # Seulement si pas de fichiers locaux
+                os.getenv('RAILWAY_ENVIRONMENT') is not None or  # Railway
+                os.getenv('BISECT_HOSTING') is not None or        # BisectHosting
+                os.getenv('GOOGLE_CLIENT_ID') is not None         # Variables présentes
+            )
         )
         
     async def initialize(self):

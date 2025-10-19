@@ -22,11 +22,13 @@ ROLE_CARDS = {
     "loup": "https://static.wikia.nocookie.net/loupgaroumal/images/1/1e/Carte2.png/revision/latest/scale-to-width-down/250?cb=20210104171045&path-prefix=fr",
     "voyante": "https://static.wikia.nocookie.net/loupgaroumal/images/b/be/Carte3.png/revision/latest?cb=20210104171212&path-prefix=fr",
     "chasseur": "https://static.wikia.nocookie.net/loupgaroumal/images/0/0e/Carte6.png/revision/latest?cb=20210104171604&path-prefix=fr",
+    "salvateur": "https://static.wikia.nocookie.net/loupgaroumal/images/3/37/Carte4.png/revision/latest?cb=20240615180235&path-prefix=fr",
+    "renard": "https://static.wikia.nocookie.net/loupgaroumal/images/c/c4/Carte24.png/revision/latest?cb=20240616113010&path-prefix=fr",
     "sorciere": "https://www.regledujeu.fr/wp-content/uploads/sorciere.png",
     "cupidon": "https://www.regledujeu.fr/wp-content/uploads/cupidon.png",
-    "ange": "https://www.regledujeu.fr/wp-content/uploads/ange.png",
+    "petite_fille": "https://www.regledujeu.fr/wp-content/uploads/petite-fille.png",
+    "ange": "https://m.media-amazon.com/images/I/51ib5kyNfnL._AC_UF350,350_QL80_.jpg",
     # Pour les rôles sans image spécifique, on utilisera l'image générale
-    "petite_fille": ROLE_DISTRIBUTION_IMAGE,
     "voleur": ROLE_DISTRIBUTION_IMAGE,
 }
 
@@ -36,6 +38,8 @@ ROLES = {
     "villageois": {"team": "village", "night_action": False, "emoji": "👨"},
     "voyante": {"team": "village", "night_action": True, "emoji": "🔮"},
     "chasseur": {"team": "village", "night_action": False, "emoji": "🏹"},
+    "salvateur": {"team": "village", "night_action": True, "emoji": "🛡️"},
+    "renard": {"team": "village", "night_action": True, "emoji": "🦊"},
     "cupidon": {"team": "village", "night_action": True, "emoji": "💘"},
     "sorciere": {"team": "village", "night_action": True, "emoji": "🧙‍♀️"},
     "petite_fille": {"team": "village", "night_action": False, "emoji": "👧"},
@@ -72,6 +76,10 @@ class LoupGarouGame:
         # Durées configurables
         self.debate_time = debate_time  # Durée du débat en secondes
         self.vote_time = vote_time  # Durée du vote en secondes
+        # État de la petite fille
+        self.petite_fille_spying = False  # Si la petite fille a choisi d'espionner
+        # État du salvateur
+        self.salvateur_last_protected: Optional[int] = None  # Dernière personne protégée par le salvateur
         
     def add_player(self, member: discord.Member) -> bool:
         """Ajoute un joueur à la partie"""
@@ -172,7 +180,7 @@ class GameSetupView(discord.ui.View):
                 ephemeral=True
             )
     
-    @discord.ui.button(label="Configurer", style=discord.ButtonStyle.blurple, emoji="⚙️")
+    @discord.ui.button(label="Rôles de base", style=discord.ButtonStyle.blurple, emoji="⚙️")
     async def config_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.game.organizer.id:
             await interaction.response.send_message(
@@ -182,6 +190,18 @@ class GameSetupView(discord.ui.View):
             return
         
         modal = RoleConfigModal(self)
+        await interaction.response.send_modal(modal)
+    
+    @discord.ui.button(label="Rôles spéciaux", style=discord.ButtonStyle.blurple, emoji="✨")
+    async def special_roles_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.game.organizer.id:
+            await interaction.response.send_message(
+                _("loupgarou.only_organizer", interaction.user.id, self.game.guild_id),
+                ephemeral=True
+            )
+            return
+        
+        modal = SpecialRolesConfigModal(self)
         await interaction.response.send_modal(modal)
     
     @discord.ui.button(label="Temps", style=discord.ButtonStyle.secondary, emoji="⏱️")
@@ -195,6 +215,36 @@ class GameSetupView(discord.ui.View):
         
         modal = TimeConfigModal(self)
         await interaction.response.send_modal(modal)
+    
+    @discord.ui.button(label="Voir les règles", style=discord.ButtonStyle.secondary, emoji="📖")
+    async def rules_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Affiche les règles générales avec la possibilité de voir les détails des rôles
+        view = RulesView(self.game.guild_id)
+        embed = discord.Embed(
+            title="📖 Règles du Loup-Garou",
+            description=(
+                "**🎯 Objectif du jeu**\n"
+                "Le village est divisé en deux équipes :\n"
+                "• **🐺 Loups-Garous** : Éliminer tous les villageois\n"
+                "• **👥 Villageois** : Éliminer tous les loups-garous\n\n"
+                "**🌙 Phase de Nuit**\n"
+                "Les loups-garous se réveillent et choisissent une victime. "
+                "Certains rôles spéciaux peuvent agir la nuit (Voyante, Sorcière, etc.).\n\n"
+                "**☀️ Phase de Jour**\n"
+                "Le village découvre la victime de la nuit. "
+                "Les joueurs débattent puis votent pour éliminer un suspect.\n\n"
+                "**🎭 Rôles Spéciaux**\n"
+                "Chaque rôle possède des capacités uniques. "
+                "Utilisez le menu ci-dessous pour consulter les détails de chaque rôle !\n\n"
+                "**💘 Règles Spéciales**\n"
+                "• **Maire** : Élu en début de partie, sa voix compte double en cas d'égalité\n"
+                "• **Cupidon** : Désigne deux amoureux qui mourront ensemble\n"
+                "• **Ange** : Doit se faire éliminer au premier tour pour gagner seul"
+            ),
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text="Sélectionnez un rôle ci-dessous pour voir ses détails")
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     
     @discord.ui.button(label="Lancer", style=discord.ButtonStyle.primary, emoji="🎮")
     async def start_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -279,6 +329,83 @@ class GameSetupView(discord.ui.View):
         embed.set_footer(text=_("loupgarou.organizer", self.game.organizer.id, self.game.guild_id).format(self.game.organizer.name))
         
         return embed
+
+class RulesView(discord.ui.View):
+    """Vue pour afficher les règles et les détails des rôles"""
+    
+    def __init__(self, guild_id: int):
+        super().__init__(timeout=300)
+        self.guild_id = guild_id
+        
+        # Ajoute le menu de sélection des rôles
+        self.add_item(RoleSelectMenu(guild_id))
+
+class RoleSelectMenu(discord.ui.Select):
+    """Menu de sélection pour voir les détails d'un rôle"""
+    
+    def __init__(self, guild_id: int):
+        self.guild_id = guild_id
+        
+        # Crée les options pour chaque rôle disponible
+        options = []
+        for role_key in ["loup", "villageois", "voyante", "chasseur", "salvateur", "renard", "sorciere", "cupidon", "petite_fille", "ange"]:
+            role_info = ROLES.get(role_key)
+            if role_info:
+                options.append(
+                    discord.SelectOption(
+                        label=_(f"loupgarou.role.{role_key}", None, guild_id),
+                        value=role_key,
+                        emoji=role_info["emoji"],
+                        description=f"Équipe : {role_info['team']}"
+                    )
+                )
+        
+        super().__init__(
+            placeholder="Sélectionnez un rôle pour voir ses détails...",
+            options=options,
+            min_values=1,
+            max_values=1
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        selected_role = self.values[0]
+        role_info = ROLES.get(selected_role)
+        
+        if not role_info:
+            await interaction.response.send_message("Rôle non trouvé.", ephemeral=True)
+            return
+        
+        # Crée l'embed avec les détails du rôle
+        embed = discord.Embed(
+            title=f"{role_info['emoji']} {_(f'loupgarou.role.{selected_role}', interaction.user.id, self.guild_id)}",
+            description=_(f"loupgarou.role_description.{selected_role}", interaction.user.id, self.guild_id),
+            color=discord.Color.gold()
+        )
+        
+        # Ajoute l'image de la carte si disponible
+        role_card = ROLE_CARDS.get(selected_role)
+        if role_card:
+            embed.set_image(url=role_card)
+        
+        # Ajoute des informations supplémentaires
+        team_emoji = "🐺" if role_info["team"] == "loups" else "👥" if role_info["team"] == "village" else "💘" if role_info["team"] == "lovers" else "😇"
+        team_name = "Loups-Garous" if role_info["team"] == "loups" else "Village" if role_info["team"] == "village" else "Amoureux" if role_info["team"] == "lovers" else "Ange"
+        
+        embed.add_field(
+            name="Équipe",
+            value=f"{team_emoji} {team_name}",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="Action de nuit",
+            value="✅ Oui" if role_info.get("night_action") else "❌ Non",
+            inline=True
+        )
+        
+        embed.set_footer(text="Utilisez le menu pour consulter d'autres rôles")
+        
+        await interaction.response.edit_message(embed=embed, view=self.view)
 
 class RoleConfigModal(discord.ui.Modal):
     """Modal pour configurer la distribution des rôles"""
@@ -422,6 +549,104 @@ class TimeConfigModal(discord.ui.Modal):
             await interaction.response.send_message(
                 _("loupgarou.time_config_updated", interaction.user.id, self.view.game.guild_id)
                 .format(debate, vote),
+                ephemeral=True
+            )
+            await self.view.update_game_message()
+        
+        except ValueError:
+            await interaction.response.send_message(
+                _("loupgarou.invalid_numbers", interaction.user.id, self.view.game.guild_id),
+                ephemeral=True
+            )
+
+class SpecialRolesConfigModal(discord.ui.Modal):
+    """Modal pour configurer les rôles spéciaux"""
+    
+    def __init__(self, view: GameSetupView):
+        super().__init__(title="Rôles spéciaux")
+        self.view = view
+        
+        # Ajoute des champs pour les rôles spéciaux implémentés
+        self.salvateur = discord.ui.TextInput(
+            label="Nombre de Salvateurs",
+            placeholder="0 ou 1 (Protège qqn chaque nuit)",
+            default=str(view.role_distribution.get("salvateur", 0)),
+            min_length=1,
+            max_length=1
+        )
+        self.add_item(self.salvateur)
+        
+        self.renard = discord.ui.TextInput(
+            label="Nombre de Renards",
+            placeholder="0 ou 1 (Flaire 2 joueurs)",
+            default=str(view.role_distribution.get("renard", 0)),
+            min_length=1,
+            max_length=1
+        )
+        self.add_item(self.renard)
+        
+        self.cupidon = discord.ui.TextInput(
+            label="Nombre de Cupidons",
+            placeholder="0 ou 1 (Désigne 2 amoureux)",
+            default=str(view.role_distribution.get("cupidon", 0)),
+            min_length=1,
+            max_length=1
+        )
+        self.add_item(self.cupidon)
+        
+        self.petite_fille = discord.ui.TextInput(
+            label="Nombre de Petites Filles",
+            placeholder="0 ou 1 (Espionne les loups)",
+            default=str(view.role_distribution.get("petite_fille", 0)),
+            min_length=1,
+            max_length=1
+        )
+        self.add_item(self.petite_fille)
+        
+        self.ange = discord.ui.TextInput(
+            label="Nombre d'Anges",
+            placeholder="0 ou 1 (Gagne s'il meurt au 1er vote)",
+            default=str(view.role_distribution.get("ange", 0)),
+            min_length=1,
+            max_length=1
+        )
+        self.add_item(self.ange)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            # Met à jour la distribution uniquement pour les rôles spéciaux implémentés
+            salvateur_count = int(self.salvateur.value)
+            if salvateur_count > 0:
+                self.view.role_distribution["salvateur"] = salvateur_count
+            elif "salvateur" in self.view.role_distribution:
+                del self.view.role_distribution["salvateur"]
+            
+            renard_count = int(self.renard.value)
+            if renard_count > 0:
+                self.view.role_distribution["renard"] = renard_count
+            elif "renard" in self.view.role_distribution:
+                del self.view.role_distribution["renard"]
+            
+            cupidon_count = int(self.cupidon.value)
+            if cupidon_count > 0:
+                self.view.role_distribution["cupidon"] = cupidon_count
+            elif "cupidon" in self.view.role_distribution:
+                del self.view.role_distribution["cupidon"]
+            
+            petite_fille_count = int(self.petite_fille.value)
+            if petite_fille_count > 0:
+                self.view.role_distribution["petite_fille"] = petite_fille_count
+            elif "petite_fille" in self.view.role_distribution:
+                del self.view.role_distribution["petite_fille"]
+            
+            ange_count = int(self.ange.value)
+            if ange_count > 0:
+                self.view.role_distribution["ange"] = ange_count
+            elif "ange" in self.view.role_distribution:
+                del self.view.role_distribution["ange"]
+            
+            await interaction.response.send_message(
+                _("loupgarou.config_updated", interaction.user.id, self.view.game.guild_id),
                 ephemeral=True
             )
             await self.view.update_game_message()
@@ -786,6 +1011,7 @@ class LoupGarou(commands.Cog):
         game.phase = "night"
         game.day_number += 1
         game.night_actions = {}
+        game.petite_fille_spying = False  # Réinitialise l'état
         
         embed = discord.Embed(
             title=f"🌙 {_('loupgarou.night_falls', game.organizer.id, game.guild_id).format(game.day_number)}",
@@ -794,16 +1020,36 @@ class LoupGarou(commands.Cog):
         )
         await game.channel.send(embed=embed)
         
+        # Phase de la petite fille (choisit d'espionner AVANT les loups)
+        if any(game.roles.get(uid) == "petite_fille" for uid in game.alive_players):
+            await self.petite_fille_choice(game)
+        
+        # Phase du salvateur (protège quelqu'un AVANT les loups)
+        if any(game.roles.get(uid) == "salvateur" for uid in game.alive_players):
+            status_msg = await game.channel.send("🛡️ **Le salvateur se réveille et protège quelqu'un...**")
+            await self.salvateur_action(game)
+            await status_msg.edit(content="🛡️ ~~Le salvateur se réveille et protège quelqu'un...~~ ✅")
+        
         # Phase des loups-garous
         status_msg = await game.channel.send("🐺 **Les loups-garous se réveillent et choisissent leur victime...**")
         await self.werewolves_action(game)
         await status_msg.edit(content="🐺 ~~Les loups-garous se réveillent et choisissent leur victime...~~ ✅")
+        
+        # Résultat de l'espionnage de la petite fille (APRÈS la phase des loups)
+        if game.petite_fille_spying:
+            await self.petite_fille_result(game)
         
         # Phase de la voyante
         if any(game.roles.get(uid) == "voyante" for uid in game.alive_players):
             status_msg = await game.channel.send("🔮 **La voyante se réveille et espionne un joueur...**")
             await self.seer_action(game)
             await status_msg.edit(content="🔮 ~~La voyante se réveille et espionne un joueur...~~ ✅")
+        
+        # Phase du renard
+        if any(game.roles.get(uid) == "renard" for uid in game.alive_players):
+            status_msg = await game.channel.send("🦊 **Le renard se réveille et flaire deux joueurs...**")
+            await self.renard_action(game)
+            await status_msg.edit(content="🦊 ~~Le renard se réveille et flaire deux joueurs...~~ ✅")
         
         # Phase de la sorcière
         if any(game.roles.get(uid) == "sorciere" for uid in game.alive_players):
@@ -888,6 +1134,418 @@ class LoupGarou(commands.Cog):
             vote_counts = Counter(votes.values())
             victim_id = vote_counts.most_common(1)[0][0]
             game.night_actions["werewolves"] = victim_id
+    
+    async def petite_fille_choice(self, game: LoupGarouGame):
+        """La petite fille choisit d'espionner ou non les loups"""
+        petite_fille_id = next((uid for uid in game.alive_players if game.roles[uid] == "petite_fille"), None)
+        if not petite_fille_id:
+            return
+        
+        petite_fille = game.players[petite_fille_id]
+        
+        # Créer les boutons de choix
+        view = discord.ui.View(timeout=30)
+        spy_button = discord.ui.Button(label="Espionner 👁️", style=discord.ButtonStyle.danger)
+        skip_button = discord.ui.Button(label="Dormir 😴", style=discord.ButtonStyle.secondary)
+        
+        choice_made = asyncio.Event()
+        will_spy = [False]
+        
+        async def spy_callback(interaction: discord.Interaction):
+            if interaction.user.id != petite_fille_id:
+                await interaction.response.send_message("Vous n'êtes pas la petite fille !", ephemeral=True)
+                return
+            will_spy[0] = True
+            choice_made.set()
+            await interaction.response.send_message("Vous tentez d'espionner les loups... 🕵️", ephemeral=True)
+        
+        async def skip_callback(interaction: discord.Interaction):
+            if interaction.user.id != petite_fille_id:
+                await interaction.response.send_message("Vous n'êtes pas la petite fille !", ephemeral=True)
+                return
+            choice_made.set()
+            await interaction.response.send_message("Vous restez sagement dans votre lit. 😴", ephemeral=True)
+        
+        spy_button.callback = spy_callback
+        skip_button.callback = skip_callback
+        view.add_item(spy_button)
+        view.add_item(skip_button)
+        
+        embed = discord.Embed(
+            title="👧 Petite Fille",
+            description=(
+                "La nuit est tombée... Voulez-vous espionner les loups-garous ?\n\n"
+                "⚠️ **Risque** : 30% de chance d'être repérée par les loups !\n"
+                "🎲 **Récompense** : 50% de chance de découvrir l'identité d'un loup\n\n"
+                "Que souhaitez-vous faire ?"
+            ),
+            color=discord.Color.purple()
+        )
+        
+        try:
+            await petite_fille.send(embed=embed, view=view)
+            
+            try:
+                await asyncio.wait_for(choice_made.wait(), timeout=30)
+                game.petite_fille_spying = will_spy[0]
+            except asyncio.TimeoutError:
+                # Par défaut, elle dort
+                game.petite_fille_spying = False
+        
+        except discord.Forbidden:
+            logger.warning(f"Impossible d'envoyer un message à la petite fille")
+            game.petite_fille_spying = False
+    
+    async def petite_fille_result(self, game: LoupGarouGame):
+        """Résultat de l'espionnage de la petite fille (après la phase des loups)"""
+        petite_fille_id = next((uid for uid in game.alive_players if game.roles[uid] == "petite_fille"), None)
+        if not petite_fille_id or not game.petite_fille_spying:
+            return
+        
+        petite_fille = game.players[petite_fille_id]
+        werewolves = [uid for uid in game.alive_players if game.roles[uid] == "loup"]
+        
+        if not werewolves:
+            return
+        
+        import random
+        
+        # 30% de chance d'être repérée (événement indépendant)
+        caught = random.random() < 0.3
+        
+        # 50% de chance de repérer un loup (événement indépendant)
+        sees_wolf = random.random() < 0.5
+        
+        # Si repérée, informe les loups (mais PAS la petite fille)
+        if caught:
+            for wolf_id in werewolves:
+                wolf = game.players[wolf_id]
+                embed = discord.Embed(
+                    title="👁️ Quelqu'un vous espionne !",
+                    description=(
+                        f"Vous avez repéré **{petite_fille.display_name}** en train de vous espionner !\n\n"
+                        f"C'est la **Petite Fille** 👧"
+                    ),
+                    color=discord.Color.orange()
+                )
+                try:
+                    await wolf.send(embed=embed)
+                except discord.Forbidden:
+                    pass
+        
+        # Informe la petite fille de ce qu'elle a vu (indépendamment d'avoir été repérée)
+        try:
+            if sees_wolf:
+                # Elle repère un loup au hasard
+                spotted_wolf_id = random.choice(werewolves)
+                spotted_wolf = game.players[spotted_wolf_id]
+                
+                embed = discord.Embed(
+                    title="👧 Petite Fille - Espionnage réussi !",
+                    description=(
+                        f"✅ Vous avez réussi à espionner les loups-garous !\n\n"
+                        f"Vous avez repéré : **{spotted_wolf.display_name}** 🐺\n\n"
+                        f"Cette personne est un **loup-garou** !"
+                    ),
+                    color=discord.Color.green()
+                )
+                embed.set_thumbnail(url=spotted_wolf.display_avatar.url)
+                await petite_fille.send(embed=embed)
+            
+            else:
+                # Elle n'a rien vu
+                embed = discord.Embed(
+                    title="👧 Petite Fille - Espionnage",
+                    description=(
+                        "🌙 Vous avez tenté d'espionner les loups-garous...\n\n"
+                        "Mais vous n'avez rien pu voir de concret cette nuit.\n"
+                        "Peut-être aurez-vous plus de chance la prochaine fois !"
+                    ),
+                    color=discord.Color.blue()
+                )
+                await petite_fille.send(embed=embed)
+        
+        except discord.Forbidden:
+            logger.warning(f"Impossible d'envoyer un message à la petite fille")
+    
+    async def salvateur_action(self, game: LoupGarouGame):
+        """Action du salvateur pendant la nuit - protège une personne"""
+        salvateur_id = next((uid for uid in game.alive_players if game.roles[uid] == "salvateur"), None)
+        if not salvateur_id:
+            return
+        
+        salvateur = game.players[salvateur_id]
+        
+        # Liste des joueurs pouvant être protégés (tous sauf celui protégé la nuit dernière)
+        available_players = [
+            uid for uid in game.alive_players 
+            if uid != game.salvateur_last_protected
+        ]
+        
+        if not available_players:
+            return
+        
+        options = [
+            discord.SelectOption(
+                label=game.players[uid].display_name,
+                value=str(uid),
+                emoji="🛡️",
+                description="✅ Peut être protégé" if uid != salvateur_id else "⚠️ Vous-même"
+            )
+            for uid in available_players
+        ]
+        
+        view = discord.ui.View(timeout=30)
+        select = discord.ui.Select(
+            placeholder="Choisissez qui protéger cette nuit...",
+            options=options,
+            min_values=1,
+            max_values=1
+        )
+        
+        protection_event = asyncio.Event()
+        
+        async def salvateur_callback(interaction: discord.Interaction):
+            if interaction.user.id != salvateur_id:
+                await interaction.response.send_message("Vous n'êtes pas le salvateur !", ephemeral=True)
+                return
+            
+            target_id = int(select.values[0])
+            game.night_actions["salvateur"] = target_id
+            game.salvateur_last_protected = target_id
+            
+            target_name = game.players[target_id].display_name
+            message = f"🛡️ Vous protégez **{target_name}** cette nuit."
+            
+            if target_id == salvateur_id:
+                message += "\n\n⚠️ Vous vous protégez vous-même !"
+            
+            await interaction.response.send_message(message, ephemeral=True)
+            protection_event.set()
+        
+        select.callback = salvateur_callback
+        view.add_item(select)
+        
+        # Crée l'embed d'information
+        embed = discord.Embed(
+            title="🛡️ Salvateur",
+            description=(
+                "**À votre tour de protéger quelqu'un !**\n\n"
+                "Choisissez une personne à protéger contre les loups-garous cette nuit.\n\n"
+            ),
+            color=discord.Color.blue()
+        )
+        
+        # Ajoute une note si quelqu'un était protégé la nuit dernière
+        if game.salvateur_last_protected:
+            last_protected_name = game.players[game.salvateur_last_protected].display_name
+            embed.add_field(
+                name="⚠️ Restriction",
+                value=f"Vous ne pouvez pas protéger **{last_protected_name}** (protégé la nuit dernière)",
+                inline=False
+            )
+        
+        embed.add_field(
+            name="ℹ️ Rappel",
+            value="• Vous pouvez vous protéger vous-même\n• Vous ne pouvez pas protéger la même personne 2 nuits de suite",
+            inline=False
+        )
+        
+        try:
+            await salvateur.send(embed=embed, view=view)
+            
+            try:
+                await asyncio.wait_for(protection_event.wait(), timeout=30)
+            except asyncio.TimeoutError:
+                # Si pas de choix, ne protège personne
+                pass
+        
+        except discord.Forbidden:
+            logger.warning(f"Impossible d'envoyer un message au salvateur")
+    
+    async def renard_action(self, game: LoupGarouGame):
+        """Action du renard pendant la nuit - flaire deux joueurs pour savoir s'ils sont de la même équipe"""
+        renard_id = next((uid for uid in game.alive_players if game.roles[uid] == "renard"), None)
+        if not renard_id:
+            return
+        
+        renard = game.players[renard_id]
+        
+        # Liste des autres joueurs
+        other_players = [uid for uid in game.alive_players if uid != renard_id]
+        
+        if len(other_players) < 2:
+            return
+        
+        # Créer une vue personnalisée pour sélectionner 2 joueurs
+        class FoxSelectView(discord.ui.View):
+            def __init__(self, game, renard_id, other_players):
+                super().__init__(timeout=30)
+                self.game = game
+                self.renard_id = renard_id
+                self.selected_players = []
+                self.flair_event = asyncio.Event()
+                
+                # Premier select
+                options1 = [
+                    discord.SelectOption(
+                        label=game.players[uid].display_name,
+                        value=str(uid),
+                        emoji="1️⃣"
+                    )
+                    for uid in other_players
+                ]
+                
+                self.select1 = discord.ui.Select(
+                    placeholder="Choisissez le premier joueur...",
+                    options=options1,
+                    min_values=1,
+                    max_values=1,
+                    custom_id="player1"
+                )
+                self.select1.callback = self.select_callback
+                self.add_item(self.select1)
+                
+                # Deuxième select
+                options2 = [
+                    discord.SelectOption(
+                        label=game.players[uid].display_name,
+                        value=str(uid),
+                        emoji="2️⃣"
+                    )
+                    for uid in other_players
+                ]
+                
+                self.select2 = discord.ui.Select(
+                    placeholder="Choisissez le deuxième joueur...",
+                    options=options2,
+                    min_values=1,
+                    max_values=1,
+                    custom_id="player2"
+                )
+                self.select2.callback = self.select_callback
+                self.add_item(self.select2)
+                
+                # Bouton de confirmation
+                self.confirm_button = discord.ui.Button(
+                    label="Flairer ces deux joueurs",
+                    style=discord.ButtonStyle.primary,
+                    emoji="🦊",
+                    disabled=True
+                )
+                self.confirm_button.callback = self.confirm_callback
+                self.add_item(self.confirm_button)
+            
+            async def select_callback(self, interaction: discord.Interaction):
+                if interaction.user.id != self.renard_id:
+                    await interaction.response.send_message("Vous n'êtes pas le renard !", ephemeral=True)
+                    return
+                
+                # Récupère les sélections
+                player1 = self.select1.values[0] if self.select1.values else None
+                player2 = self.select2.values[0] if self.select2.values else None
+                
+                # Vérifie si deux joueurs différents sont sélectionnés
+                if player1 and player2 and player1 != player2:
+                    self.confirm_button.disabled = False
+                    await interaction.response.edit_message(view=self)
+                elif player1 == player2:
+                    self.confirm_button.disabled = True
+                    await interaction.response.send_message(
+                        "⚠️ Vous devez choisir deux joueurs différents !",
+                        ephemeral=True
+                    )
+                else:
+                    await interaction.response.defer()
+            
+            async def confirm_callback(self, interaction: discord.Interaction):
+                if interaction.user.id != self.renard_id:
+                    await interaction.response.send_message("Vous n'êtes pas le renard !", ephemeral=True)
+                    return
+                
+                player1_id = int(self.select1.values[0])
+                player2_id = int(self.select2.values[0])
+                
+                if player1_id == player2_id:
+                    await interaction.response.send_message(
+                        "⚠️ Vous devez choisir deux joueurs différents !",
+                        ephemeral=True
+                    )
+                    return
+                
+                self.selected_players = [player1_id, player2_id]
+                
+                # Détermine les équipes
+                role1 = self.game.roles[player1_id]
+                role2 = self.game.roles[player2_id]
+                
+                # Gestion spéciale de l'ange au premier tour
+                team1 = ROLES[role1]["team"]
+                team2 = ROLES[role2]["team"]
+                
+                # Si c'est la première nuit et que l'ange n'a pas encore perdu
+                if self.game.day_number == 1 and self.game.angel_id and not self.game.angel_first_vote_passed:
+                    # L'ange est considéré comme une équipe à part
+                    if player1_id == self.game.angel_id:
+                        team1 = "ange_solo"
+                    if player2_id == self.game.angel_id:
+                        team2 = "ange_solo"
+                
+                # Compare les équipes
+                same_team = team1 == team2
+                
+                player1_name = self.game.players[player1_id].display_name
+                player2_name = self.game.players[player2_id].display_name
+                
+                if same_team:
+                    result_text = f"✅ **{player1_name}** et **{player2_name}** font partie de la **même équipe** !"
+                    color = discord.Color.green()
+                else:
+                    result_text = f"❌ **{player1_name}** et **{player2_name}** ne font **pas partie de la même équipe** !"
+                    color = discord.Color.red()
+                
+                embed = discord.Embed(
+                    title="🦊 Renard - Résultat du flair",
+                    description=result_text,
+                    color=color
+                )
+                
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                self.flair_event.set()
+        
+        # Crée l'embed d'information
+        embed = discord.Embed(
+            title="🦊 Renard",
+            description=(
+                "**C'est l'heure d'utiliser votre flair !**\n\n"
+                "Choisissez deux joueurs et découvrez s'ils appartiennent à la même équipe.\n\n"
+                "⚠️ **Attention :** L'Ange au premier tour est considéré comme une équipe à part."
+            ),
+            color=discord.Color.orange()
+        )
+        
+        embed.add_field(
+            name="ℹ️ Comment ça marche ?",
+            value=(
+                "• Sélectionnez un premier joueur\n"
+                "• Sélectionnez un deuxième joueur (différent)\n"
+                "• Cliquez sur le bouton pour flairer\n"
+                "• Vous saurez s'ils sont de la même équipe"
+            ),
+            inline=False
+        )
+        
+        try:
+            view = FoxSelectView(game, renard_id, other_players)
+            await renard.send(embed=embed, view=view)
+            
+            try:
+                await asyncio.wait_for(view.flair_event.wait(), timeout=30)
+            except asyncio.TimeoutError:
+                pass
+        
+        except discord.Forbidden:
+            logger.warning(f"Impossible d'envoyer un message au renard")
     
     async def seer_action(self, game: LoupGarouGame):
         """Action de la voyante pendant la nuit"""
@@ -1052,17 +1710,26 @@ class LoupGarou(commands.Cog):
         """Résout les actions de la nuit"""
         victims = []
         
+        # Récupère qui est protégé par le salvateur
+        salvateur_protected = game.night_actions.get("salvateur")
+        
         # Victime des loups
         werewolf_victim = game.night_actions.get("werewolves")
         if werewolf_victim:
             # Vérifie si la sorcière a sauvé
-            if game.night_actions.get("witch_heal") != werewolf_victim:
+            if game.night_actions.get("witch_heal") == werewolf_victim:
+                pass  # Sauvé par la sorcière
+            # Vérifie si le salvateur a protégé
+            elif salvateur_protected == werewolf_victim:
+                pass  # Protégé par le salvateur
+            else:
                 victims.append(werewolf_victim)
                 game.last_victim = werewolf_victim
         
         # Victime de la sorcière
         witch_victim = game.night_actions.get("witch_poison")
         if witch_victim:
+            # Le poison ignore la protection du salvateur
             victims.append(witch_victim)
         
         # Tue les victimes
@@ -1070,7 +1737,7 @@ class LoupGarou(commands.Cog):
             game.kill_player(victim_id)
         
         # Annonce les morts
-        await self.announce_deaths(game, victims)
+        await self.announce_deaths(game, victims, salvateur_protected)
         
         # Vérifie la victoire
         winner = game.check_victory()
@@ -1081,7 +1748,7 @@ class LoupGarou(commands.Cog):
         # Passe au jour
         await self.day_phase(game)
     
-    async def announce_deaths(self, game: LoupGarouGame, victims: List[int]):
+    async def announce_deaths(self, game: LoupGarouGame, victims: List[int], salvateur_protected: Optional[int] = None):
         """Annonce les morts de la nuit"""
         embed = discord.Embed(
             title=f"☀️ {_('loupgarou.day_breaks', game.organizer.id, game.guild_id)}",
@@ -1089,7 +1756,15 @@ class LoupGarou(commands.Cog):
         )
         
         if not victims:
-            embed.description = _("loupgarou.no_deaths", game.organizer.id, game.guild_id)
+            # Vérifie si quelqu'un a été protégé
+            if salvateur_protected and game.night_actions.get("werewolves") == salvateur_protected:
+                # Le salvateur a sauvé la victime des loups
+                embed.description = (
+                    _("loupgarou.no_deaths", game.organizer.id, game.guild_id) + 
+                    f"\n\n🛡️ *Une personne a été protégée cette nuit...*"
+                )
+            else:
+                embed.description = _("loupgarou.no_deaths", game.organizer.id, game.guild_id)
         else:
             deaths_text = []
             for victim_id in victims:

@@ -21,6 +21,7 @@ class Ticket(commands.Cog):
         # Initialiser le stockage cloud
         self.cloud_storage = GoogleDriveStorage()
         self.ticket_logger = CloudTicketLogger(bot, self.cloud_storage)
+        self.cloud_enabled = False  # Sera défini à True si l'initialisation réussit
 
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
@@ -1580,10 +1581,16 @@ class TicketCloseView(discord.ui.View):
 async def setup(bot):
     ticket_cog = Ticket(bot)
     
-    # Initialiser le stockage cloud
-    if await ticket_cog.cloud_storage.initialize():
-        logger.info("Stockage cloud Google Drive initialisé avec succès")
-    else:
-        logger.warning("Échec de l'initialisation du stockage cloud")
+    # Initialiser le stockage cloud (optionnel)
+    try:
+        if await ticket_cog.cloud_storage.initialize():
+            logger.info("✅ Stockage cloud Google Drive initialisé avec succès")
+            ticket_cog.cloud_enabled = True
+        else:
+            logger.warning("⚠️ Échec de l'initialisation du stockage cloud - Mode local activé")
+            ticket_cog.cloud_enabled = False
+    except Exception as e:
+        logger.warning(f"⚠️ Stockage cloud désactivé: {e}")
+        ticket_cog.cloud_enabled = False
     
     await bot.add_cog(ticket_cog)
