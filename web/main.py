@@ -1714,10 +1714,15 @@ async def get_user_tickets(
         
         # Use Google Drive to get tickets
         tickets = await drive_storage.list_user_ticket_logs(int(guild_id), int(user_id))
-        print(f"📋 Found {len(tickets)} tickets from Google Drive")
+        print(f"📋 Found {len(tickets)} tickets from Google Drive for user {user_id}")
+        
+        if not tickets:
+            print(f"⚠️ No tickets found for user {user_id} in guild {guild_id}")
+            return []
         
         result = []
         for ticket in tickets:
+            print(f"🎫 Processing ticket: {ticket.get('ticket_id', 'unknown')} - user_id in ticket: {ticket.get('user_id', 'N/A')}")
             try:
                 # Les données sont au niveau racine
                 ticket_data = {

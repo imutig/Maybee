@@ -280,6 +280,8 @@ class GoogleDriveStorage:
             if not self._service or not self.folder_id:
                 return []
             
+            print(f"🔍 Searching tickets for user {user_id} in guild {guild_id}")
+            
             # Chercher les fichiers de logs pour ce serveur
             query = f"'{self.folder_id}' in parents and name contains 'ticket_{guild_id}_' and mimeType='application/zip'"
             
@@ -290,6 +292,7 @@ class GoogleDriveStorage:
             ).execute()
             
             files = results.get('files', [])
+            print(f"📁 Found {len(files)} ticket files for guild {guild_id}")
             user_logs = []
             
             for file in files:
@@ -307,11 +310,13 @@ class GoogleDriveStorage:
                         # Vérifier d'abord dans les métadonnées
                         if metadata.get('user_id') and str(metadata.get('user_id')) == str(user_id):
                             is_user_ticket = True
+                            print(f"✅ Match found in metadata: {file['name']} - user_id: {metadata.get('user_id')}")
                         elif messages:
                             # Fallback sur les messages
                             first_message = messages[0]
                             if str(first_message.get('author_id')) == str(user_id):
                                 is_user_ticket = True
+                                print(f"✅ Match found in messages: {file['name']} - author_id: {first_message.get('author_id')}")
                         
                         if is_user_ticket:
                                 # Extraire les informations utilisateur
@@ -350,6 +355,7 @@ class GoogleDriveStorage:
                     logger.error(f"Erreur lors de l'analyse du fichier {file['name']}: {e}")
                     continue
             
+            print(f"✅ Found {len(user_logs)} tickets for user {user_id}")
             return user_logs
             
         except Exception as e:
