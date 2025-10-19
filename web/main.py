@@ -190,6 +190,8 @@ print(f"  - DISCORD_CLIENT_SECRET: {'âœ… Found' if DISCORD_CLIENT_SECRET else 'â
 # Database
 database = None
 drive_storage = None  # Global storage instance
+
+app = FastAPI(
     title="Maybee Dashboard",
     description="Professional web interface for Maybee configuration",
     version="1.0.0",
