@@ -9,7 +9,7 @@ python-dotenv==1.0.0
 aiofiles==23.2.1
 httpx==0.25.2
 pydantic==2.5.0
-aiomysql==0.2.0
+aiomysql==0.3.0
 itsdangerous==2.1.2
 # Google Drive API dependencies
 google-api-python-client==2.108.0
