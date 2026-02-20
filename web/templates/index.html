@@ -1,158 +1,832 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maybee Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Maybee</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="/static/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Playfair+Display:ital,wght@0,500;1,600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #09090B;
+            --surface: #101014;
+            --surface-2: #16161C;
+            --text: #F5F5F7;
+            --muted: #A3A3B0;
+            --line: rgba(255, 255, 255, 0.08);
+            --amber: #F59E0B;
+            --amber-2: #FBBF24;
+            --radius: 22px;
+        }
+
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+        body { font-family: 'Manrope', sans-serif; overflow-x: hidden; }
+        a { color: inherit; text-decoration: none; }
+
+        .noise {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2;
+            opacity: .03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        .container {
+            width: min(1200px, calc(100% - 48px));
+            margin-inline: auto;
+        }
+
+        .nav {
+            position: fixed;
+            inset: 0 0 auto 0;
+            z-index: 20;
+            transition: all .45s ease;
+            padding: 24px 0;
+        }
+        .nav.scrolled {
+            background: rgba(9, 9, 11, .82);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--line);
+            padding: 14px 0;
+        }
+        .nav-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.2rem;
+            letter-spacing: -.02em;
+        }
+        .brand-dot {
+            width: 28px;
+            height: 28px;
+            border: 1px solid rgba(245, 158, 11, .8);
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            color: var(--amber-2);
+            transition: transform .35s ease;
+            font-size: .92rem;
+        }
+        .brand:hover .brand-dot { transform: rotate(12deg); }
+
+        .nav-center {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--muted);
+            font-size: .92rem;
+        }
+        .lang-switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, .02);
+        }
+        .lang-switch a { color: var(--muted); }
+        .lang-switch a.active,
+        .lang-switch a:hover { color: var(--text); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 11px 18px;
+            font-weight: 700;
+            transition: all .25s ease;
+            white-space: nowrap;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-primary {
+            background: var(--amber);
+            border-color: var(--amber);
+            color: #101014;
+        }
+        .btn-primary:hover { background: var(--amber-2); border-color: var(--amber-2); }
+        .btn-ghost:hover { border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.03); }
+
+        .hero {
+            position: relative;
+            min-height: 100svh;
+            display: grid;
+            place-items: center;
+            padding: 150px 0 80px;
+            overflow: clip;
+        }
+        .hero-grid {
+            position: absolute;
+            inset: -20% -10%;
+            background:
+                radial-gradient(circle at 50% 50%, rgba(245, 158, 11, .04), transparent 42%),
+                linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+            background-size: auto, 60px 60px, 60px 60px;
+            mask-image: radial-gradient(circle at center, rgba(0,0,0,1), rgba(0,0,0,0));
+            animation: drift 22s linear infinite;
+            pointer-events: none;
+        }
+        @keyframes drift {
+            from { transform: translateY(0); }
+            to { transform: translateY(-40px); }
+        }
+
+        .hero h1 {
+            margin: 0;
+            text-align: center;
+            font-size: clamp(2.7rem, 10vw, 7rem);
+            line-height: .9;
+            letter-spacing: -.04em;
+            text-transform: uppercase;
+        }
+        .hero h1 em {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            color: var(--amber-2);
+            font-weight: 600;
+            text-transform: none;
+        }
+        .hero p {
+            margin: 28px auto 0;
+            max-width: 860px;
+            text-align: center;
+            color: var(--muted);
+            font-size: clamp(1rem, 2.2vw, 1.25rem);
+            line-height: 1.65;
+        }
+        .hero .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            justify-content: center;
+            margin-top: 36px;
+        }
+
+        .features {
+            padding: 92px 0;
+        }
+        .split {
+            display: grid;
+            gap: 52px;
+            grid-template-columns: 1fr;
+        }
+        @media (min-width: 980px) {
+            .split { grid-template-columns: 1fr 1fr; }
+        }
+
+        .section-kicker {
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: var(--amber-2);
+            font-size: .72rem;
+            margin-bottom: 14px;
+            font-weight: 700;
+        }
+        .section-title {
+            margin: 0 0 16px;
+            font-size: clamp(1.8rem, 3.2vw, 3rem);
+            line-height: 1;
+            letter-spacing: -.03em;
+        }
+        .section-sub {
+            margin: 0;
+            color: var(--muted);
+            max-width: 640px;
+            line-height: 1.7;
+        }
+
+        .feature-list {
+            margin-top: 24px;
+            border-left: 1px solid var(--line);
+        }
+        .feature-item {
+            padding: 14px 16px 14px 20px;
+            cursor: pointer;
+            border-left: 2px solid transparent;
+            transition: all .3s ease;
+            opacity: .52;
+        }
+        .feature-item.active {
+            opacity: 1;
+            border-left-color: var(--amber);
+            transform: translateX(8px);
+        }
+        .feature-item h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .feature-item p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: .95rem;
+            max-width: 480px;
+        }
+
+        .artifact-box {
+            position: relative;
+            min-height: 560px;
+            background: linear-gradient(160deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .artifact {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transform: scale(.96);
+            transition: opacity .55s ease, transform .55s ease;
+            display: grid;
+            place-items: center;
+            padding: 36px;
+        }
+        .artifact.active { opacity: 1; transform: scale(1); }
+
+        .rings {
+            width: 280px;
+            aspect-ratio: 1;
+            position: relative;
+        }
+        .rings::before,
+        .rings::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 1px dashed rgba(245, 158, 11, .4);
+            border-radius: 50%;
+            animation: spin 18s linear infinite;
+        }
+        .rings::after {
+            inset: 22%;
+            animation-direction: reverse;
+            animation-duration: 12s;
+            border-color: rgba(245, 158, 11, .7);
+        }
+        .rings-center {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            font-weight: 800;
+            letter-spacing: .04em;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .moderation-console {
+            width: min(420px, 100%);
+            background: #0f0f13;
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 16px;
+            padding: 14px;
+            display: grid;
+            gap: 10px;
+        }
+        .console-row {
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 10px;
+            padding: 9px 10px;
+            color: #d5d5de;
+            font-size: .84rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            background: rgba(255,255,255,.01);
+            transform: translateX(0);
+            animation: shift 3.6s ease-in-out infinite;
+        }
+        .console-row:nth-child(2) { animation-delay: .2s; }
+        .console-row:nth-child(3) { animation-delay: .4s; }
+        .console-row:nth-child(4) { animation-delay: .6s; }
+        .console-row .ok { color: #60a5fa; }
+        .console-row .warn { color: #fcd34d; }
+        .console-row .safe { color: #34d399; }
+        @keyframes shift {
+            0%, 100% { transform: translateX(0); opacity: .75; }
+            50% { transform: translateX(4px); opacity: 1; }
+        }
+
+        .portal {
+            position: relative;
+            width: min(320px, 100%);
+            aspect-ratio: 1;
+        }
+        .welcome-svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+        .welcome-hex {
+            fill: none;
+            stroke: rgba(245, 158, 11, .78);
+            stroke-width: 1.25;
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: spin 18s linear infinite;
+        }
+        .welcome-hex.h2 {
+            opacity: .75;
+            animation-direction: reverse;
+            animation-duration: 13s;
+        }
+        .welcome-hex.h3 {
+            opacity: .95;
+            animation-duration: 9s;
+        }
+        .welcome-core {
+            fill: var(--amber-2);
+            animation: pulse-core 2.6s ease-in-out infinite;
+        }
+        @keyframes pulse-core {
+            0%, 100% { opacity: .6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.16); }
+        }
+
+        .hex {
+            position: absolute;
+            inset: 0;
+            clip-path: polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0 50%);
+            border: 1px solid rgba(245, 158, 11, .6);
+            animation: spin 18s linear infinite;
+        }
+        .hex.h2 { inset: 18%; opacity: .75; animation-direction: reverse; animation-duration: 13s; }
+        .hex.h3 { inset: 33%; opacity: .95; animation-duration: 9s; }
+
+        .analytics-svg {
+            width: min(430px, 100%);
+            height: 300px;
+            display: block;
+        }
+        .an-grid {
+            stroke: rgba(255, 255, 255, .1);
+            stroke-width: 1;
+        }
+        .an-bar {
+            fill: rgba(255, 255, 255, .12);
+        }
+        .an-fill {
+            fill: url(#amberGrad);
+            transform-box: fill-box;
+            transform-origin: bottom;
+            animation: grow 2.4s ease-in-out infinite alternate;
+        }
+        .an-fill.d2 { animation-delay: .12s; }
+        .an-fill.d3 { animation-delay: .24s; }
+        .an-fill.d4 { animation-delay: .36s; }
+        .an-fill.d5 { animation-delay: .48s; }
+        .an-fill.d6 { animation-delay: .6s; }
+        .an-fill.d7 { animation-delay: .72s; }
+        @keyframes grow {
+            from { transform: scaleY(.68); }
+            to { transform: scaleY(1); }
+        }
+
+        .bars {
+            width: 100%;
+            max-width: 420px;
+            height: 280px;
+            display: flex;
+            align-items: end;
+            gap: 10px;
+        }
+        .bar {
+            flex: 1;
+            border-radius: 8px 8px 2px 2px;
+            background: rgba(255,255,255,.07);
+            overflow: hidden;
+            position: relative;
+        }
+        .bar > i {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: block;
+            background: linear-gradient(180deg, var(--amber-2), var(--amber));
+            height: 20%;
+            animation: rise 2.4s ease-in-out infinite alternate;
+        }
+        .bar:nth-child(2) i { animation-delay: .1s; }
+        .bar:nth-child(3) i { animation-delay: .2s; }
+        .bar:nth-child(4) i { animation-delay: .25s; }
+        .bar:nth-child(5) i { animation-delay: .35s; }
+        .bar:nth-child(6) i { animation-delay: .42s; }
+        .bar:nth-child(7) i { animation-delay: .52s; }
+        @keyframes rise {
+            from { transform: scaleY(.7); transform-origin: bottom; }
+            to { transform: scaleY(1); transform-origin: bottom; }
+        }
+
+        .hscroll {
+            position: relative;
+            height: 380vh;
+            background: var(--bg);
+        }
+        .hscroll-inner {
+            position: sticky;
+            top: 0;
+            height: 100svh;
+            overflow: hidden;
+            border-block: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(255,255,255,.01), transparent 35%);
+        }
+        .htrack {
+            display: flex;
+            height: 100%;
+            width: 400vw;
+            will-change: transform;
+            transition: transform .18s ease-out;
+        }
+        .hpanel {
+            width: 100vw;
+            height: 100%;
+            display: grid;
+            align-items: center;
+            padding: 32px;
+        }
+        .hpanel .panel-wrap {
+            width: min(1040px, 100%);
+            margin-inline: auto;
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 40px;
+        }
+        .hpanel .num {
+            color: var(--amber);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            letter-spacing: .18em;
+            font-weight: 700;
+            border-left: 2px solid var(--amber);
+            padding-left: 14px;
+            font-size: clamp(1.15rem, 2vw, 1.8rem);
+        }
+        .hpanel h3 {
+            margin: 0 0 16px;
+            font-size: clamp(2rem, 5vw, 4rem);
+            letter-spacing: -.03em;
+            line-height: .95;
+        }
+        .hpanel p {
+            margin: 0;
+            color: var(--muted);
+            font-size: clamp(1rem, 2.1vw, 1.4rem);
+            line-height: 1.65;
+            max-width: 860px;
+        }
+
+        .cta {
+            padding: 120px 0;
+            text-align: center;
+        }
+        .cta h2 {
+            margin: 0;
+            font-size: clamp(2.2rem, 6vw, 5.2rem);
+            line-height: .92;
+            letter-spacing: -.03em;
+            text-transform: uppercase;
+        }
+        .cta p {
+            margin: 20px auto 32px;
+            color: var(--muted);
+            max-width: 760px;
+            line-height: 1.7;
+        }
+
+        footer {
+            border-top: 1px solid var(--line);
+            padding: 60px 0 28px;
+        }
+        .footer-grid {
+            display: grid;
+            gap: 40px;
+            grid-template-columns: 1fr;
+            margin-bottom: 42px;
+        }
+        @media (min-width: 860px) {
+            .footer-grid { grid-template-columns: 1.4fr .8fr; }
+            .hpanel .panel-wrap { grid-template-columns: 180px 1fr; }
+        }
+        @media (max-width: 859px) {
+            .hpanel .panel-wrap { grid-template-columns: 1fr; gap: 20px; }
+            .nav-center { display: none; }
+        }
+        .footer-links {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            color: var(--muted);
+        }
+        .footer-links a:hover { color: var(--amber-2); }
+        .footer-meta {
+            border-top: 1px solid var(--line);
+            padding-top: 16px;
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            color: #6e6e7d;
+            font-size: .9rem;
+        }
+    </style>
 </head>
-<body class="dashboard-body">
-    <!-- Modern Navbar -->
-    <nav class="modern-navbar">
-        <div class="navbar-container">
-            <div class="navbar-brand-section">
-                <a class="brand-link" href="/">
-                    <div class="brand-icon">
-                        <i class="fas fa-bug"></i>
-                    </div>
-                    <span class="brand-text">Maybee</span>
-                    <span class="brand-subtitle">Dashboard</span>
-                </a>
-            </div>
-            
-            <div class="navbar-actions">
-                <!-- Language Switcher -->
-                <div class="dropdown language-selector me-3">
-                    <button class="btn btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-globe me-2"></i>
-                        <span id="current-language">{{ lang_data._meta.flag }} {{ lang_data._meta.name }}</span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="?lang=en">🇺🇸 English</a></li>
-                        <li><a class="dropdown-item" href="?lang=fr">🇫🇷 Français</a></li>
-                    </ul>
-                </div>
-                
-                <a href="/auth/discord" class="action-btn login-btn">
-                    <i class="fab fa-discord me-2"></i>
-                    {{ lang_data.index.login_button }}
-                </a>
-            </div>
+<body>
+    <div class="noise"></div>
+
+    <nav class="nav" id="navbar">
+        <div class="container nav-row">
+            <a class="brand" href="/">
+                <span class="brand-dot" aria-hidden="true">🐝</span>
+                <span>Maybee.</span>
+            </a>
+
+            <div class="nav-center"></div>
+
+            <a class="btn btn-ghost" href="/auth/discord">
+                <i class="fa-brands fa-discord"></i>
+                <span>{{ lang_data.index.login_button }}</span>
+            </a>
         </div>
     </nav>
 
-    <div class="hero-section">
-        <!-- Floating Bees Background -->
-        <div class="floating-bees">
-            <div class="floating-bee">🐝</div>
-            <div class="floating-bee">🐝</div>
-            <div class="floating-bee">🐝</div>
-            <div class="floating-bee">🐝</div>
-        </div>
-        
-        <div class="container text-center">
-            <div class="row justify-content-center">
-                <div class="col-lg-8">
-                    <div class="hero-content">
-                        <div class="hero-icon mb-4">
-                            <div class="brand-icon hero-brand-icon">
-                                <i class="fas fa-bug"></i>
+    <main>
+        <section class="hero">
+            <div class="hero-grid"></div>
+            <div class="container" style="position: relative; z-index: 1;">
+                <h1>
+                    Orchestrez<br>
+                    <em>la Ruche</em>
+                </h1>
+                <p>
+                    {{ lang_data.index.subtitle }}<br>
+                    {{ lang_data.index.tagline }}
+                </p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary" href="/auth/discord">
+                        <span>{{ lang_data.index.login_button }}</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+                    <a class="btn btn-ghost" href="#features">
+                        <span>{{ lang_data.index.features_title }}</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="features" id="features">
+            <div class="container split">
+                <div>
+                    <p class="section-kicker">Système central</p>
+                    <h2 class="section-title">Architecture centrale.</h2>
+                    <p class="section-sub">{{ lang_data.index.features_subtitle }}</p>
+
+                    <div class="feature-list" id="featureList">
+                        <article class="feature-item active" data-artifact="xp">
+                            <h3><i class="fa-solid fa-trophy"></i> {{ lang_data.index.feature_xp_title }}</h3>
+                            <p>{{ lang_data.index.feature_xp_description }}</p>
+                        </article>
+                        <article class="feature-item" data-artifact="mod">
+                            <h3><i class="fa-solid fa-shield-halved"></i> {{ lang_data.index.feature_moderation_title }}</h3>
+                            <p>{{ lang_data.index.feature_moderation_description }}</p>
+                        </article>
+                        <article class="feature-item" data-artifact="welcome">
+                            <h3><i class="fa-solid fa-user-plus"></i> {{ lang_data.index.feature_welcome_title }}</h3>
+                            <p>{{ lang_data.index.feature_welcome_description }}</p>
+                        </article>
+                        <article class="feature-item" data-artifact="analytics">
+                            <h3><i class="fa-solid fa-chart-line"></i> {{ lang_data.index.feature_analytics_title }}</h3>
+                            <p>{{ lang_data.index.feature_analytics_description }}</p>
+                        </article>
+                    </div>
+                </div>
+
+                <div class="artifact-box" id="artifactBox">
+                    <div class="artifact active" data-artifact="xp">
+                        <div class="rings">
+                            <div class="rings-center">LVL 99</div>
+                        </div>
+                    </div>
+
+                    <div class="artifact" data-artifact="mod">
+                        <div class="moderation-console">
+                            <div class="console-row">[22:41:09] <span class="warn">rate_limit</span> / spam-check → queued</div>
+                            <div class="console-row">[22:41:10] policy.guard() <span class="ok">synchronized</span></div>
+                            <div class="console-row">[22:41:11] anomaly.scan -> 0 threats / 4 warnings handled</div>
+                            <div class="console-row">[22:41:12] moderation.core status: <span class="safe">stable</span></div>
+                        </div>
+                    </div>
+
+                    <div class="artifact" data-artifact="welcome">
+                        <div class="portal">
+                            <svg class="welcome-svg" viewBox="0 0 240 240" role="img" aria-label="Welcome system artifact">
+                                <polygon class="welcome-hex" points="120,14 210,67 210,173 120,226 30,173 30,67"></polygon>
+                                <polygon class="welcome-hex h2" points="120,42 186,80 186,160 120,198 54,160 54,80"></polygon>
+                                <polygon class="welcome-hex h3" points="120,68 164,94 164,146 120,172 76,146 76,94"></polygon>
+                                <circle class="welcome-core" cx="120" cy="120" r="6"></circle>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="artifact" data-artifact="analytics">
+                        <svg class="analytics-svg" viewBox="0 0 440 300" role="img" aria-label="Server analytics artifact">
+                            <defs>
+                                <linearGradient id="amberGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#FBBF24"></stop>
+                                    <stop offset="100%" stop-color="#F59E0B"></stop>
+                                </linearGradient>
+                            </defs>
+                            <g opacity=".6">
+                                <line class="an-grid" x1="20" y1="250" x2="420" y2="250"></line>
+                                <line class="an-grid" x1="20" y1="200" x2="420" y2="200"></line>
+                                <line class="an-grid" x1="20" y1="150" x2="420" y2="150"></line>
+                                <line class="an-grid" x1="20" y1="100" x2="420" y2="100"></line>
+                            </g>
+                            <g>
+                                <rect class="an-bar" x="42" y="90" width="36" height="160" rx="6"></rect>
+                                <rect class="an-bar" x="96" y="58" width="36" height="192" rx="6"></rect>
+                                <rect class="an-bar" x="150" y="108" width="36" height="142" rx="6"></rect>
+                                <rect class="an-bar" x="204" y="36" width="36" height="214" rx="6"></rect>
+                                <rect class="an-bar" x="258" y="84" width="36" height="166" rx="6"></rect>
+                                <rect class="an-bar" x="312" y="26" width="36" height="224" rx="6"></rect>
+                                <rect class="an-bar" x="366" y="118" width="36" height="132" rx="6"></rect>
+
+                                <rect class="an-fill" x="42" y="90" width="36" height="160" rx="6"></rect>
+                                <rect class="an-fill d2" x="96" y="58" width="36" height="192" rx="6"></rect>
+                                <rect class="an-fill d3" x="150" y="108" width="36" height="142" rx="6"></rect>
+                                <rect class="an-fill d4" x="204" y="36" width="36" height="214" rx="6"></rect>
+                                <rect class="an-fill d5" x="258" y="84" width="36" height="166" rx="6"></rect>
+                                <rect class="an-fill d6" x="312" y="26" width="36" height="224" rx="6"></rect>
+                                <rect class="an-fill d7" x="366" y="118" width="36" height="132" rx="6"></rect>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="hscroll" id="hscroll">
+            <div class="hscroll-inner" id="hscrollInner">
+                <div class="htrack" id="htrack">
+                    <article class="hpanel">
+                        <div class="panel-wrap">
+                            <div class="num">01</div>
+                            <div>
+                                <h3>Au-delà du standard.</h3>
+                                <p>Maybee abandonne les interfaces génériques de bot. Chaque commande, règle et interaction du dashboard est conçue pour les communautés denses qui ont besoin de clarté sous pression.</p>
                             </div>
                         </div>
-                        <h1 class="hero-title mb-4">
-                            {{ lang_data.index.title }}
-                        </h1>
-                        <p class="hero-subtitle mb-5">
-                            {{ lang_data.index.subtitle }}
-                            <br><span class="bee-tagline">{{ lang_data.index.tagline }}</span>
-                        </p>
-                        <a href="/auth/discord" class="btn-primary-modern btn-lg">
-                            <i class="fab fa-discord me-2"></i>
-                            {{ lang_data.index.login_button }}
-                        </a>
-                    </div>
+                    </article>
+                    <article class="hpanel">
+                        <div class="panel-wrap">
+                            <div class="num">02</div>
+                            <div>
+                                <h3>Disponibilité sans faille.</h3>
+                                <p>Gérez les pics de modération, les événements et les vagues d’activité avec un comportement cohérent et des outils prévisibles pour vos équipes staff.</p>
+                            </div>
+                        </div>
+                    </article>
+                    <article class="hpanel">
+                        <div class="panel-wrap">
+                            <div class="num">03</div>
+                            <div>
+                                <h3>Contrôle total.</h3>
+                                <p>Configurez l’XP, l’onboarding, la modération et les logs depuis un centre de commande web pensé pour rester rapide, clair et compréhensible.</p>
+                            </div>
+                        </div>
+                    </article>
+                    <article class="hpanel">
+                        <div class="panel-wrap">
+                            <div class="num">04</div>
+                            <div>
+                                <h3>Rejoignez la Ruche.</h3>
+                                <p>Déployez Maybee, affinez vos opérations serveur et transformez le chaos de gestion en une expérience communautaire premium et cohérente.</p>
+                            </div>
+                        </div>
+                    </article>
                 </div>
             </div>
-        </div>
-    </div>
+        </section>
 
-    <div class="features-section">
+        <section class="cta">
+            <div class="container">
+                <h2>Ready to sweeten<br>your server?</h2>
+                <p>{{ lang_data.index.footer_text }}</p>
+                <a class="btn btn-primary" href="/auth/discord">
+                    <span>{{ lang_data.index.login_button }}</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
         <div class="container">
-            <div class="section-header text-center mb-5">
-                <h2 class="section-title">{{ lang_data.index.features_title }}</h2>
-                <p class="section-subtitle-enhanced">{{ lang_data.index.features_subtitle }}</p>
-            </div>
-            
-            <div class="row g-4">
-                <div class="col-md-3">
-                    <div class="feature-card-modern">
-                        <div class="feature-icon-modern">
-                            <i class="fas fa-trophy"></i>
-                        </div>
-                        <h4 class="feature-title">{{ lang_data.index.feature_xp_title }}</h4>
-                        <p class="feature-description">{{ lang_data.index.feature_xp_description }}</p>
+            <div class="footer-grid">
+                <div>
+                    <div class="brand" style="margin-bottom: 14px;">
+                        <span class="brand-dot" aria-hidden="true">🐝</span>
+                        <span>Maybee.</span>
                     </div>
+                    <p style="color: var(--muted); line-height: 1.7; max-width: 580px; margin: 0;">
+                        Conçu pour les communautés Discord à haute performance.
+                    </p>
                 </div>
-                
-                <div class="col-md-3">
-                    <div class="feature-card-modern">
-                        <div class="feature-icon-modern">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <h4 class="feature-title">{{ lang_data.index.feature_moderation_title }}</h4>
-                        <p class="feature-description">{{ lang_data.index.feature_moderation_description }}</p>
-                    </div>
-                </div>
-                
-                <div class="col-md-3">
-                    <div class="feature-card-modern">
-                        <div class="feature-icon-modern">
-                            <i class="fas fa-user-plus"></i>
-                        </div>
-                        <h4 class="feature-title">{{ lang_data.index.feature_welcome_title }}</h4>
-                        <p class="feature-description">{{ lang_data.index.feature_welcome_description }}</p>
-                    </div>
-                </div>
-                
-                <div class="col-md-3">
-                    <div class="feature-card-modern">
-                        <div class="feature-icon-modern">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <h4 class="feature-title">{{ lang_data.index.feature_analytics_title }}</h4>
-                        <p class="feature-description">{{ lang_data.index.feature_analytics_description }}</p>
-                    </div>
+                <div class="footer-links">
+                    <a href="/terms-of-service">{{ lang_data.index.terms_of_service }}</a>
+                    <a href="/privacy-policy">{{ lang_data.index.privacy_policy }}</a>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <footer class="modern-footer">
-        <div class="container text-center">
-            <p class="footer-main">{{ lang_data.index.footer_text }}</p>
-            <p class="footer-sub mb-2">
-                <small>
-                    <a href="/terms-of-service" class="text-muted text-decoration-none me-3">
-                        <i class="fas fa-file-contract me-1"></i>{{ lang_data.index.terms_of_service }}
-                    </a>
-                    <a href="/privacy-policy" class="text-muted text-decoration-none">
-                        <i class="fas fa-shield-alt me-1"></i>{{ lang_data.index.privacy_policy }}
-                    </a>
-                </small>
-            </p>
-            <p class="footer-sub">
-                <small>
-                    {{ lang_data.index.footer_version }} <code>2.0</code> | 
-                    <i class="fab fa-discord me-1"></i>
-                    Contact: <code>iMutig#0444</code>
-                </small>
-            </p>
+            <div class="footer-meta">
+                <span>© {{ now.year if now else 2026 }} Maybee</span>
+                <span>Non affilié à Discord Inc.</span>
+            </div>
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            const navbar = document.getElementById('navbar');
+            const onScroll = () => {
+                if (window.scrollY > 40) navbar.classList.add('scrolled');
+                else navbar.classList.remove('scrolled');
+            };
+            onScroll();
+            window.addEventListener('scroll', onScroll, { passive: true });
+
+            const featureItems = Array.from(document.querySelectorAll('.feature-item'));
+            const artifacts = Array.from(document.querySelectorAll('.artifact'));
+            let featureCycle;
+
+            function activateArtifact(name) {
+                featureItems.forEach(item => item.classList.toggle('active', item.dataset.artifact === name));
+                artifacts.forEach(card => card.classList.toggle('active', card.dataset.artifact === name));
+            }
+
+            function startFeatureCycle() {
+                let index = 0;
+                clearInterval(featureCycle);
+                featureCycle = setInterval(() => {
+                    index = (index + 1) % featureItems.length;
+                    activateArtifact(featureItems[index].dataset.artifact);
+                }, 3200);
+            }
+
+            function stopFeatureCycle() {
+                clearInterval(featureCycle);
+            }
+
+            startFeatureCycle();
+
+            featureItems.forEach(item => {
+                item.addEventListener('mouseenter', stopFeatureCycle);
+                item.addEventListener('mouseleave', startFeatureCycle);
+                item.addEventListener('mouseenter', () => activateArtifact(item.dataset.artifact));
+                item.addEventListener('focus', () => activateArtifact(item.dataset.artifact));
+                item.addEventListener('click', () => activateArtifact(item.dataset.artifact));
+            });
+
+            const hscroll = document.getElementById('hscroll');
+            const htrack = document.getElementById('htrack');
+            const panelCount = 4;
+            let progress = 0;
+
+            function setProgress(next) {
+                progress = Math.max(0, Math.min(1, next));
+                htrack.style.transform = `translateX(-${progress * (100 - 100 / panelCount)}%)`;
+            }
+
+            function updateHorizontalFromScroll() {
+                const rect = hscroll.getBoundingClientRect();
+                const total = hscroll.offsetHeight - window.innerHeight;
+                if (total <= 0) {
+                    setProgress(0);
+                    return;
+                }
+                const traveled = Math.min(Math.max(-rect.top, 0), total);
+                setProgress(traveled / total);
+            }
+
+            updateHorizontalFromScroll();
+            window.addEventListener('scroll', updateHorizontalFromScroll, { passive: true });
+            window.addEventListener('resize', updateHorizontalFromScroll, { passive: true });
+        })();
+    </script>
 </body>
 </html>

@@ -26,6 +26,9 @@ import aiomysql
 from pathlib import Path
 from dotenv import load_dotenv
 import re
+from urllib.parse import urlencode
+
+WEB_DIR = Path(__file__).resolve().parent
 
 # Load environment variables
 load_dotenv()  # Load from current directory (web/.env)
@@ -33,13 +36,13 @@ load_dotenv("../.env")  # Load from parent directory (main .env)
 
 # Import bot modules
 import sys
-sys.path.append('..')
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from db import Database
 from cloud_storage import GoogleDriveStorage
 
 # Language support
-SUPPORTED_LANGUAGES = ['en', 'fr']
-DEFAULT_LANGUAGE = 'en'
+SUPPORTED_LANGUAGES = ['fr']
+DEFAULT_LANGUAGE = 'fr'
 
 def load_language_file(language_code: str) -> Dict[str, Any]:
     """Load language file for the web dashboard"""
@@ -91,25 +94,32 @@ def detect_browser_language(accept_language: str) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    await init_database()
-    await create_guild_config_table()
-    await create_moderation_tables()
-    await create_user_languages_table()
-    await create_welcome_config_table()
-    await create_role_menu_tables()  # Add role menu tables
-    await create_ticket_tables()  # Add ticket system tables
-    await create_level_roles_table()  # Add level roles table
-    await create_embed_config_table()  # Add embed config table
-    await create_level_up_config_table()  # Add level up config table
-    await create_feur_mode_table()  # Add feur mode table
-    await migrate_level_up_config_show_avatar()  # Add show_user_avatar column
-    await migrate_xp_data_message_count()  # Add message_count column
-    await migrate_ticket_panels_verification()  # Add verification workflow columns
-    
+    try:
+        await init_database()
+        await create_guild_config_table()
+        await create_moderation_tables()
+        await create_user_languages_table()
+        await create_welcome_config_table()
+        await create_role_menu_tables()  # Add role menu tables
+        await create_ticket_tables()  # Add ticket system tables
+        await create_level_roles_table()  # Add level roles table
+        await create_embed_config_table()  # Add embed config table
+        await create_rules_validation_table()  # Add rules validation table
+        await create_level_up_config_table()  # Add level up config table
+        await create_feur_mode_table()  # Add feur mode table
+        await migrate_level_up_config_show_avatar()  # Add show_user_avatar column
+        await migrate_xp_data_message_count()  # Add message_count column
+        await migrate_ticket_panels_verification()  # Add verification workflow columns
+    except Exception as e:
+        print(f"⚠️ Startup running in limited mode (database unavailable): {e}")
+
     # Initialize Google Drive Storage
     global drive_storage
     drive_storage = GoogleDriveStorage()
-    await drive_storage.initialize()
+    try:
+        await drive_storage.initialize()
+    except Exception as e:
+        print(f"⚠️ Google Drive storage disabled: {e}")
     
     yield
     # Shutdown
@@ -137,8 +147,8 @@ from starlette.middleware.sessions import SessionMiddleware
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "your-secret-key-change-in-production"))
 
 # Templates and static files
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
+app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 
 # Load environment variables
 load_dotenv()
@@ -212,8 +222,8 @@ from starlette.middleware.sessions import SessionMiddleware
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "your-secret-key-change-in-production"))
 
 # Templates and static files
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
+app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 
 # Load environment variables
 load_dotenv()
@@ -447,6 +457,29 @@ class EmbedConfig(BaseModel):
 class DeployRequest(BaseModel):
     channel_id: str
 
+class RulesValidationConfig(BaseModel):
+    rules_channel_id: Optional[str] = None
+    rules_message_id: Optional[str] = None
+    rules_title: str = "📘 Règlement du serveur"
+    rules_description: str = "Merci de lire et valider le règlement via le bouton ci-dessous."
+    rules_fields: Optional[List[Dict[str, Any]]] = None
+    rules_color: str = "#5865F2"
+    rules_thumbnail_url: Optional[str] = None
+    rules_image_url: Optional[str] = None
+    rules_footer: Optional[str] = "Validation requise"
+    button_label: str = "J'accepte"
+    button_emoji: Optional[str] = "✅"
+    button_style: str = "success"
+    grant_role_id: Optional[str] = None
+    welcome_channel_id: Optional[str] = None
+    welcome_enabled: bool = True
+    welcome_embed_title: str = "Bienvenue {username} !"
+    welcome_embed_description: str = "{user} vient de valider le règlement."
+    welcome_embed_color: str = "#5865F2"
+    welcome_embed_thumbnail_url: Optional[str] = "{avatar}"
+    welcome_embed_image_url: Optional[str] = None
+    welcome_embed_footer: Optional[str] = "Profite bien de ton arrivée !"
+
 class LanguagePreference(BaseModel):
     language: str  # Language code (e.g., "en", "fr")
 
@@ -669,7 +702,7 @@ async def create_user_languages_table():
     CREATE TABLE IF NOT EXISTS user_languages (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id BIGINT NOT NULL UNIQUE,
-        language_code VARCHAR(10) NOT NULL DEFAULT 'en',
+        language_code VARCHAR(10) NOT NULL DEFAULT 'fr',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_user_id (user_id)
@@ -908,6 +941,73 @@ async def create_embed_config_table():
         return True
     except Exception as e:
         print(f"❌ Error creating embed_config table: {e}")
+        return False
+
+async def create_rules_validation_table():
+    """Create rules validation tables if they don't exist"""
+    rules_config_table = """
+    CREATE TABLE IF NOT EXISTS rules_validation_config (
+        guild_id BIGINT PRIMARY KEY,
+        rules_channel_id BIGINT NULL,
+        rules_message_id BIGINT NULL,
+        rules_title VARCHAR(256) DEFAULT '📘 Règlement du serveur',
+        rules_description TEXT,
+        rules_fields JSON,
+        rules_color VARCHAR(7) DEFAULT '#5865F2',
+        rules_thumbnail_url VARCHAR(512) NULL,
+        rules_image_url VARCHAR(512) NULL,
+        rules_footer VARCHAR(2048) NULL,
+        button_label VARCHAR(80) DEFAULT 'J''accepte',
+        button_emoji VARCHAR(50) NULL,
+        button_style ENUM('primary', 'secondary', 'success', 'danger') DEFAULT 'success',
+        grant_role_id BIGINT NULL,
+        welcome_channel_id BIGINT NULL,
+        welcome_enabled BOOLEAN DEFAULT TRUE,
+        welcome_embed_title VARCHAR(256) DEFAULT 'Bienvenue {username} !',
+        welcome_embed_description TEXT,
+        welcome_embed_color VARCHAR(7) DEFAULT '#5865F2',
+        welcome_embed_thumbnail_url VARCHAR(512) NULL,
+        welcome_embed_image_url VARCHAR(512) NULL,
+        welcome_embed_footer VARCHAR(2048) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_welcome_channel (welcome_channel_id),
+        INDEX idx_grant_role (grant_role_id)
+    )
+    """
+
+    rules_acceptances_table = """
+    CREATE TABLE IF NOT EXISTS rules_acceptances (
+        guild_id BIGINT NOT NULL,
+        user_id BIGINT NOT NULL,
+        accepted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (guild_id, user_id),
+        INDEX idx_accepted_at (accepted_at)
+    )
+    """
+
+    try:
+        await database.execute(rules_config_table)
+        await database.execute(rules_acceptances_table)
+
+        # Ensure rules_fields column exists for previous deployments
+        check_rules_fields_query = """
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'rules_validation_config'
+        AND COLUMN_NAME = 'rules_fields'
+        """
+        rules_fields_column = await database.fetch_one(check_rules_fields_query)
+        if not rules_fields_column:
+            await database.execute(
+                "ALTER TABLE rules_validation_config ADD COLUMN rules_fields JSON AFTER rules_description"
+            )
+
+        print("✅ Rules validation tables created/verified")
+        return True
+    except Exception as e:
+        print(f"❌ Error creating rules validation tables: {e}")
         return False
 
 async def create_level_up_config_table():
@@ -1226,17 +1326,7 @@ async def migrate_welcome_image_columns():
 @app.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request):
     """Main dashboard page"""
-    # Detect language from query parameter, cookie, or browser
-    lang = request.query_params.get('lang')
-    if not lang:
-        lang = request.cookies.get('language')
-    if not lang:
-        accept_language = request.headers.get('accept-language', '')
-        lang = detect_browser_language(accept_language)
-    
-    # Ensure language is supported
-    if lang not in SUPPORTED_LANGUAGES:
-        lang = DEFAULT_LANGUAGE
+    lang = 'fr'
     
     # Load language data
     lang_data = load_language_file(lang)
@@ -1249,28 +1339,32 @@ async def dashboard_home(request: Request):
         "supported_languages": SUPPORTED_LANGUAGES
     })
     
-    # Set language cookie if it was changed via query parameter
-    if request.query_params.get('lang'):
-        response.set_cookie("language", lang, max_age=365*24*60*60)  # 1 year
-    
     return response
 
 @app.get("/auth/discord")
-async def discord_auth():
+async def discord_auth(request: Request):
     """Redirect to Discord OAuth2"""
-    discord_login_url = (
-        f"https://discord.com/api/oauth2/authorize"
-        f"?client_id={DISCORD_CLIENT_ID}"
-        f"&redirect_uri={DISCORD_REDIRECT_URI}"
-        f"&response_type=code"
-        f"&scope=identify guilds"
-    )
+    redirect_uri = DISCORD_REDIRECT_URI
+    if request.url.hostname in {"localhost", "127.0.0.1"}:
+        redirect_uri = str(request.url_for("discord_callback"))
+
+    query = urlencode({
+        "client_id": DISCORD_CLIENT_ID,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "identify guilds"
+    })
+    discord_login_url = f"https://discord.com/api/oauth2/authorize?{query}"
     return RedirectResponse(discord_login_url)
 
 @app.get("/auth/discord/callback")
-async def discord_callback(code: str):
+async def discord_callback(code: str, request: Request):
     """Handle Discord OAuth2 callback"""
     try:
+        redirect_uri = DISCORD_REDIRECT_URI
+        if request.url.hostname in {"localhost", "127.0.0.1"}:
+            redirect_uri = str(request.url_for("discord_callback"))
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             # Exchange code for access token
             token_data = {
@@ -1278,7 +1372,7 @@ async def discord_callback(code: str):
                 "client_secret": DISCORD_CLIENT_SECRET,
                 "grant_type": "authorization_code",
                 "code": code,
-                "redirect_uri": DISCORD_REDIRECT_URI,
+                "redirect_uri": redirect_uri,
             }
             
             token_response = await client.post(
@@ -3508,17 +3602,7 @@ async def notify_bot_role_menu_delete(guild_id: str, channel_id: int, message_id
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """Dashboard page"""
-    # Detect language from query parameter, cookie, or browser
-    lang = request.query_params.get('lang')
-    if not lang:
-        lang = request.cookies.get('language')
-    if not lang:
-        accept_language = request.headers.get('accept-language', '')
-        lang = detect_browser_language(accept_language)
-    
-    # Ensure language is supported
-    if lang not in SUPPORTED_LANGUAGES:
-        lang = DEFAULT_LANGUAGE
+    lang = 'fr'
     
     # Load language data
     lang_data = load_language_file(lang)
@@ -3532,10 +3616,6 @@ async def dashboard(request: Request):
         "supported_languages": SUPPORTED_LANGUAGES,
         "timestamp": int(time.time())  # Add timestamp for cache busting
     })
-    
-    # Set language cookie if it was changed via query parameter
-    if request.query_params.get('lang'):
-        response.set_cookie("language", lang, max_age=365*24*60*60)  # 1 year
     
     return response
 
@@ -4176,6 +4256,13 @@ async def get_ticket_config(
                 "embed_thumbnail": panel["embed_thumbnail"],
                 "embed_image": panel["embed_image"],
                 "embed_footer": panel["embed_footer"],
+                "verification_enabled": bool(panel.get("verification_enabled", 0)),
+                "roles_to_remove": json.loads(panel["roles_to_remove"]) if panel.get("roles_to_remove") else [],
+                "roles_to_add": json.loads(panel["roles_to_add"]) if panel.get("roles_to_add") else [],
+                "verification_channel": panel.get("verification_channel"),
+                "verification_message": panel.get("verification_message"),
+                "verifier_role_id": panel.get("verifier_role_id"),
+                "verification_image_url": panel.get("verification_image_url"),
                 "buttons": buttons_list
             })
         
@@ -4272,6 +4359,13 @@ async def get_ticket_panels(
                 "embed_thumbnail": panel["embed_thumbnail"],
                 "embed_image": panel["embed_image"],
                 "embed_footer": panel["embed_footer"],
+                "verification_enabled": bool(panel.get("verification_enabled", 0)),
+                "roles_to_remove": json.loads(panel["roles_to_remove"]) if panel.get("roles_to_remove") else [],
+                "roles_to_add": json.loads(panel["roles_to_add"]) if panel.get("roles_to_add") else [],
+                "verification_channel": panel.get("verification_channel"),
+                "verification_message": panel.get("verification_message"),
+                "verifier_role_id": panel.get("verifier_role_id"),
+                "verification_image_url": panel.get("verification_image_url"),
                 "buttons": buttons_list
             })
         
@@ -4598,6 +4692,230 @@ async def deploy_ticket_panel(
         
     except Exception as e:
         print(f"Deploy ticket panel error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Rules Validation API Endpoints
+@app.get("/api/guild/{guild_id}/rules")
+async def get_rules_validation_config(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Get rules validation configuration for a guild"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+
+        config = await database.fetch_one(
+            "SELECT * FROM rules_validation_config WHERE guild_id = %s",
+            (guild_id,)
+        )
+
+        if not config:
+            return RulesValidationConfig().dict()
+
+        return {
+            "rules_channel_id": str(config["rules_channel_id"]) if config.get("rules_channel_id") else None,
+            "rules_message_id": str(config["rules_message_id"]) if config.get("rules_message_id") else None,
+            "rules_title": config.get("rules_title") or "📘 Règlement du serveur",
+            "rules_description": config.get("rules_description") or "Merci de lire et valider le règlement via le bouton ci-dessous.",
+            "rules_fields": json.loads(config["rules_fields"]) if config.get("rules_fields") else [],
+            "rules_color": config.get("rules_color") or "#5865F2",
+            "rules_thumbnail_url": config.get("rules_thumbnail_url"),
+            "rules_image_url": config.get("rules_image_url"),
+            "rules_footer": config.get("rules_footer") or "Validation requise",
+            "button_label": config.get("button_label") or "J'accepte",
+            "button_emoji": config.get("button_emoji") or "✅",
+            "button_style": config.get("button_style") or "success",
+            "grant_role_id": str(config["grant_role_id"]) if config.get("grant_role_id") else None,
+            "welcome_channel_id": str(config["welcome_channel_id"]) if config.get("welcome_channel_id") else None,
+            "welcome_enabled": bool(config.get("welcome_enabled", True)),
+            "welcome_embed_title": config.get("welcome_embed_title") or "Bienvenue {username} !",
+            "welcome_embed_description": config.get("welcome_embed_description") or "{user} vient de valider le règlement.",
+            "welcome_embed_color": config.get("welcome_embed_color") or "#5865F2",
+            "welcome_embed_thumbnail_url": config.get("welcome_embed_thumbnail_url") or "{avatar}",
+            "welcome_embed_image_url": config.get("welcome_embed_image_url"),
+            "welcome_embed_footer": config.get("welcome_embed_footer") or "Profite bien de ton arrivée !"
+        }
+    except Exception as e:
+        print(f"Get rules config error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/guild/{guild_id}/rules")
+async def update_rules_validation_config(
+    guild_id: str,
+    config: RulesValidationConfig,
+    current_user: str = Depends(get_current_user)
+):
+    """Create/update rules validation configuration for a guild"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+
+        await database.execute(
+            """INSERT INTO rules_validation_config (
+                guild_id, rules_channel_id, rules_message_id, rules_title, rules_description, rules_fields, rules_color,
+                rules_thumbnail_url, rules_image_url, rules_footer, button_label, button_emoji, button_style,
+                grant_role_id, welcome_channel_id, welcome_enabled, welcome_embed_title, welcome_embed_description,
+                welcome_embed_color, welcome_embed_thumbnail_url, welcome_embed_image_url, welcome_embed_footer, updated_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                rules_channel_id = VALUES(rules_channel_id),
+                rules_message_id = VALUES(rules_message_id),
+                rules_title = VALUES(rules_title),
+                rules_description = VALUES(rules_description),
+                rules_fields = VALUES(rules_fields),
+                rules_color = VALUES(rules_color),
+                rules_thumbnail_url = VALUES(rules_thumbnail_url),
+                rules_image_url = VALUES(rules_image_url),
+                rules_footer = VALUES(rules_footer),
+                button_label = VALUES(button_label),
+                button_emoji = VALUES(button_emoji),
+                button_style = VALUES(button_style),
+                grant_role_id = VALUES(grant_role_id),
+                welcome_channel_id = VALUES(welcome_channel_id),
+                welcome_enabled = VALUES(welcome_enabled),
+                welcome_embed_title = VALUES(welcome_embed_title),
+                welcome_embed_description = VALUES(welcome_embed_description),
+                welcome_embed_color = VALUES(welcome_embed_color),
+                welcome_embed_thumbnail_url = VALUES(welcome_embed_thumbnail_url),
+                welcome_embed_image_url = VALUES(welcome_embed_image_url),
+                welcome_embed_footer = VALUES(welcome_embed_footer),
+                updated_at = VALUES(updated_at)
+            """,
+            (
+                guild_id,
+                int(config.rules_channel_id) if config.rules_channel_id else None,
+                int(config.rules_message_id) if config.rules_message_id else None,
+                config.rules_title,
+                config.rules_description,
+                json.dumps(config.rules_fields) if config.rules_fields else None,
+                config.rules_color,
+                config.rules_thumbnail_url,
+                config.rules_image_url,
+                config.rules_footer,
+                config.button_label,
+                config.button_emoji,
+                config.button_style,
+                int(config.grant_role_id) if config.grant_role_id else None,
+                int(config.welcome_channel_id) if config.welcome_channel_id else None,
+                config.welcome_enabled,
+                config.welcome_embed_title,
+                config.welcome_embed_description,
+                config.welcome_embed_color,
+                config.welcome_embed_thumbnail_url,
+                config.welcome_embed_image_url,
+                config.welcome_embed_footer,
+                datetime.utcnow()
+            )
+        )
+
+        return {"message": "Rules configuration saved successfully"}
+    except Exception as e:
+        print(f"Update rules config error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/guild/{guild_id}/rules/deploy")
+async def deploy_rules_validation_message(
+    guild_id: str,
+    current_user: str = Depends(get_current_user)
+):
+    """Deploy the rules embed with validation button to configured channel"""
+    try:
+        if not await verify_guild_access(guild_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this guild")
+
+        config = await database.fetch_one(
+            "SELECT * FROM rules_validation_config WHERE guild_id = %s",
+            (guild_id,)
+        )
+        if not config:
+            raise HTTPException(status_code=400, detail="Rules configuration not found")
+
+        rules_channel_id = config.get("rules_channel_id")
+        if not rules_channel_id:
+            raise HTTPException(status_code=400, detail="Rules channel is required")
+
+        style_map = {"primary": 1, "secondary": 2, "success": 3, "danger": 4}
+        button_style = style_map.get((config.get("button_style") or "success").lower(), 3)
+
+        embed_color = config.get("rules_color") or "#5865F2"
+        try:
+            color_int = int(embed_color.replace("#", ""), 16)
+        except Exception:
+            color_int = 0x5865F2
+
+        embed = {
+            "title": config.get("rules_title") or "📘 Règlement du serveur",
+            "description": config.get("rules_description") or "Merci de lire et valider le règlement via le bouton ci-dessous.",
+            "color": color_int,
+        }
+        if config.get("rules_fields"):
+            try:
+                fields = json.loads(config["rules_fields"]) if isinstance(config["rules_fields"], str) else config["rules_fields"]
+            except Exception:
+                fields = []
+            if isinstance(fields, list):
+                embed_fields = []
+                for field in fields[:25]:
+                    name = (field.get("name") or "").strip() if isinstance(field, dict) else ""
+                    value = (field.get("value") or "").strip() if isinstance(field, dict) else ""
+                    if not name or not value:
+                        continue
+                    embed_fields.append({
+                        "name": name[:256],
+                        "value": value[:1024],
+                        "inline": bool(field.get("inline", False))
+                    })
+                if embed_fields:
+                    embed["fields"] = embed_fields
+        if config.get("rules_thumbnail_url"):
+            embed["thumbnail"] = {"url": config["rules_thumbnail_url"]}
+        if config.get("rules_image_url"):
+            embed["image"] = {"url": config["rules_image_url"]}
+        if config.get("rules_footer"):
+            embed["footer"] = {"text": config["rules_footer"]}
+
+        button_component = {
+            "type": 1,
+            "components": [{
+                "type": 2,
+                "custom_id": f"rules_accept_{guild_id}",
+                "label": config.get("button_label") or "J'accepte",
+                "style": button_style
+            }]
+        }
+
+        button_emoji = config.get("button_emoji")
+        if button_emoji:
+            button_component["components"][0]["emoji"] = {"name": button_emoji}
+
+        bot_token = DISCORD_BOT_TOKEN
+        if not bot_token:
+            raise HTTPException(status_code=500, detail="Bot token not configured")
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                f"https://discord.com/api/v10/channels/{rules_channel_id}/messages",
+                headers={
+                    "Authorization": f"Bot {bot_token.strip()}",
+                    "Content-Type": "application/json"
+                },
+                json={"embeds": [embed], "components": [button_component]}
+            )
+
+            if response.status_code not in [200, 201]:
+                raise HTTPException(status_code=500, detail=f"Failed to deploy rules message: {response.text}")
+
+            message_id = response.json().get("id")
+
+        await database.execute(
+            "UPDATE rules_validation_config SET rules_message_id = %s, updated_at = %s WHERE guild_id = %s",
+            (int(message_id), datetime.utcnow(), guild_id)
+        )
+
+        return {"message": "Rules message deployed successfully", "message_id": str(message_id)}
+    except Exception as e:
+        print(f"Deploy rules message error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Server Logs API Endpoints

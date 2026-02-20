@@ -246,6 +246,7 @@ async def load_extensions():
         "cog.rename", "cog.scan", "cog.ping", "cog.dashboard",
         "cog.avatar", "cog.confession", "cog.XPSystem",
         "cog.role", "cog.welcome", "cog.role_menus", "cog.ticket", "cog.clear",
+        "cog.rules_validation",
         "cog.config", "cog.moderation", "cog.server_logs", "cog.feedback",
         "cog.disboard_reminder", "cog.disboard_config", "cog.dm_logs", "cog.stats_tracker",
         "cog.connect4", "cog.tictactoe", "cog.wordle", "cog.feur_mode", "cog.loupgarou"
