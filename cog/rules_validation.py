@@ -54,7 +54,27 @@ class RulesValidation(commands.Cog):
                 fetchone=True
             )
             if acceptance:
-                await interaction.response.send_message("Tu as déjà validé le règlement.", ephemeral=True)
+                await self.bot.db.query(
+                    "DELETE FROM rules_acceptances WHERE guild_id = %s AND user_id = %s",
+                    (str(guild.id), str(member.id))
+                )
+
+                removed_role_name = None
+                grant_role_id = config.get("grant_role_id")
+                if grant_role_id:
+                    role = guild.get_role(int(grant_role_id))
+                    if role and role in member.roles:
+                        try:
+                            await member.remove_roles(role, reason="Rules devalidated")
+                            removed_role_name = role.name
+                        except Exception:
+                            removed_role_name = None
+
+                ack = "↩️ Validation retirée. Tu peux cliquer à nouveau pour revalider."
+                if removed_role_name:
+                    ack += f" Rôle retiré: {removed_role_name}."
+
+                await interaction.response.send_message(ack, ephemeral=True)
                 return
 
             await self.bot.db.query(
