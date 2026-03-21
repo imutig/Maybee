@@ -3465,78 +3465,51 @@ async def send_role_menu_message(
         
         if not options:
             raise HTTPException(status_code=400, detail="Role menu has no options")
-        
-        # Create the Discord message directly using Discord API
-        import httpx
-        import json
-        
-        # Build the select menu options
-        select_options = []
-        for option in options:
-            select_option = {
-                "label": option["label"],
-                "value": str(option["role_id"]),
-                "description": option.get("description"),
-            }
-            if option.get("emoji"):
-                select_option["emoji"] = {"name": option["emoji"]}
-            select_options.append(select_option)
-        
-        # Create the embed
-        embed = {
-            "title": menu["title"],
-            "description": menu.get("description", ""),
-            "color": int(menu.get("color", "#5865F2").replace("#", ""), 16),
-            "footer": {"text": "Role Menu"}
-        }
-        
-        # Create the select menu component
-        select_menu = {
-            "type": 1,  # Action Row
-            "components": [{
-                "type": 3,  # Select Menu
-                "custom_id": f"role_menu_{menu_id}",
-                "placeholder": menu.get("placeholder", "Select a role..."),
-                "min_values": menu.get("min_values", 0),
-                "max_values": menu.get("max_values", 1),
-                "options": select_options
-            }]
-        }
-        
-        # Send the message to Discord
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            headers = {
-                "Authorization": f"Bot {DISCORD_BOT_TOKEN}",
-                "Content-Type": "application/json"
-            }
-            
-            payload = {
-                "embeds": [embed],
-                "components": [select_menu]
-            }
-            
-            response = await client.post(
-                f"https://discord.com/api/v10/channels/{menu['channel_id']}/messages",
-                headers=headers,
-                json=payload
+
+        # Remove any previous message before forcing a fresh publish to avoid
+        # duplicate menus (including old non-functional ones).
+        if menu.get("message_id"):
+            await notify_bot_role_menu_delete(guild_id, menu["channel_id"], menu["message_id"])
+
+        # Important: role menu messages must be created by the bot code path so the
+        # persistent discord.ui.View is registered (add_view). Sending directly via
+        # raw Discord REST API causes dropdown interactions to fail.
+        await database.execute(
+            "UPDATE role_menus SET message_id = NULL WHERE id = %s",
+            (menu_id,)
+        )
+
+        await notify_bot_role_menu_update(guild_id, menu_id)
+
+        # Wait briefly for the bot background task to create the message and store
+        # its ID so the dashboard can report an immediate status.
+        max_wait_seconds = 35
+        poll_interval_seconds = 1
+        elapsed = 0
+
+        while elapsed < max_wait_seconds:
+            updated_menu = await database.fetch_one(
+                "SELECT message_id FROM role_menus WHERE id = %s AND guild_id = %s",
+                (menu_id, guild_id)
             )
-            
-            if response.status_code == 200:
-                message_data = response.json()
-                message_id = message_data["id"]
-                
-                # Update the database with the message ID
-                await database.execute(
-                    "UPDATE role_menus SET message_id = %s WHERE id = %s",
-                    (message_id, menu_id)
-                )
-                
-                print(f"✅ Created Discord message {message_id} for role menu {menu_id}")
-                return {"success": True, "message": f"Role menu message sent to Discord channel successfully! Message ID: {message_id}"}
-            else:
-                error_msg = f"Discord API error: {response.status_code} - {response.text}"
-                print(f"❌ {error_msg}")
-                raise HTTPException(status_code=500, detail=error_msg)
+
+            if updated_menu and updated_menu.get("message_id"):
+                message_id = updated_menu["message_id"]
+                print(f"✅ Role menu {menu_id} sent by bot with message ID {message_id}")
+                return {
+                    "success": True,
+                    "message": f"Role menu sent to Discord channel successfully! Message ID: {message_id}",
+                    "message_id": str(message_id)
+                }
+
+            await asyncio.sleep(poll_interval_seconds)
+            elapsed += poll_interval_seconds
+
+        return {
+            "success": True,
+            "queued": True,
+            "message": "Role menu creation queued. The bot should publish it within 30 seconds."
+        }
         
     except Exception as e:
         print(f"Send role menu message error: {e}")
