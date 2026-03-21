@@ -403,6 +403,8 @@
                                 <div class="row"><label class="label">Salon de bienvenue</label><select id="welcomeChannel" class="form-select"><option value="">Sélectionner un salon...</option></select></div>
                                 <div class="row"><label class="label">Titre de bienvenue</label><input id="welcomeTitle" class="input" type="text"></div>
                                 <div class="row"><label class="label">Message de bienvenue</label><textarea id="welcomeMessage" class="textarea" placeholder="Bienvenue {user} sur {server} !"></textarea></div>
+                                <div class="row"><label class="label">Activer le rôle de bienvenue</label><input type="checkbox" id="welcomeRoleEnabled"></div>
+                                <div class="row" id="welcomeRoleContainer" style="display:none;"><label class="label">Rôle de bienvenue</label><select id="welcomeRoleId" class="form-select"><option value="">Sélectionner un rôle...</option></select></div>
                             </div>
                             <div>
                                 <div class="row"><label class="label">Activer l'au revoir</label><input type="checkbox" id="goodbyeEnabled"></div>
@@ -786,6 +788,7 @@
 
                 const channelTargets = ['xpChannel', 'levelUpChannel', 'welcomeChannel', 'goodbyeChannel', 'serverLogsChannel', 'moderationChannel', 'embedTargetChannel', 'rulesChannel', 'rulesWelcomeChannel'];
                 channelTargets.forEach(id => populateSelect(id, state.channels, 'id', 'name', 'Sélectionner un salon...'));
+                populateSelect('welcomeRoleId', state.roles.filter(role => role.name !== '@everyone'), 'id', 'name', 'Sélectionner un rôle...');
                 populateSelect('memberSelect', state.members, 'id', 'display_name', 'Sélectionner un membre...');
                 populateSelect('rulesGrantRole', state.roles.filter(r => r.name !== '@everyone'), 'id', 'name', 'Aucun');
 
@@ -904,9 +907,23 @@
                 el('goodbyeChannel').value = cfg.goodbye_channel || '';
                 el('goodbyeTitle').value = cfg.goodbye_title || '';
                 el('goodbyeMessage').value = cfg.goodbye_message || '';
+
+                const hasWelcomeRole = !!(cfg.auto_role_enabled && Array.isArray(cfg.auto_role_ids) && cfg.auto_role_ids.length > 0);
+                const welcomeRoleId = hasWelcomeRole ? String(cfg.auto_role_ids[0]) : '';
+                el('welcomeRoleEnabled').checked = hasWelcomeRole;
+                el('welcomeRoleId').value = welcomeRoleId;
+                el('welcomeRoleContainer').style.display = hasWelcomeRole ? 'block' : 'none';
             }
             async function saveWelcomeTab() {
                 if (!state.guildId) return;
+                const welcomeRoleEnabled = !!el('welcomeRoleEnabled').checked;
+                const welcomeRoleId = el('welcomeRoleId').value || null;
+
+                if (welcomeRoleEnabled && !welcomeRoleId) {
+                    showBanner('Sélectionne un rôle de bienvenue ou désactive l\'option.');
+                    return;
+                }
+
                 await apiCall(`/guild/${state.guildId}/welcome`, 'PUT', {
                     welcome_enabled: el('welcomeEnabled').checked,
                     welcome_channel: el('welcomeChannel').value || null,
@@ -920,8 +937,8 @@
                     goodbye_message: el('goodbyeMessage').value || 'Au revoir {user}, tu vas nous manquer !',
                     goodbye_fields: null,
                     goodbye_image_url: null,
-                    auto_role_enabled: false,
-                    auto_role_ids: []
+                    auto_role_enabled: welcomeRoleEnabled,
+                    auto_role_ids: welcomeRoleEnabled && welcomeRoleId ? [welcomeRoleId] : []
                 });
                 showBanner('Paramètres de bienvenue sauvegardés.', false);
             }
@@ -1532,6 +1549,13 @@
                 el('executeModerationBtn').addEventListener('click', () => executeModeration().catch(e => showBanner(e.message)));
 
                 el('saveWelcomeBtn').addEventListener('click', () => saveWelcomeTab().catch(e => showBanner(e.message)));
+                el('welcomeRoleEnabled').addEventListener('change', () => {
+                    const enabled = !!el('welcomeRoleEnabled').checked;
+                    el('welcomeRoleContainer').style.display = enabled ? 'block' : 'none';
+                    if (!enabled) {
+                        el('welcomeRoleId').value = '';
+                    }
+                });
                 el('testWelcomeBtn').addEventListener('click', async () => {
                     try {
                         const res = await apiCall(`/guild/${state.guildId}/welcome/test`, 'POST');
